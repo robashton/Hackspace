@@ -2955,8 +2955,24 @@ define('render/rendergraph',['require','underscore'],function(require) {
       this.items = _.without(this.items, [item]);
     },    
         
-    uploadTransforms: function(canvas) {
+    uploadTransforms: function(context) {
+      this.applyTranslate(context);
+      this.applyScale(context);
+    },
     
+    applyTranslate: function(context) {
+      context.translate(-this.viewport.left, -this.viewport.top);
+    },
+    
+    applyScale: function(context) {
+      var canvas = context.canvas;
+      var canvasWidth = canvas.width;
+      var canvasHeight = canvas.height;
+      
+      var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
+      var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
+      
+      context.scale(scalex, scaley);
     },
     
     pass: function(callback) {
@@ -12432,7 +12448,44 @@ define('resources/packagedresources',['require','./package','../shared/eventable
   return PackagedResources;
 });
 
-define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources'],function(require) {
+define('scene/camera',['require','glmatrix'],function(require) {
+  var vec3 = require('glmatrix').vec3;
+
+  var Camera = function(aspectRatio, fieldOfView) {
+    this.aspectRatio = aspectRatio;
+    this.fieldOfView = fieldOfView;
+    this.centre = vec3.create([0,0,0]);
+    this.distance = 500.0;
+    
+    this.width = 0;
+    this.height = 0;
+  };
+  
+  Camera.prototype = {
+    lookAt: function(x, y, z) {
+      this.centre[0] = x || 0;
+      this.centre[1] = y || 0;
+      this.centre[2] = z || 0;
+    },
+    updateViewport: function(graph) {
+      this.calculateDimensions();
+      graph.updateViewport(
+        this.centre[0] - this.width / 2.0,
+        this.centre[0] + this.width / 2.0,
+        this.centre[1] - this.height / 2.0,
+        this.centre[1] + this.height / 2.0
+      );
+    },
+    calculateDimensions: function() {
+      this.width = this.distance * Math.tan(this.fieldOfView);
+      this.height = this.width / this.aspectRatio;
+    }
+  };
+  
+  return Camera; 
+});
+
+define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera'],function(require) {
 
   var Material = require('../../render/material');
   var Quad = require('../../render/quad');
@@ -12440,6 +12493,7 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
   var RenderGraph = require('../../render/rendergraph');
   var CanvasRender = require('../../render/canvasrender');
   var PackagedResources = require('../../resources/packagedresources');
+  var Camera = require('../../scene/camera');
   
   var resources = new PackagedResources();
   resources.on('loaded', function() {    
@@ -12449,11 +12503,13 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     var quad = new Quad(material);
     
     var instance = new Instance(quad);
-    instance.scale(10, 10);
-    instance.translate(10, 10);
+    instance.scale(100, 100);
+    instance.translate(50, 50);
+    
+    var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);
     
     var graph = new RenderGraph();
-    graph.updateViewport(0, 512, 0, 512);
+    camera.updateViewport(graph);
     
     graph.add(instance);
     

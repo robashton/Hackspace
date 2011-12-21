@@ -30,8 +30,24 @@ define(function(require) {
       this.items = _.without(this.items, [item]);
     },    
         
-    uploadTransforms: function(canvas) {
+    uploadTransforms: function(context) {
+      this.applyTranslate(context);
+      this.applyScale(context);
+    },
     
+    applyTranslate: function(context) {
+      context.translate(-this.viewport.left, -this.viewport.top);
+    },
+    
+    applyScale: function(context) {
+      var canvas = context.canvas;
+      var canvasWidth = canvas.width;
+      var canvasHeight = canvas.height;
+      
+      var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
+      var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
+      
+      context.scale(scalex, scaley);
     },
     
     pass: function(callback) {

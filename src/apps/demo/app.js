@@ -6,6 +6,7 @@ define(function(require) {
   var RenderGraph = require('../../render/rendergraph');
   var CanvasRender = require('../../render/canvasrender');
   var PackagedResources = require('../../resources/packagedresources');
+  var Camera = require('../../scene/camera');
   
   var resources = new PackagedResources();
   resources.on('loaded', function() {    
@@ -15,11 +16,13 @@ define(function(require) {
     var quad = new Quad(material);
     
     var instance = new Instance(quad);
-    instance.scale(10, 10);
-    instance.translate(10, 10);
+    instance.scale(100, 100);
+    instance.translate(50, 50);
+    
+    var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);
     
     var graph = new RenderGraph();
-    graph.updateViewport(0, 512, 0, 512);
+    camera.updateViewport(graph);
     
     graph.add(instance);
     
