@@ -10,7 +10,7 @@ define(function(require) {
   
   var resources = new PackagedResources();
   resources.on('loaded', function() {    
-
+/*
     var material = new Material();
     material.diffuseTexture = resources.get('/main/helloworld.png');
     var quad = new Quad(material);
@@ -24,11 +24,21 @@ define(function(require) {
     var graph = new RenderGraph();
     camera.updateViewport(graph);
     
-    graph.add(instance);
+    graph.add(instance);    
+        
+   */
+   
+    var context = document.getElementById('target').getContext('2d');     
+    var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);
+    var scene = new Scene(context, camera);
+   
     
-    var context = document.getElementById('target').getContext('2d');  
-    var canvas = new CanvasRender(context);
-    canvas.draw(graph);
+    setInterval(function() {    
+      scene.tick();
+      scene.render();
+    }, 250);
+    
+    
   }); 
   
   

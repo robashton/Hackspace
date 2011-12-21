@@ -1,39 +1,43 @@
 define(function(require) {
 
-  var Tangible = function() {
+  var vec3 = require('glmatrix').vec3;
+
+  var Tangible = function(entity) {
+    this.position = vec3.create([0,0,0]);
+    this.size = vec3.create([0,0,0]);
+    this.entity = entity;
+  };
   
-    var self = this
-    ,   position: vec3.size([0,0,0])
-    ,   size = vec3.create([0,0,0])
-    ;
-    
-    self.moveTo = function(x, y, z) {
-      self.raise('position-changed', {
+  Tangible.prototype = {
+  
+    moveTo: functionx, y, z() {
+      this.entity.raise('position-changed', {
         x: x || 0,
         y: y || 0,
         z: z || 0
       });
-    };
+    },
     
-    self.scaleTo = function(x, y, z) {
-      self.raise('size-changed', {
-        x: x || 0.0,
-        y: y || 0.0,
-        z: z || 0.0
-      });
-    };
+    scaleTo: function() {
+      this.entity.raise('size-changed', {
+          x: x || 0.0,
+          y: y || 0.0,
+          z: z || 0.0
+        });
+    },
     
-    self["position-changed"] = function(x, y, z) {
-      position[0] = x;
-      position[1] = y;
-      position[2] = z;
-    };    
+    onPositionChanged: function() {
+      this.position[0] = x;
+      this.position[1] = y;
+      this.position[2] = z;
+    },
     
-   self["size-changed"] = function(x, y, z) {
-      size[0] = x;
-      size[1] = y;
-      size[2] = z;
-    };    
+    onSizeChanged: function() {
+      this.size[0] = x;
+      this.size[1] = y;
+      this.size[2] = z;
+    }
   };
-
+  
+  return Tangible;
 });

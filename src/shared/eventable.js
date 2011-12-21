@@ -1,42 +1,46 @@
 define(function(require) {
   var EventContainer = require('./eventcontainer');
   
-  return function() {
-    var self = this;
-    var eventListeners = {};
-    var allContainer = new EventContainer();
+  var Eventable = function() {
+    this.eventListeners = {};
+    this.allContainer = new EventContainer();
+  };
+  
+  Eventable.prototype = {
+    on: function(eventName, context, callback) {
+      this.eventContainerFor(eventName).add(context, callback);
+    },
+    
+    off: function(eventName, context, callback) {
+      this.eventContainerFor(eventName).remove(context, callback);
+    },
 
-    self.on = function(eventName, callback) {
-      eventContainerFor(eventName).add(callback);
-    };
+    onAny: function(context, callback) {
+      this.allContainer.add(context, callback);
+    },
 
-    self.off = function(eventName, callback) {
-      eventContainerFor(eventName).remove(callback);
-    }; 
-
-    self.onAny = function(callback) {
-      allContainer.add(callback);
-    };
-
-    self.raise = function(eventName, data) {
-      var container = eventListeners[eventName];
+    raise: function(eventName, data) {
+      var container = this.eventListeners[eventName];
 
       if(container)
-        container.raise(self, data);
+        container.raise(this, data);
 
-      allContainer.raise(self, {
+      this.allContainer.raise(this, {
         event: eventName,
         data: data
       });
-    };
+    },
 
-    var eventContainerFor = function(eventName) {
-      var container = eventListeners[eventName];
+    eventContainerFor: function(eventName) {
+      var container = this.eventListeners[eventName];
       if(!container) {
         container =  new EventContainer();
-        eventListeners[eventName] = container;
+        this.eventListeners[eventName] = container;
       }
       return container;
-    };
+    }
   };
+  
+  return Eventable;
+
 });
