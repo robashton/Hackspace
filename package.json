@@ -2,7 +2,11 @@
     "name": "Hackspace",
     "version": "0.0.1",
     "dependencies": {
+      "underscore": "",
       "socket.io": "",
-	    "paperboy": ""
+	    "paperboy": "",
+      "requirejs": "",
+      "when": "",
+      "swallow": ""
     }
 }
