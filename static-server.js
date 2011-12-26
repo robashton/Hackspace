@@ -2,6 +2,7 @@ var paperboy = require('paperboy');
 var http = require('http');
 var path = require('path');
 var exec = require('child_process').exec;
+var build = require('./src/build');
 
 WEBROOT = path.join(path.dirname(__filename), 'site');
 
@@ -15,4 +16,8 @@ http.createServer(function(req, res) {
     });
 }).listen(8000);
 
-exec('node build.js demo');
+try {
+build('demo');
+} catch (ex) {
+  console.error(ex);
+}

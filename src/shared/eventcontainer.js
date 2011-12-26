@@ -12,13 +12,13 @@ define(function(require) {
         handler.method.call(handler.context, data, source);   
      }
     },
-    add: function(context, method) {
+    add: function(method, context) {
       this.handlers.push({
         method: method,
         context: context      
       });
     },
-    remove: function(context, method) {
+    remove: function(method, context) {
       this.handlers = _(this.handlers).filter(function(item) {
         return item.method !== method || item.context !== context;
       });

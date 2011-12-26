@@ -5,6 +5,7 @@ define(function(require) {
   var Texture = require('./texture');
 
   var PackagedResources = function() {  
+    Eventable.call(this);
     this.loadedTextures = {};
     this.loadedPackages = [];
     this.pendingPackageCount = 0;  
@@ -43,7 +44,7 @@ define(function(require) {
       return pkg.getData(path);
     }
   };
-  Eventable.call(PackagedResources.prototype);
+  _.extend(PackagedResources.prototype, Eventable.prototype);
 
   return PackagedResources;
 });

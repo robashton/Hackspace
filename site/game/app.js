@@ -2956,8 +2956,10 @@ define('render/rendergraph',['require','underscore'],function(require) {
     },    
         
     uploadTransforms: function(context) {
+      context.save();
       this.applyTranslate(context);
       this.applyScale(context);
+      context.restore();
     },
     
     applyTranslate: function(context) {
@@ -2988,21 +2990,23 @@ define('render/rendergraph',['require','underscore'],function(require) {
 
 define('render/canvasrender',['require'],function(require) {
 
-  var CanvasRender = function(canvas) {
-    this.canvas = canvas;
+  var CanvasRender = function(context) {
+    this.context = context;
   };
   CanvasRender.prototype = {
-  
+    clear: function() {
+      this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
+    },
     draw: function(graph) {
       var self = this;
       
-      graph.uploadTransforms(this.canvas);
+      graph.uploadTransforms(this.context);
       
       graph.pass(function(item) {
         var model = item.model;
         
-        model.upload(self.canvas);
-        model.render(self.canvas, item);
+        model.upload(self.context);
+        model.render(self.context, item);
       });
             
     }  
@@ -12315,14 +12319,21 @@ define('shared/eventcontainer',['require','underscore'],function(require) {
   
   EventContainer.prototype = {
     raise: function(source, data) {
-     for(var i = 0; i < this.handlers.length; i++)
-        this.handlers[i].call(source, data);
+     for(var i = 0; i < this.handlers.length; i++) {
+        var handler = this.handlers[i];
+        handler.method.call(handler.context, data, source);   
+     }
     },
-    add: function(handler) {
-      this.handlers.push(handler);
+    add: function(method, context) {
+      this.handlers.push({
+        method: method,
+        context: context      
+      });
     },
-    remove: function(handler) {
-      this.handlers = _(this.handlers).without(handler);
+    remove: function(method, context) {
+      this.handlers = _(this.handlers).filter(function(item) {
+        return item.method !== method || item.context !== context;
+      });
     }
   };
   
@@ -12332,44 +12343,48 @@ define('shared/eventcontainer',['require','underscore'],function(require) {
 define('shared/eventable',['require','./eventcontainer'],function(require) {
   var EventContainer = require('./eventcontainer');
   
-  return function() {
-    var self = this;
-    var eventListeners = {};
-    var allContainer = new EventContainer();
+  var Eventable = function() {
+    this.eventListeners = {};
+    this.allContainer = new EventContainer();
+  };
+  
+  Eventable.prototype = {
+    on: function(eventName, context, callback) {
+      this.eventContainerFor(eventName).add(context, callback);
+    },
+    
+    off: function(eventName, context, callback) {
+      this.eventContainerFor(eventName).remove(context, callback);
+    },
 
-    self.on = function(eventName, callback) {
-      eventContainerFor(eventName).add(callback);
-    };
+    onAny: function(context, callback) {
+      this.allContainer.add(context, callback);
+    },
 
-    self.off = function(eventName, callback) {
-      eventContainerFor(eventName).remove(callback);
-    }; 
-
-    self.onAny = function(callback) {
-      allContainer.add(callback);
-    };
-
-    self.raise = function(eventName, data) {
-      var container = eventListeners[eventName];
+    raise: function(eventName, data) {
+      var container = this.eventListeners[eventName];
 
       if(container)
-        container.raise(self, data);
+        container.raise(this, data);
 
-      allContainer.raise(self, {
+      this.allContainer.raise(this, {
         event: eventName,
         data: data
       });
-    };
+    },
 
-    var eventContainerFor = function(eventName) {
-      var container = eventListeners[eventName];
+    eventContainerFor: function(eventName) {
+      var container = this.eventListeners[eventName];
       if(!container) {
         container =  new EventContainer();
-        eventListeners[eventName] = container;
+        this.eventListeners[eventName] = container;
       }
       return container;
-    };
+    }
   };
+  
+  return Eventable;
+
 });
 
 define('resources/texture',['require'],function(require) {
@@ -12405,6 +12420,7 @@ define('resources/packagedresources',['require','./package','../shared/eventable
   var Texture = require('./texture');
 
   var PackagedResources = function() {  
+    Eventable.call(this);
     this.loadedTextures = {};
     this.loadedPackages = [];
     this.pendingPackageCount = 0;  
@@ -12443,7 +12459,7 @@ define('resources/packagedresources',['require','./package','../shared/eventable
       return pkg.getData(path);
     }
   };
-  Eventable.call(PackagedResources.prototype);
+  _.extend(PackagedResources.prototype, Eventable.prototype);
 
   return PackagedResources;
 });
@@ -12485,7 +12501,326 @@ define('scene/camera',['require','glmatrix'],function(require) {
   return Camera; 
 });
 
-define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera'],function(require) {
+define('entities/components/renderable',['require','../../render/instance'],function(require) {
+
+  var Instance = require('../../render/instance');
+
+  var Renderable = function(model) {
+    this.scene = null;
+    this.instance = null;
+    this.model = model;
+  };
+  
+  Renderable.prototype = {    
+    onSizeChanged: function(data) {
+      this.instance.scale(data.x, data.y, data.z);
+    },    
+    
+    onPositionChanged: function(data) {
+      this.instance.translate(data.x, data.y, data.z);
+    },    
+       
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+      this.instance = new Instance(this.model);
+      this.scene.graph.add(this.instance);
+    },    
+    
+    onRemovedFromScene: function() {
+      this.scene.graph.remove(this.instance);
+    }
+  };  
+  
+  return Renderable;
+  
+});
+
+define('entities/components/tangible',['require','glmatrix'],function(require) {
+
+  var vec3 = require('glmatrix').vec3;
+
+  var Tangible = function(x, y, width, height) {
+    this.position = vec3.create([x,y,0]);
+    this.size = vec3.create([width, height,0]);
+  };
+  
+  Tangible.prototype = {
+  
+    moveTo: function(x, y, z) {
+      this.parent.raise('PositionChanged', {
+        x: x || 0,
+        y: y || 0,
+        z: z || 0
+      });
+    },
+    
+    scaleTo: function(x, y, z) {
+      this.parent.raise('SizeChanged', {
+          x: x || 0.0,
+          y: y || 0.0,
+          z: z || 0.0
+        });
+    },
+    
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+      this.moveTo(this.position[0], this.position[1], this.position[2]);
+      this.scaleTo(this.size[0], this.size[1], this.size[2]);
+    },   
+    
+    onPositionChanged: function(data) {
+      this.position[0] = data.x;
+      this.position[1] = data.y;
+      this.position[2] = data.z;
+    },
+    
+    onSizeChanged: function(data) {
+      this.size[0] = data.x;
+      this.size[1] = data.y;
+      this.size[2] = data.z;
+    }
+  };
+  
+  return Tangible;
+});
+
+define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
+  var _ = require('underscore');
+  var Eventable = require('../shared/eventable');
+  
+  var ComponentBag = function() {
+    Eventable.call(this);
+   
+    this.components = [];
+    this.eventHandlers = {};
+    this.commandHandlers = {};
+  };
+  
+  ComponentBag.prototype = {
+     
+    attach: function(component) {
+      this.components.push(component);
+      this.registerHandlers(component);
+      component.parent = this;
+    },
+    
+    registerHandlers: function(component) {
+      for(var key in component) {
+        var item = component[key];
+        if(item && item.call)
+          this.tryRegisterHandler(component, key, item);
+      }
+    },
+    
+    tryRegisterHandler: function(component, key, handler) {
+      if(key.indexOf('on') === 0)
+        this.registerEventHandler(component, key, handler);
+      else
+        this.registerCommandHandler(component, key, handler);
+    },
+    
+    registerEventHandler: function(component, key, handler) {
+      this.on(key.substr(2), handler, component);
+    },
+    
+    registerCommandHandler: function(component, key, handler) {      
+      this.commandHandlers[key] = {
+        component: component,
+        method: handler
+      };
+    },
+        
+    dispatch: function(command, data) {
+      var handler = this.findCommandHandler(command);
+      if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
+      handler.method.call(handler.component, data); 
+    },
+    
+    findCommandHandler: function(key) {
+      return this.commandHandlers[key];
+    }
+  };
+  _.extend(ComponentBag.prototype, Eventable.prototype);
+  return ComponentBag;
+});
+
+define('scene/entity',['require','./componentbag','underscore'],function(require) {
+
+  var ComponentBag = require('./componentbag');
+  var _ = require('underscore');
+
+  var Entity = function(id) {
+    ComponentBag.call(this);    
+    this.id = id;
+  };
+  
+  Entity.prototype = {
+     setScene: function(scene) {
+      this.scene = scene;
+      if(scene)
+        this.raise('AddedToScene', scene);
+      else
+        this.raise('RemovedFromScene');
+     }
+  };
+  _.extend(Entity.prototype, ComponentBag.prototype);
+ 
+  return Entity;
+  
+});
+
+define('entities/character',['require','underscore','./components/renderable','./components/tangible','../scene/entity'],function(require) {
+
+  var _ = require('underscore');
+  
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Entity = require('../scene/entity');
+
+  var Character = function(id,  x ,y, width, height, model) {
+    Entity.call(this, id);
+    
+    this.attach(new Renderable(model));
+    this.attach(new Tangible(x, y, width, height));
+
+  };  
+  Character.prototype = {};  
+  _.extend(Character.prototype, Entity.prototype);
+  
+  return Character;
+});
+
+define('scene/scene',['require','underscore','../render/rendergraph'],function(require) {
+
+  var _ = require('underscore');
+  var RenderGraph = require('../render/rendergraph');
+
+  var Scene = function(renderer, camera) {
+    this.entities = [];
+    this.camera = camera;
+    this.renderer = renderer;
+    this.graph = new RenderGraph();
+  };
+  
+  Scene.prototype = {
+    tick: function() {
+      _(this.entities).each(function(entity){
+        if(entity.tick) 
+          entity.tick();
+      });
+    },
+    render: function() {
+      this.camera.updateViewport(this.graph);
+      this.renderer.clear();
+      this.renderer.draw(this.graph);
+    },
+    add: function(entity) {
+      this.entities.push(entity);
+      entity.setScene(this);
+    },
+    remove: function(entity) {
+      this.entities = _(this.entities).without(entity);
+      entity.setScene(null);
+    },
+    broadcast: function(event, data) {
+      console.log({
+        event: event,
+        data: data
+      });
+    }
+  };
+  
+  return Scene;
+  
+});
+
+define('input/inputtranslator',['require','../shared/eventable','jquery','underscore'],function(require) {
+
+  var Eventable = require('../shared/eventable');
+  var $ = require('jquery');
+  var _ = require('underscore');
+
+  var InputTranslator = function(element) {
+     Eventable.call(this);
+     var self = this;
+     
+     this.element = $(element);
+ 
+     this.element.click(function(e) {
+      self.onMouseClick(e);
+     });
+  };
+  
+  InputTranslator.prototype = {
+    onMouseClick: function(e) {
+      this.raisePrimaryAction(e.clientX, e.clientY);
+    },
+    
+    raisePrimaryAction: function(x, y) {
+      this.raise('PrimaryAction', {
+        x: x,
+        y: y
+      });
+    }
+  };
+  _.extend(InputTranslator.prototype, Eventable.prototype);
+  
+  return InputTranslator;
+});
+
+define('input/inputemitter',['require','./inputtranslator'],function(require) {
+
+  var InputTranslator = require('./inputtranslator');
+  
+  var InputEmitter = function(scene, canvasElement) {
+    var self = this;
+    this.scene = scene;
+    this.canvasElement = canvasElement;
+    this.translator = new InputTranslator(canvasElement);
+    
+    this.translator.on('PrimaryAction', function(data) {
+      self.onPrimaryAction(data);
+    });
+  };
+  
+  InputEmitter.prototype = {
+    onPrimaryAction: function(data) {
+      var transformed = this.fromCanvasToWorld(data.x, data.y);
+      this.scene.broadcast('PrimaryAction', {
+        x: transformed.x,
+        y: transformed.y
+      });
+
+    },
+    
+    fromCanvasToWorld: function(x, y) {
+      var viewport = this.scene.graph.viewport;
+      
+      var canvasWidth = this.canvasElement.width;
+      var canvasHeight = this.canvasElement.height;
+      
+      var scalex = canvasWidth / (viewport.right - viewport.left);
+      var scaley = canvasHeight / (viewport.bottom - viewport.top);
+      
+      x *= scalex;
+      y *= scaley;
+      
+      x += viewport.left;
+      y += viewport.top;
+      return {
+        x: x,
+        y: y
+      };      
+    }
+  };
+  
+  return InputEmitter;
+  
+  
+
+});
+
+define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera','../../entities/character','../../scene/scene','../../input/inputemitter'],function(require) {
 
   var Material = require('../../render/material');
   var Quad = require('../../render/quad');
@@ -12494,28 +12829,35 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
   var CanvasRender = require('../../render/canvasrender');
   var PackagedResources = require('../../resources/packagedresources');
   var Camera = require('../../scene/camera');
+  var Character = require('../../entities/character');
+  var Scene = require('../../scene/scene');
+  var InputEmitter = require('../../input/inputemitter');
   
   var resources = new PackagedResources();
   resources.on('loaded', function() {    
-
+    
     var material = new Material();
-    material.diffuseTexture = resources.get('/main/helloworld.png');
+    material.diffuseTexture =  resources.get('/main/testtile.png');
     var quad = new Quad(material);
     
-    var instance = new Instance(quad);
-    instance.scale(100, 100);
-    instance.translate(50, 50);
+    var character = new Character("player", 10, 10, 100, 100, quad);
+  
+    var canvasElement = document.getElementById('target');
+    var mainContext = canvasElement.getContext('2d');     
+    var renderer = new CanvasRender(mainContext);
+    var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
+    var scene = new Scene(renderer, camera);
+    scene.add(character);
     
-    var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);
+    setInterval(function() {    
+      scene.tick();
+      scene.render();
+    }, 250);
     
-    var graph = new RenderGraph();
-    camera.updateViewport(graph);
+    var input = new InputEmitter(scene, canvasElement);
     
-    graph.add(instance);
     
-    var context = document.getElementById('target').getContext('2d');  
-    var canvas = new CanvasRender(context);
-    canvas.draw(graph);
+    
   }); 
   
   

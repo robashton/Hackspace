@@ -4,14 +4,15 @@ define(function(require) {
   
   var TestComponent = function() {
     this.events = [];
-    this.commands = [];
-    
-    this.onEventRaised = function(msg) {
+    this.commands = [];   
+  };
+  TestComponent.prototype = {
+    onEventRaised: function(msg) {
       this.events.push(msg);
-    };
-    this.doSomething = function(msg) {
+    },
+    doSomething: function(msg) {
       this.commands.push(msg);
-    };
+    }
   };
   
   when("An entity has a component attached to it", function(then) {
@@ -20,10 +21,11 @@ define(function(require) {
     entity.attach(component);
     
     entity.raise('EventRaised', 'event');
-    entity.dispatch('Something', 'command');
+    entity.dispatch('doSomething', 'command');
     
     then("Events raised by the entity should propogate to the component", component.events[0] === 'event');
     then("Commands sent to the entity should be proxied to the component", component.commands[0] === 'command');
+    then("The component is given a reference to the entity", component.parent === entity);
   });
 
 });
