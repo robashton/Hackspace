@@ -9,13 +9,16 @@ define(function(require) {
   };
   
   Entity.prototype = {
-     setScene: function(scene) {
+    setScene: function(scene) {
       this.scene = scene;
       if(scene)
         this.raise('AddedToScene', scene);
       else
         this.raise('RemovedFromScene');
-     }
+    },
+    tick: function() {
+      this.raise('Tick');
+    }
   };
   _.extend(Entity.prototype, ComponentBag.prototype);
  

@@ -28,21 +28,15 @@ define(function(require) {
       
       var canvasWidth = this.canvasElement.width;
       var canvasHeight = this.canvasElement.height;
-      
-      console.log([x,y]);
-      
+           
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
       
       x /= scalex;
       y /= scaley;
-      
-        console.log([x,y]);
-      
+           
       x += viewport.left;
       y += viewport.top;
-      
-         console.log([x,y]);
       
       return {
         x: x,

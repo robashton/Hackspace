@@ -33,7 +33,7 @@ define(function(require) {
     setInterval(function() {    
       scene.tick();
       scene.render();
-    }, 250);
+    }, 1000 / 30);
     
     var input = new InputEmitter(scene, canvasElement);
     

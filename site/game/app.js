@@ -12519,7 +12519,7 @@ define('entities/components/renderable',['require','../../render/instance'],func
     
     onPositionChanged: function(data) {
       this.instance.translate(data.x, data.y, data.z);
-    },    
+    },
        
     onAddedToScene: function(scene) {
       this.scene = scene;
@@ -12583,6 +12583,69 @@ define('entities/components/tangible',['require','glmatrix'],function(require) {
   };
   
   return Tangible;
+});
+
+define('entities/components/directable',['require','glmatrix'],function(require) {
+
+  var vec3 = require('glmatrix').vec3;
+
+  var Directable = function(speed) {
+    this.position = vec3.create([0,0,0]);
+    this.direction = vec3.create([0,0,0]);
+    this.destination = vec3.create([0,0,0]);
+    this.buffer = vec3.create([0,0,0]);
+    this.speed = speed;
+    this.moving = false;
+  };
+  
+  Directable.prototype = {    
+    updateDestination: function(x, y, z) {
+      this.parent.raise('DestinationChanged', {
+        x: x || 0,
+        y: y || 0,
+        z: z || 0
+      });
+    },
+    onPositionChanged: function(data) {
+      this.position[0] = data.x;
+      this.position[1] = data.y;
+      this.position[2] = data.z;
+    },
+    onDestinationChanged: function(data) {
+      this.destination[0] = data.x;
+      this.destination[1] = data.y;
+      this.destination[2] = data.z;
+      this.calculateNewDirection();
+      this.moving = true;
+    },
+    calculateNewDirection: function() {
+      vec3.subtract(this.destination, this.position, this.direction);
+      vec3.normalize(this.direction);
+    },
+    onTick: function() {
+      if(this.moving) {
+        this.moveTowardsDestination();
+        this.determineIfDestinationReached()
+      }
+    },
+    determineIfDestinationReached: function() {
+      vec3.subtract(this.destination, this.position, this.buffer);
+      var length = vec3.length(this.buffer);
+      if(length < 5) {
+        this.moving = false;
+      }
+    },
+    moveTowardsDestination: function() {
+      this.parent.dispatch('moveTo', [
+        this.position[0] + this.direction[0] * this.speed,
+        this.position[1] + this.direction[1] * this.speed,
+        this.position[2] + this.direction[2] * this.speed
+      ]);
+    }
+  };  
+  
+  return Directable;
+  
 });
 
 define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
@@ -12656,13 +12719,16 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   };
   
   Entity.prototype = {
-     setScene: function(scene) {
+    setScene: function(scene) {
       this.scene = scene;
       if(scene)
         this.raise('AddedToScene', scene);
       else
         this.raise('RemovedFromScene');
-     }
+    },
+    tick: function() {
+      this.raise('Tick');
+    }
   };
   _.extend(Entity.prototype, ComponentBag.prototype);
  
@@ -12670,12 +12736,13 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('entities/character',['require','underscore','./components/renderable','./components/tangible','../scene/entity'],function(require) {
+define('entities/character',['require','underscore','./components/renderable','./components/tangible','./components/directable','../scene/entity'],function(require) {
 
   var _ = require('underscore');
   
   var Renderable = require('./components/renderable');
   var Tangible = require('./components/tangible');
+  var Directable = require('./components/directable');
   var Entity = require('../scene/entity');
 
   var Character = function(id,  x ,y, width, height, model) {
@@ -12683,7 +12750,7 @@ define('entities/character',['require','underscore','./components/renderable','.
     
     this.attach(new Renderable(model));
     this.attach(new Tangible(x, y, width, height));
-
+    this.attach(new Directable(3.0));
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);
@@ -12805,21 +12872,15 @@ define('input/inputemitter',['require','./inputtranslator'],function(require) {
       
       var canvasWidth = this.canvasElement.width;
       var canvasHeight = this.canvasElement.height;
-      
-      console.log([x,y]);
-      
+           
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
       
       x /= scalex;
       y /= scaley;
-      
-        console.log([x,y]);
-      
+           
       x += viewport.left;
       y += viewport.top;
-      
-         console.log([x,y]);
       
       return {
         x: x,
@@ -12860,7 +12921,7 @@ define('entities/controller',['require','underscore','../scene/entity'],function
     },
     
     issueMovementCommandToPlayer: function(x, y) {
-      this.scene.dispatch('player', 'moveTo', [x, y]);
+      this.scene.dispatch('player', 'updateDestination', [x, y]);
     }
   };  
   _.extend(Controller.prototype, Entity.prototype);
@@ -12903,7 +12964,7 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     setInterval(function() {    
       scene.tick();
       scene.render();
-    }, 250);
+    }, 1000 / 30);
     
     var input = new InputEmitter(scene, canvasElement);
     

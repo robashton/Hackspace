@@ -24,7 +24,7 @@ define(function(require) {
     },
     
     issueMovementCommandToPlayer: function(x, y) {
-      this.scene.dispatch('player', 'moveTo', [x, y]);
+      this.scene.dispatch('player', 'updateDestination', [x, y]);
     }
   };  
   _.extend(Controller.prototype, Entity.prototype);
