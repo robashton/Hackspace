@@ -12314,15 +12314,16 @@ define('resources/package',['require','jquery'],function(require) {
 define('shared/eventcontainer',['require','underscore'],function(require) {
   var _ = require('underscore');
 
-  var EventContainer = function() {
+  var EventContainer = function(defaultContext) {
     this.handlers = [];
+    this.defaultContext = defaultContext;
   }; 
   
   EventContainer.prototype = {
     raise: function(source, data) {
      for(var i = 0; i < this.handlers.length; i++) {
         var handler = this.handlers[i];
-        handler.method.call(handler.context, data, source);   
+        handler.method.call(handler.context || this.defaultContext, data, source);   
      }
     },
     add: function(method, context) {
@@ -12346,20 +12347,20 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
   
   var Eventable = function() {
     this.eventListeners = {};
-    this.allContainer = new EventContainer();
+    this.allContainer = new EventContainer(this);
   };
   
   Eventable.prototype = {
-    on: function(eventName, context, callback) {
-      this.eventContainerFor(eventName).add(context, callback);
+    on: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).add(callback, context);
     },
     
-    off: function(eventName, context, callback) {
-      this.eventContainerFor(eventName).remove(context, callback);
+    off: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).remove(callback, context);
     },
 
-    onAny: function(context, callback) {
-      this.allContainer.add(context, callback);
+    onAny: function(callback, context) {
+      this.allContainer.add(callback, context);
     },
 
     raise: function(eventName, data) {
@@ -12377,7 +12378,7 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
     eventContainerFor: function(eventName) {
       var container = this.eventListeners[eventName];
       if(!container) {
-        container =  new EventContainer();
+        container =  new EventContainer(this);
         this.eventListeners[eventName] = container;
       }
       return container;
@@ -12903,25 +12904,16 @@ define('entities/controller',['require','underscore','../scene/entity'],function
   var Controller = function() {
     Entity.call(this, "controller");   
     this.scene = null;
-    
-    var self = this;
-    this.attach({
-      onAddedToScene: function(scene) {
-        self.scene = scene;
-        self.hookSceneEvents(scene);
-      }
-    });
+        
+    this.on('AddedToScene', this.hookSceneEvents);
   };  
   Controller.prototype = {
     hookSceneEvents: function(scene) {
-      var self = this;
-      scene.on('PrimaryAction', function(data) {
-        self.issueMovementCommandToPlayer(data.x, data.y);
-      });
+      scene.on('PrimaryAction', this.issueMovementCommandToPlayer, this);
     },
     
-    issueMovementCommandToPlayer: function(x, y) {
-      this.scene.dispatch('player', 'updateDestination', [x, y]);
+    issueMovementCommandToPlayer: function(data) {
+      this.scene.dispatch('player', 'updateDestination', [data.x, data.y]);
     }
   };  
   _.extend(Controller.prototype, Entity.prototype);
@@ -12952,12 +12944,17 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     
     var character = new Character("player", 0, 0, 25, 25, quad);
     var controller = new Controller();
+   // var scenery = new Scenery();
     
     var canvasElement = document.getElementById('target');
     var mainContext = canvasElement.getContext('2d');     
+    
     var renderer = new CanvasRender(mainContext);
     var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
     var scene = new Scene(renderer, camera);
+    
+
+//    scene.add(scenery);
     scene.add(character);
     scene.add(controller);
     

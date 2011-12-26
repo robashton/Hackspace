@@ -6,25 +6,16 @@ define(function(require) {
   var Controller = function() {
     Entity.call(this, "controller");   
     this.scene = null;
-    
-    var self = this;
-    this.attach({
-      onAddedToScene: function(scene) {
-        self.scene = scene;
-        self.hookSceneEvents(scene);
-      }
-    });
+        
+    this.on('AddedToScene', this.hookSceneEvents);
   };  
   Controller.prototype = {
     hookSceneEvents: function(scene) {
-      var self = this;
-      scene.on('PrimaryAction', function(data) {
-        self.issueMovementCommandToPlayer(data.x, data.y);
-      });
+      scene.on('PrimaryAction', this.issueMovementCommandToPlayer, this);
     },
     
-    issueMovementCommandToPlayer: function(x, y) {
-      this.scene.dispatch('player', 'updateDestination', [x, y]);
+    issueMovementCommandToPlayer: function(data) {
+      this.scene.dispatch('player', 'updateDestination', [data.x, data.y]);
     }
   };  
   _.extend(Controller.prototype, Entity.prototype);

@@ -3,20 +3,20 @@ define(function(require) {
   
   var Eventable = function() {
     this.eventListeners = {};
-    this.allContainer = new EventContainer();
+    this.allContainer = new EventContainer(this);
   };
   
   Eventable.prototype = {
-    on: function(eventName, context, callback) {
-      this.eventContainerFor(eventName).add(context, callback);
+    on: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).add(callback, context);
     },
     
-    off: function(eventName, context, callback) {
-      this.eventContainerFor(eventName).remove(context, callback);
+    off: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).remove(callback, context);
     },
 
-    onAny: function(context, callback) {
-      this.allContainer.add(context, callback);
+    onAny: function(callback, context) {
+      this.allContainer.add(callback, context);
     },
 
     raise: function(eventName, data) {
@@ -34,7 +34,7 @@ define(function(require) {
     eventContainerFor: function(eventName) {
       var container = this.eventListeners[eventName];
       if(!container) {
-        container =  new EventContainer();
+        container =  new EventContainer(this);
         this.eventListeners[eventName] = container;
       }
       return container;

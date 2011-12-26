@@ -21,12 +21,17 @@ define(function(require) {
     
     var character = new Character("player", 0, 0, 25, 25, quad);
     var controller = new Controller();
+   // var scenery = new Scenery();
     
     var canvasElement = document.getElementById('target');
     var mainContext = canvasElement.getContext('2d');     
+    
     var renderer = new CanvasRender(mainContext);
     var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
     var scene = new Scene(renderer, camera);
+    
+
+//    scene.add(scenery);
     scene.add(character);
     scene.add(controller);
     
