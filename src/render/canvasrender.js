@@ -10,6 +10,7 @@ define(function(require) {
     draw: function(graph) {
       var self = this;
       
+      this.context.save();
       graph.uploadTransforms(this.context);
       
       graph.pass(function(item) {
@@ -18,7 +19,8 @@ define(function(require) {
         model.upload(self.context);
         model.render(self.context, item);
       });
-            
+     
+     this.context.restore();    
     }  
   };
   

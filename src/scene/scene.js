@@ -2,9 +2,12 @@ define(function(require) {
 
   var _ = require('underscore');
   var RenderGraph = require('../render/rendergraph');
-
+  var Eventable = require('../shared/eventable');
+  
   var Scene = function(renderer, camera) {
+    Eventable.call(this);
     this.entities = [];
+    this.entitiesById = {};
     this.camera = camera;
     this.renderer = renderer;
     this.graph = new RenderGraph();
@@ -24,20 +27,23 @@ define(function(require) {
     },
     add: function(entity) {
       this.entities.push(entity);
+      this.entitiesById[entity.id] = entity;
       entity.setScene(this);
     },
     remove: function(entity) {
       this.entities = _(this.entities).without(entity);
+      delete this.entities[entity.id];
       entity.setScene(null);
     },
+    dispatch: function(id, command, data) {
+      var entity = this.entitiesById[id];
+      entity.dispatch(command, data);
+    },
     broadcast: function(event, data) {
-      console.log({
-        event: event,
-        data: data
-      });
+      this.raise(event, data);
     }
   };
+  _.extend(Scene.prototype, Eventable.prototype);
   
-  return Scene;
-  
+  return Scene;  
 });

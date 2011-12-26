@@ -2956,10 +2956,9 @@ define('render/rendergraph',['require','underscore'],function(require) {
     },    
         
     uploadTransforms: function(context) {
-      context.save();
-      this.applyTranslate(context);
       this.applyScale(context);
-      context.restore();
+      this.applyTranslate(context);
+
     },
     
     applyTranslate: function(context) {
@@ -3000,6 +2999,7 @@ define('render/canvasrender',['require'],function(require) {
     draw: function(graph) {
       var self = this;
       
+      this.context.save();
       graph.uploadTransforms(this.context);
       
       graph.pass(function(item) {
@@ -3008,7 +3008,8 @@ define('render/canvasrender',['require'],function(require) {
         model.upload(self.context);
         model.render(self.context, item);
       });
-            
+     
+     this.context.restore();    
     }  
   };
   
@@ -12633,7 +12634,7 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
     dispatch: function(command, data) {
       var handler = this.findCommandHandler(command);
       if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
-      handler.method.call(handler.component, data); 
+      handler.method.apply(handler.component, data); 
     },
     
     findCommandHandler: function(key) {
@@ -12690,13 +12691,16 @@ define('entities/character',['require','underscore','./components/renderable','.
   return Character;
 });
 
-define('scene/scene',['require','underscore','../render/rendergraph'],function(require) {
+define('scene/scene',['require','underscore','../render/rendergraph','../shared/eventable'],function(require) {
 
   var _ = require('underscore');
   var RenderGraph = require('../render/rendergraph');
-
+  var Eventable = require('../shared/eventable');
+  
   var Scene = function(renderer, camera) {
+    Eventable.call(this);
     this.entities = [];
+    this.entitiesById = {};
     this.camera = camera;
     this.renderer = renderer;
     this.graph = new RenderGraph();
@@ -12716,22 +12720,25 @@ define('scene/scene',['require','underscore','../render/rendergraph'],function(r
     },
     add: function(entity) {
       this.entities.push(entity);
+      this.entitiesById[entity.id] = entity;
       entity.setScene(this);
     },
     remove: function(entity) {
       this.entities = _(this.entities).without(entity);
+      delete this.entities[entity.id];
       entity.setScene(null);
     },
+    dispatch: function(id, command, data) {
+      var entity = this.entitiesById[id];
+      entity.dispatch(command, data);
+    },
     broadcast: function(event, data) {
-      console.log({
-        event: event,
-        data: data
-      });
+      this.raise(event, data);
     }
   };
+  _.extend(Scene.prototype, Eventable.prototype);
   
-  return Scene;
-  
+  return Scene;  
 });
 
 define('input/inputtranslator',['require','../shared/eventable','jquery','underscore'],function(require) {
@@ -12799,14 +12806,21 @@ define('input/inputemitter',['require','./inputtranslator'],function(require) {
       var canvasWidth = this.canvasElement.width;
       var canvasHeight = this.canvasElement.height;
       
+      console.log([x,y]);
+      
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
       
-      x *= scalex;
-      y *= scaley;
+      x /= scalex;
+      y /= scaley;
+      
+        console.log([x,y]);
       
       x += viewport.left;
       y += viewport.top;
+      
+         console.log([x,y]);
+      
       return {
         x: x,
         y: y
@@ -12820,7 +12834,41 @@ define('input/inputemitter',['require','./inputtranslator'],function(require) {
 
 });
 
-define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera','../../entities/character','../../scene/scene','../../input/inputemitter'],function(require) {
+define('entities/controller',['require','underscore','../scene/entity'],function(require) {
+
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+
+  var Controller = function() {
+    Entity.call(this, "controller");   
+    this.scene = null;
+    
+    var self = this;
+    this.attach({
+      onAddedToScene: function(scene) {
+        self.scene = scene;
+        self.hookSceneEvents(scene);
+      }
+    });
+  };  
+  Controller.prototype = {
+    hookSceneEvents: function(scene) {
+      var self = this;
+      scene.on('PrimaryAction', function(data) {
+        self.issueMovementCommandToPlayer(data.x, data.y);
+      });
+    },
+    
+    issueMovementCommandToPlayer: function(x, y) {
+      this.scene.dispatch('player', 'moveTo', [x, y]);
+    }
+  };  
+  _.extend(Controller.prototype, Entity.prototype);
+  
+  return Controller;
+});
+
+define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera','../../entities/character','../../scene/scene','../../input/inputemitter','../../entities/controller'],function(require) {
 
   var Material = require('../../render/material');
   var Quad = require('../../render/quad');
@@ -12832,6 +12880,7 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
   var Character = require('../../entities/character');
   var Scene = require('../../scene/scene');
   var InputEmitter = require('../../input/inputemitter');
+  var Controller = require('../../entities/controller');
   
   var resources = new PackagedResources();
   resources.on('loaded', function() {    
@@ -12840,14 +12889,16 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     material.diffuseTexture =  resources.get('/main/testtile.png');
     var quad = new Quad(material);
     
-    var character = new Character("player", 10, 10, 100, 100, quad);
-  
+    var character = new Character("player", 0, 0, 25, 25, quad);
+    var controller = new Controller();
+    
     var canvasElement = document.getElementById('target');
     var mainContext = canvasElement.getContext('2d');     
     var renderer = new CanvasRender(mainContext);
     var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
     var scene = new Scene(renderer, camera);
     scene.add(character);
+    scene.add(controller);
     
     setInterval(function() {    
       scene.tick();

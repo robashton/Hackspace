@@ -31,10 +31,9 @@ define(function(require) {
     },    
         
     uploadTransforms: function(context) {
-      context.save();
-      this.applyTranslate(context);
       this.applyScale(context);
-      context.restore();
+      this.applyTranslate(context);
+
     },
     
     applyTranslate: function(context) {
