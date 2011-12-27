@@ -2954,11 +2954,14 @@ define('render/rendergraph',['require','underscore'],function(require) {
     remove: function(item) {
       this.items = _.without(this.items, [item]);
     },    
+    
+    clear: function() {
+      this.items = [];
+    },
         
     uploadTransforms: function(context) {
       this.applyScale(context);
       this.applyTranslate(context);
-
     },
     
     applyTranslate: function(context) {
@@ -12921,7 +12924,105 @@ define('entities/controller',['require','underscore','../scene/entity'],function
   return Controller;
 });
 
-define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera','../../entities/character','../../scene/scene','../../input/inputemitter','../../entities/controller'],function(require) {
+define('static/map',['require'],function(require) {
+
+  var Map = function(width, height, tilewidth, tileheight) {
+    this.width = width;
+    this.height = height;
+    this.tilewidth = tilewidth;
+    this.tileheight = tileheight;
+    this.tileCountWidth = parseInt(this.width / this.tileheight);
+    this.tileCountHeight = parseInt(this.height / this.tileheight);
+    this.tiles = new Array(this.tileCountWidth * this.tileCountHeight);
+    this.templates = {};
+  };
+  
+  Map.prototype = {
+    populateGraph: function(graph) {
+      
+    },
+    generateRandom: function() {
+
+      this.templates.tree = {
+        width: 25,
+        height: 25,
+        texture: "/main/tree.png"
+      };
+      
+      for(var x = 0; x < this.tileCountWidth; x++) {
+        for(var y = 0; y < this.tileCountHeight ; y++) {
+          var index = this.index(x,y);
+          this.tiles[index] = [];
+          
+          var treeCount = Math.random() * 5;
+          for(var i = 0 ; i < treeCount; i++) {
+            var xloc = Math.random() * this.tilewidth;
+            var yloc = Math.random() * this.tileheight;
+            this.tiles[index].push({
+              x: xloc,
+              y: yloc,
+              template: "tree"            
+            });
+          }
+        }     
+      }    
+    },
+    index: function(x, y) {
+      return x + y * this.tileCountWidth;
+    }
+  };
+  
+  return Map;
+
+});
+
+define('static/scenery',['require','underscore','../scene/entity','./map','../render/rendergraph'],function(require) {
+
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  var Map = require('./map');
+  var RenderGraph = require('../render/rendergraph');
+
+  var Scenery = function(renderWidth, renderHeight) {
+    Entity.call(this, "scenery");
+    
+    this.scene = null;
+    this.map = new Map(2048, 2048, 128, 128);
+    this.map.generateRandom();
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = renderWidth;
+    this.canvas.height = renderHeight;
+    this.context = this.canvas.getContext('2d');
+    
+    
+    
+    this.on('AddedToScene', this.onAddedToScene);
+    this.on('Tick', this.onTick);
+  };
+  
+  Scenery.prototype = {
+    onAddedToScene: function(scene) {
+      this.scene = scene;    
+    },
+    onTick: function() {
+      
+      // Look at the current viewport
+      
+      // Compare it to what we currently have drawn
+      
+      // Determine if we need to re-draw and update the renderable
+      var graph = new RenderGraph();
+      
+    }
+  };
+  
+  _.extend(Scenery.prototype, Entity.prototype);
+  
+  return Scenery;
+
+});
+
+define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera','../../entities/character','../../scene/scene','../../input/inputemitter','../../entities/controller','../../static/scenery'],function(require) {
 
   var Material = require('../../render/material');
   var Quad = require('../../render/quad');
@@ -12934,6 +13035,19 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
   var Scene = require('../../scene/scene');
   var InputEmitter = require('../../input/inputemitter');
   var Controller = require('../../entities/controller');
+  var Scenery = require('../../static/scenery');
+  
+ var findRequestAnimationFrame = function() {
+    return window.requestAnimationFrame        || 
+      window.webkitRequestAnimationFrame  || 
+      window.mozRequestAnimationFrame     || 
+      window.oRequestAnimationFrame       || 
+      window.msRequestAnimationFrame      ||
+      function(callback, element){
+        window.setTimeout(callback, 1000 / 30);
+      };
+  };  
+
   
   var resources = new PackagedResources();
   resources.on('loaded', function() {    
@@ -12944,7 +13058,7 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     
     var character = new Character("player", 0, 0, 25, 25, quad);
     var controller = new Controller();
-   // var scenery = new Scenery();
+    var scenery = new Scenery(1024, 768);
     
     var canvasElement = document.getElementById('target');
     var mainContext = canvasElement.getContext('2d');     
@@ -12954,14 +13068,24 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     var scene = new Scene(renderer, camera);
     
 
-//    scene.add(scenery);
+    scene.add(scenery);
     scene.add(character);
     scene.add(controller);
     
     setInterval(function() {    
       scene.tick();
-      scene.render();
     }, 1000 / 30);
+    
+    var renderAnimFrame = findRequestAnimationFrame();
+    var render = function() {
+      scene.render();
+      renderAnimFrame(render);
+    };
+    
+    render();
+    
+   
+    
     
     var input = new InputEmitter(scene, canvasElement);
     

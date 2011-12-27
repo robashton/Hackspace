@@ -11,6 +11,19 @@ define(function(require) {
   var Scene = require('../../scene/scene');
   var InputEmitter = require('../../input/inputemitter');
   var Controller = require('../../entities/controller');
+  var Scenery = require('../../static/scenery');
+  
+ var findRequestAnimationFrame = function() {
+    return window.requestAnimationFrame        || 
+      window.webkitRequestAnimationFrame  || 
+      window.mozRequestAnimationFrame     || 
+      window.oRequestAnimationFrame       || 
+      window.msRequestAnimationFrame      ||
+      function(callback, element){
+        window.setTimeout(callback, 1000 / 30);
+      };
+  };  
+
   
   var resources = new PackagedResources();
   resources.on('loaded', function() {    
@@ -21,7 +34,7 @@ define(function(require) {
     
     var character = new Character("player", 0, 0, 25, 25, quad);
     var controller = new Controller();
-   // var scenery = new Scenery();
+    var scenery = new Scenery(1024, 768);
     
     var canvasElement = document.getElementById('target');
     var mainContext = canvasElement.getContext('2d');     
@@ -31,14 +44,24 @@ define(function(require) {
     var scene = new Scene(renderer, camera);
     
 
-//    scene.add(scenery);
+    scene.add(scenery);
     scene.add(character);
     scene.add(controller);
     
     setInterval(function() {    
       scene.tick();
-      scene.render();
     }, 1000 / 30);
+    
+    var renderAnimFrame = findRequestAnimationFrame();
+    var render = function() {
+      scene.render();
+      renderAnimFrame(render);
+    };
+    
+    render();
+    
+   
+    
     
     var input = new InputEmitter(scene, canvasElement);
     

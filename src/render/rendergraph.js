@@ -29,11 +29,14 @@ define(function(require) {
     remove: function(item) {
       this.items = _.without(this.items, [item]);
     },    
+    
+    clear: function() {
+      this.items = [];
+    },
         
     uploadTransforms: function(context) {
       this.applyScale(context);
       this.applyTranslate(context);
-
     },
     
     applyTranslate: function(context) {

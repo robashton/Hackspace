@@ -17,7 +17,7 @@ http.createServer(function(req, res) {
 }).listen(8000);
 
 try {
-build('demo');
+  build('demo');
 } catch (ex) {
   console.error(ex);
 }
