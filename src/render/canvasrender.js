@@ -14,10 +14,7 @@ define(function(require) {
       graph.uploadTransforms(this.context);
       
       graph.pass(function(item) {
-        var model = item.model;
-        
-        model.upload(self.context);
-        model.render(self.context, item);
+        item.render(self.context);
       });
      
      this.context.restore();    

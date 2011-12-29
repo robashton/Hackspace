@@ -20,6 +20,10 @@ define(function(require) {
       this.position[0] = x || 0;
       this.position[1] = y || 0;
       this.position[2] = z || 0;
+    },
+    render: function(context) {     
+      this.model.upload(context);
+      this.model.render(context, this);
     }
   };
   
