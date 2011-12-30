@@ -12493,12 +12493,14 @@ define('scene/camera',['require','glmatrix'],function(require) {
     },
     updateViewport: function(graph) {
       this.calculateDimensions();
-      graph.updateViewport(
-        this.centre[0] - this.width / 2.0,
-        this.centre[0] + this.width / 2.0,
-        this.centre[1] - this.height / 2.0,
-        this.centre[1] + this.height / 2.0
-      );
+      
+      var left = Math.max(this.centre[0] - this.width / 2.0, 0);
+      var top = Math.max(this.centre[1] - this.height / 2.0, 0);
+      var right = left + this.width;
+      var bottom = top + this.height;      
+      
+      graph.updateViewport(left, right, top, bottom);
+    
     },
     calculateDimensions: function() {
       this.width = this.distance * Math.tan(this.fieldOfView);
@@ -13067,9 +13069,18 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
       return true; 
     },
     render: function(context) {
-      var rx = 0; //this.scene.graph.viewport.left % this.tilewidth;
-      var ry = 0; //this.scene.graph.viewport.top % this.tileheight;
-      context.drawImage(this.context.canvas, rx, ry, context.canvas.width, context.canvas.height, 0, 0, context.canvas.width, context.canvas.height); 
+      var rx = this.scene.graph.viewport.left % this.tilewidth;
+      var ry = this.scene.graph.viewport.top % this.tileheight;
+      var dx = 0;
+      var dy = 0;
+      
+      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
+                  
+      context.drawImage(this.context.canvas, 
+        rx, ry, 
+      context.canvas.width, context.canvas.height, 
+        rx + this.tileleft * this.tilewidth, ry + this.tiletop * this.tileheight, 
+      context.canvas.width, context.canvas.height);
     },
     onAddedToScene: function(scene) {
       this.scene = scene; 
@@ -13077,7 +13088,7 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
       this.map.generateRandom(scene.resources);
     },
     onTick: function() {
-      
+         
       var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
       var tiletop = parseInt(this.scene.graph.viewport.top / this.tileheight);
       var tileright = parseInt(this.scene.graph.viewport.right / this.tilewidth) + 1;
@@ -13102,13 +13113,13 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
       }
     },
     redrawBackground: function() { 
-     console.log('redrawing');
+    
       this.graph.updateViewport(
           this.tileleft * this.tilewidth,
+          this.tileright * this.tilewidth,
           this.tiletop * this.tileheight,
-          this.tileleft * this.tilewidth + this.canvas.width,
-          this.tiletop * this.tileheight + this.canvas.height);
-      
+          this.tilebottom * this.tileheight);         
+        
       this.map.populateGraph(this.graph);      
       this.renderer.clear();
       this.renderer.draw(this.graph);      

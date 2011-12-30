@@ -19,12 +19,14 @@ define(function(require) {
     },
     updateViewport: function(graph) {
       this.calculateDimensions();
-      graph.updateViewport(
-        this.centre[0] - this.width / 2.0,
-        this.centre[0] + this.width / 2.0,
-        this.centre[1] - this.height / 2.0,
-        this.centre[1] + this.height / 2.0
-      );
+      
+      var left = Math.max(this.centre[0] - this.width / 2.0, 0);
+      var top = Math.max(this.centre[1] - this.height / 2.0, 0);
+      var right = left + this.width;
+      var bottom = top + this.height;      
+      
+      graph.updateViewport(left, right, top, bottom);
+    
     },
     calculateDimensions: function() {
       this.width = this.distance * Math.tan(this.fieldOfView);
