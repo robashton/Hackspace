@@ -34,16 +34,17 @@ define(function(require) {
     
     var character = new Character("player", 0, 0, 25, 25, quad);
     var controller = new Controller();
-    var scenery = new Scenery(1024, 768);
+    var scenery = new Scenery(640, 480);
     
     var canvasElement = document.getElementById('target');
+    canvasElement.width = 640;
+    canvasElement.height = 480;
     var mainContext = canvasElement.getContext('2d');     
     
     var renderer = new CanvasRender(mainContext);
     var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
-    var scene = new Scene(renderer, camera);
+    var scene = new Scene(resources, renderer, camera);
     
-
     scene.add(scenery);
     scene.add(character);
     scene.add(controller);

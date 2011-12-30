@@ -5,6 +5,7 @@ define(function(require) {
   var Renderable = require('./components/renderable');
   var Tangible = require('./components/tangible');
   var Directable = require('./components/directable');
+  var Trackable = require('./components/trackable');
   var Entity = require('../scene/entity');
 
   var Character = function(id,  x ,y, width, height, model) {
@@ -13,6 +14,7 @@ define(function(require) {
     this.attach(new Renderable(model));
     this.attach(new Tangible(x, y, width, height));
     this.attach(new Directable(3.0));
+    this.attach(new Trackable());
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);

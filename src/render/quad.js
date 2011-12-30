@@ -17,10 +17,10 @@ define(function(require) {
     drawTexturedQuad: function(canvas, instance) {
       canvas.drawImage(
         this.image('diffuseTexture'),
-        instance.position[0],
-        instance.position[1],
-        instance.size[0],
-        instance.size[1]);
+        parseInt(instance.position[0]),
+        parseInt(instance.position[1]),
+        parseInt(instance.size[0]),
+        parseInt(instance.size[1]));
     },
     drawPlainQuad: function(canvas, instance) {
       canvas.fillRect(

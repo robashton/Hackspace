@@ -13,7 +13,9 @@ define(function(require) {
       this.context.save();
       graph.uploadTransforms(this.context);
       
+//      console.log('hi');
       graph.pass(function(item) {
+    //    console.log('hey');
         item.render(self.context);
       });
      

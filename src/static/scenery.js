@@ -13,7 +13,6 @@ define(function(require) {
     this.tileheight = 128;
     this.scene = null;
     this.map = new Map(2048, 2048, this.tilewidth, this.tileheight);
-    this.map.generateRandom();
     this.canvas = document.createElement('canvas');
     this.canvas.width = renderWidth + 128;
     this.canvas.height = renderHeight + 128;
@@ -35,11 +34,14 @@ define(function(require) {
       return true; 
     },
     render: function(context) {
- 
+      var rx = 0; //this.scene.graph.viewport.left % this.tilewidth;
+      var ry = 0; //this.scene.graph.viewport.top % this.tileheight;
+      context.drawImage(this.context.canvas, rx, ry, context.canvas.width, context.canvas.height, 0, 0, context.canvas.width, context.canvas.height); 
     },
     onAddedToScene: function(scene) {
       this.scene = scene; 
       this.scene.graph.add(this);   
+      this.map.generateRandom(scene.resources);
     },
     onTick: function() {
       
@@ -63,20 +65,20 @@ define(function(require) {
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
         this.redrawBackground();
+      
       }
     },
     redrawBackground: function() { 
-      console.log('redrawing'); /*
+     console.log('redrawing');
       this.graph.updateViewport(
-          this.tilex * this.tilewidth,
-          this.tiley * this.tileheight,
-          this.tilex * this.tilewidth + this.canvas.width,
-          this.tiley * this.tileheight + this.canvas.height);
+          this.tileleft * this.tilewidth,
+          this.tiletop * this.tileheight,
+          this.tileleft * this.tilewidth + this.canvas.width,
+          this.tiletop * this.tileheight + this.canvas.height);
       
       this.map.populateGraph(this.graph);      
       this.renderer.clear();
-      this.renderer.draw(this.graph);     
-      */
+      this.renderer.draw(this.graph);      
     }
   };
   

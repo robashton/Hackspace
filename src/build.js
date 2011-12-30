@@ -22,7 +22,8 @@
     var swallow = new Swallow(new SwallowConfig({
       in: './src/apps/' + appName + '/assets',
       out: './site/game/assets.json'
-    })); 
+    }));
+    swallow.run();
   };
 
 }).call(this);

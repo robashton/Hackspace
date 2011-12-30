@@ -4,13 +4,14 @@ define(function(require) {
   var RenderGraph = require('../render/rendergraph');
   var Eventable = require('../shared/eventable');
   
-  var Scene = function(renderer, camera) {
+  var Scene = function(resources, renderer, camera) {
     Eventable.call(this);
     this.entities = [];
     this.entitiesById = {};
     this.camera = camera;
     this.renderer = renderer;
     this.graph = new RenderGraph();
+    this.resources = resources;
   };
   
   Scene.prototype = {

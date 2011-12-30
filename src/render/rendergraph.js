@@ -40,7 +40,7 @@ define(function(require) {
     },
     
     applyTranslate: function(context) {
-      context.translate(-this.viewport.left, -this.viewport.top);
+      context.translate(-parseInt(this.viewport.left), - parseInt(this.viewport.top));
     },
     
     applyScale: function(context) {
@@ -51,7 +51,7 @@ define(function(require) {
       var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
       var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
       
-      context.scale(scalex, scaley);
+      context.scale(parseInt(scalex), parseInt(scaley));
     },
     
     pass: function(callback) {

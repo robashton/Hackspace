@@ -50,10 +50,10 @@ define('render/quad',['require'],function(require) {
     drawTexturedQuad: function(canvas, instance) {
       canvas.drawImage(
         this.image('diffuseTexture'),
-        instance.position[0],
-        instance.position[1],
-        instance.size[0],
-        instance.size[1]);
+        parseInt(instance.position[0]),
+        parseInt(instance.position[1]),
+        parseInt(instance.size[0]),
+        parseInt(instance.size[1]));
     },
     drawPlainQuad: function(canvas, instance) {
       canvas.fillRect(
@@ -2969,7 +2969,7 @@ define('render/rendergraph',['require','underscore'],function(require) {
     },
     
     applyTranslate: function(context) {
-      context.translate(-this.viewport.left, -this.viewport.top);
+      context.translate(-parseInt(this.viewport.left), - parseInt(this.viewport.top));
     },
     
     applyScale: function(context) {
@@ -2980,7 +2980,7 @@ define('render/rendergraph',['require','underscore'],function(require) {
       var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
       var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
       
-      context.scale(scalex, scaley);
+      context.scale(parseInt(scalex), parseInt(scaley));
     },
     
     pass: function(callback) {
@@ -3009,7 +3009,9 @@ define('render/canvasrender',['require'],function(require) {
       this.context.save();
       graph.uploadTransforms(this.context);
       
+//      console.log('hi');
       graph.pass(function(item) {
+    //    console.log('hey');
         item.render(self.context);
       });
      
@@ -12477,7 +12479,7 @@ define('scene/camera',['require','glmatrix'],function(require) {
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 500.0;
+    this.distance = 512.0;
     
     this.width = 0;
     this.height = 0;
@@ -12653,6 +12655,30 @@ define('entities/components/directable',['require','glmatrix'],function(require)
   
 });
 
+define('entities/components/trackable',['require'],function(require) {
+
+  var Trackable = function() {
+    this.scene = null;
+  };
+  
+  Trackable.prototype = {    
+    updateCamera: function(data) {
+      this.scene.camera.lookAt(data.x, data.y, data.z);
+    },
+    onPositionChanged: function(data) {
+      if(this.scene)
+        this.updateCamera(data);
+    },
+       
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    }
+  };  
+  
+  return Trackable;
+  
+});
+
 define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
   var _ = require('underscore');
   var Eventable = require('../shared/eventable');
@@ -12741,13 +12767,14 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('entities/character',['require','underscore','./components/renderable','./components/tangible','./components/directable','../scene/entity'],function(require) {
+define('entities/character',['require','underscore','./components/renderable','./components/tangible','./components/directable','./components/trackable','../scene/entity'],function(require) {
 
   var _ = require('underscore');
   
   var Renderable = require('./components/renderable');
   var Tangible = require('./components/tangible');
   var Directable = require('./components/directable');
+  var Trackable = require('./components/trackable');
   var Entity = require('../scene/entity');
 
   var Character = function(id,  x ,y, width, height, model) {
@@ -12756,6 +12783,7 @@ define('entities/character',['require','underscore','./components/renderable','.
     this.attach(new Renderable(model));
     this.attach(new Tangible(x, y, width, height));
     this.attach(new Directable(3.0));
+    this.attach(new Trackable());
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);
@@ -12769,13 +12797,14 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
   var RenderGraph = require('../render/rendergraph');
   var Eventable = require('../shared/eventable');
   
-  var Scene = function(renderer, camera) {
+  var Scene = function(resources, renderer, camera) {
     Eventable.call(this);
     this.entities = [];
     this.entitiesById = {};
     this.camera = camera;
     this.renderer = renderer;
     this.graph = new RenderGraph();
+    this.resources = resources;
   };
   
   Scene.prototype = {
@@ -12925,7 +12954,11 @@ define('entities/controller',['require','underscore','../scene/entity'],function
   return Controller;
 });
 
-define('static/map',['require'],function(require) {
+define('static/map',['require','../render/material','../render/quad','../render/instance'],function(require) {
+
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var Instance = require('../render/instance');
 
   var Map = function(width, height, tilewidth, tileheight) {
     this.width = width;
@@ -12939,31 +12972,45 @@ define('static/map',['require'],function(require) {
   };
   
   Map.prototype = {
-    populateGraph: function(graph) {
+    populateGraph: function(graph) {             
+      graph.clear();
       
+      for(var x = 0; x < this.tileCountWidth; x++) {
+        for(var y = 0; y < this.tileCountHeight ; y++) {
+          var index = this.index(x, y);
+          for(var i = 0; i < this.tiles[index].length ; i++) {
+            graph.add(this.tiles[index][i]);
+            
+          }          
+        }
+      }
     },
-    generateRandom: function() {
+    generateRandom: function(resources) {
 
-      this.templates.tree = {
-        width: 25,
-        height: 25,
-        texture: "/main/tree.png"
-      };
+      var treeMaterial = new Material();
+      treeMaterial.diffuseTexture = resources.get('/main/tree.png');
+      this.models = {};
+      this.models.tree = new Quad(treeMaterial);
       
       for(var x = 0; x < this.tileCountWidth; x++) {
         for(var y = 0; y < this.tileCountHeight ; y++) {
           var index = this.index(x,y);
+          var tilex = x * this.tilewidth;
+          var tiley = y * this.tileheight;
           this.tiles[index] = [];
           
           var treeCount = Math.random() * 5;
+          
           for(var i = 0 ; i < treeCount; i++) {
             var xloc = Math.random() * this.tilewidth;
             var yloc = Math.random() * this.tileheight;
-            this.tiles[index].push({
-              x: xloc,
-              y: yloc,
-              template: "tree"            
-            });
+            
+            var instance = new Instance(this.models.tree);
+            instance.scale(25,25, 0);
+            instance.translate(xloc + tilex, yloc + tiley, 0);
+            
+ 
+            this.tiles[index].push(instance);
           }
         }     
       }    
@@ -12992,7 +13039,6 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
     this.tileheight = 128;
     this.scene = null;
     this.map = new Map(2048, 2048, this.tilewidth, this.tileheight);
-    this.map.generateRandom();
     this.canvas = document.createElement('canvas');
     this.canvas.width = renderWidth + 128;
     this.canvas.height = renderHeight + 128;
@@ -13014,11 +13060,14 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
       return true; 
     },
     render: function(context) {
- 
+      var rx = 0; //this.scene.graph.viewport.left % this.tilewidth;
+      var ry = 0; //this.scene.graph.viewport.top % this.tileheight;
+      context.drawImage(this.context.canvas, rx, ry, context.canvas.width, context.canvas.height, 0, 0, context.canvas.width, context.canvas.height); 
     },
     onAddedToScene: function(scene) {
       this.scene = scene; 
       this.scene.graph.add(this);   
+      this.map.generateRandom(scene.resources);
     },
     onTick: function() {
       
@@ -13042,20 +13091,20 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
         this.redrawBackground();
+      
       }
     },
     redrawBackground: function() { 
-      console.log('redrawing'); /*
+     console.log('redrawing');
       this.graph.updateViewport(
-          this.tilex * this.tilewidth,
-          this.tiley * this.tileheight,
-          this.tilex * this.tilewidth + this.canvas.width,
-          this.tiley * this.tileheight + this.canvas.height);
+          this.tileleft * this.tilewidth,
+          this.tiletop * this.tileheight,
+          this.tileleft * this.tilewidth + this.canvas.width,
+          this.tiletop * this.tileheight + this.canvas.height);
       
       this.map.populateGraph(this.graph);      
       this.renderer.clear();
-      this.renderer.draw(this.graph);     
-      */
+      this.renderer.draw(this.graph);      
     }
   };
   
@@ -13101,16 +13150,17 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     
     var character = new Character("player", 0, 0, 25, 25, quad);
     var controller = new Controller();
-    var scenery = new Scenery(1024, 768);
+    var scenery = new Scenery(640, 480);
     
     var canvasElement = document.getElementById('target');
+    canvasElement.width = 640;
+    canvasElement.height = 480;
     var mainContext = canvasElement.getContext('2d');     
     
     var renderer = new CanvasRender(mainContext);
     var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
-    var scene = new Scene(renderer, camera);
+    var scene = new Scene(resources, renderer, camera);
     
-
     scene.add(scenery);
     scene.add(character);
     scene.add(controller);

@@ -1,5 +1,9 @@
 define(function(require) {
 
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var Instance = require('../render/instance');
+
   var Map = function(width, height, tilewidth, tileheight) {
     this.width = width;
     this.height = height;
@@ -12,31 +16,45 @@ define(function(require) {
   };
   
   Map.prototype = {
-    populateGraph: function(graph) {
+    populateGraph: function(graph) {             
+      graph.clear();
       
+      for(var x = 0; x < this.tileCountWidth; x++) {
+        for(var y = 0; y < this.tileCountHeight ; y++) {
+          var index = this.index(x, y);
+          for(var i = 0; i < this.tiles[index].length ; i++) {
+            graph.add(this.tiles[index][i]);
+            
+          }          
+        }
+      }
     },
-    generateRandom: function() {
+    generateRandom: function(resources) {
 
-      this.templates.tree = {
-        width: 25,
-        height: 25,
-        texture: "/main/tree.png"
-      };
+      var treeMaterial = new Material();
+      treeMaterial.diffuseTexture = resources.get('/main/tree.png');
+      this.models = {};
+      this.models.tree = new Quad(treeMaterial);
       
       for(var x = 0; x < this.tileCountWidth; x++) {
         for(var y = 0; y < this.tileCountHeight ; y++) {
           var index = this.index(x,y);
+          var tilex = x * this.tilewidth;
+          var tiley = y * this.tileheight;
           this.tiles[index] = [];
           
           var treeCount = Math.random() * 5;
+          
           for(var i = 0 ; i < treeCount; i++) {
             var xloc = Math.random() * this.tilewidth;
             var yloc = Math.random() * this.tileheight;
-            this.tiles[index].push({
-              x: xloc,
-              y: yloc,
-              template: "tree"            
-            });
+            
+            var instance = new Instance(this.models.tree);
+            instance.scale(25,25, 0);
+            instance.translate(xloc + tilex, yloc + tiley, 0);
+            
+ 
+            this.tiles[index].push(instance);
           }
         }     
       }    
