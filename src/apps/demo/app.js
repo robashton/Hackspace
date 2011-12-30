@@ -12,6 +12,7 @@ define(function(require) {
   var InputEmitter = require('../../input/inputemitter');
   var Controller = require('../../entities/controller');
   var Scenery = require('../../static/scenery');
+  var Debug = require('../../entities/debug');
   
  var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
@@ -44,7 +45,9 @@ define(function(require) {
     var renderer = new CanvasRender(mainContext);
     var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
     var scene = new Scene(resources, renderer, camera);
+    var debug = new Debug();
     
+    scene.add(debug);
     scene.add(scenery);
     scene.add(character);
     scene.add(controller);

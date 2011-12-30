@@ -6,6 +6,8 @@ define(function(require) {
   var Entity = function(id) {
     ComponentBag.call(this);    
     this.id = id;
+    
+    this.onAny(this.propogateEventToScene);
   };
   
   Entity.prototype = {
@@ -18,6 +20,10 @@ define(function(require) {
     },
     tick: function() {
       this.raise('Tick');
+    },
+    propogateEventToScene: function(data) {
+      if(this.scene)
+        this.scene.broadcast(data.event, data.data);
     }
   };
   _.extend(Entity.prototype, ComponentBag.prototype);

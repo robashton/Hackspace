@@ -1,0 +1,10 @@
+#debug {
+  float: left;
+  margin-left: 10px;
+  width: 5px;
+  overflow: show;
+}
+
+#target {
+  float: left;
+}

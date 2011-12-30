@@ -12634,6 +12634,7 @@ define('entities/components/directable',['require','glmatrix'],function(require)
         this.moveTowardsDestination();
         this.determineIfDestinationReached()
       }
+      this.parent.raise('Debug', 'Player: ' + [this.position[0], this.position[1], this.position[2]]);
     },
     determineIfDestinationReached: function() {
       vec3.subtract(this.destination, this.position, this.buffer);
@@ -12747,6 +12748,8 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   var Entity = function(id) {
     ComponentBag.call(this);    
     this.id = id;
+    
+    this.onAny(this.propogateEventToScene);
   };
   
   Entity.prototype = {
@@ -12759,6 +12762,10 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
     },
     tick: function() {
       this.raise('Tick');
+    },
+    propogateEventToScene: function(data) {
+      if(this.scene)
+        this.scene.broadcast(data.event, data.data);
     }
   };
   _.extend(Entity.prototype, ComponentBag.prototype);
@@ -13114,7 +13121,37 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
 
 });
 
-define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera','../../entities/character','../../scene/scene','../../input/inputemitter','../../entities/controller','../../static/scenery'],function(require) {
+define('entities/debug',['require','underscore','../scene/entity'],function(require) {
+
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+
+  var Debug = function() {
+    Entity.call(this, "debug");   
+    this.scene = null;
+        
+    this.on('Tick', this.clearDebug);
+    this.on('AddedToScene', this.hookSceneEvents);
+  };  
+  Debug.prototype = {
+    hookSceneEvents: function(scene) {
+      scene.on('Debug', this.addDebugMessage, this);
+    },
+    clearDebug: function() {
+      $('#debug').html('');
+    },
+    addDebugMessage: function(data) {
+       var msg = $('<p/>');
+       msg.text(data.toString());
+       $('#debug').append(msg);
+    }
+  };  
+  _.extend(Debug.prototype, Entity.prototype);
+  
+  return Debug;
+});
+
+define('apps/demo/app',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera','../../entities/character','../../scene/scene','../../input/inputemitter','../../entities/controller','../../static/scenery','../../entities/debug'],function(require) {
 
   var Material = require('../../render/material');
   var Quad = require('../../render/quad');
@@ -13128,6 +13165,7 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
   var InputEmitter = require('../../input/inputemitter');
   var Controller = require('../../entities/controller');
   var Scenery = require('../../static/scenery');
+  var Debug = require('../../entities/debug');
   
  var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
@@ -13160,7 +13198,9 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     var renderer = new CanvasRender(mainContext);
     var camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
     var scene = new Scene(resources, renderer, camera);
+    var debug = new Debug();
     
+    scene.add(debug);
     scene.add(scenery);
     scene.add(character);
     scene.add(controller);

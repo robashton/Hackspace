@@ -40,6 +40,7 @@ define(function(require) {
         this.moveTowardsDestination();
         this.determineIfDestinationReached()
       }
+      this.parent.raise('Debug', 'Player: ' + [this.position[0], this.position[1], this.position[2]]);
     },
     determineIfDestinationReached: function() {
       vec3.subtract(this.destination, this.position, this.buffer);
