@@ -23,12 +23,12 @@ define(function(require) {
         for(var y = 0; y < this.tileCountHeight ; y++) {
           var index = this.index(x, y);
           for(var i = 0; i < this.tiles[index].length ; i++) {
-            graph.add(this.tiles[index][i]);
-            
+            graph.add(this.tiles[index][i]);            
           }          
         }
       }
     },
+    
     generateRandom: function(resources) {
 
       var treeMaterial = new Material();

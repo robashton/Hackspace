@@ -14,6 +14,11 @@ define(function(require) {
         callback();
       });
     },
+    each: function(callback) {
+      for(var k in this.data) {
+        callback(k);
+      }
+    },
     has: function(path) {
       return !!this.data[path];
     },

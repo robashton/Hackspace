@@ -16,8 +16,12 @@
         }
     };
 
-    requirejs.optimize(config, function(res) {
-    });
+    requirejs.optimize(config, function(res) {});
+    
+    config.name = 'apps/' + appName + '/editor';
+    config.out = './site/game/editor.js';
+    
+    requirejs.optimize(config, function(res) {});
 
     var swallow = new Swallow(new SwallowConfig({
       in: './src/apps/' + appName + '/assets',

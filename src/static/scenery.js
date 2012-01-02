@@ -6,16 +6,16 @@ define(function(require) {
   var RenderGraph = require('../render/rendergraph');
   var CanvasRender = require('../render/canvasrender');
 
-  var Scenery = function(renderWidth, renderHeight) {
+  var Scenery = function(renderWidth, renderHeight, tileWidth, tileHeight) {
     Entity.call(this, "scenery");
     
-    this.tilewidth = 128;
-    this.tileheight = 128;
+    this.tilewidth = tileWidth;
+    this.tileheight = tileHeight;
     this.scene = null;
-    this.map = new Map(2048, 2048, this.tilewidth, this.tileheight);
+    this.map = null;
     this.canvas = document.createElement('canvas');
-    this.canvas.width = renderWidth + 128;
-    this.canvas.height = renderHeight + 128;
+    this.canvas.width = renderWidth + tileWidth;
+    this.canvas.height = renderHeight + tileHeight;
     this.context = this.canvas.getContext('2d');
     this.graph = new RenderGraph();
     this.renderer = new CanvasRender(this.context);
@@ -26,14 +26,19 @@ define(function(require) {
     this.tileright = -1;
     
     this.on('AddedToScene', this.onAddedToScene);
-    this.on('Tick', this.onTick);
   };
   
   Scenery.prototype = {
+    loadMap: function(map) {
+      this.map = map;
+    },
     visible: function() { 
       return true; 
     },
-    render: function(context) {
+    render: function(context) {   
+      if(!this.map) return;
+      this.evaluateStatus();
+      
       var rx = this.scene.graph.viewport.left % this.tilewidth;
       var ry = this.scene.graph.viewport.top % this.tileheight;
       var dx = 0;
@@ -45,15 +50,14 @@ define(function(require) {
         rx, ry, 
       context.canvas.width, context.canvas.height, 
         rx + this.tileleft * this.tilewidth, ry + this.tiletop * this.tileheight, 
-      context.canvas.width, context.canvas.height);
+      context.canvas.width, context.canvas.height); 
     },
     onAddedToScene: function(scene) {
       this.scene = scene; 
       this.scene.graph.add(this);   
-      this.map.generateRandom(scene.resources);
     },
-    onTick: function() {
-         
+    evaluateStatus: function() {
+      
       var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
       var tiletop = parseInt(this.scene.graph.viewport.top / this.tileheight);
       var tileright = parseInt(this.scene.graph.viewport.right / this.tilewidth) + 1;
@@ -74,11 +78,11 @@ define(function(require) {
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
         this.redrawBackground();
-      
       }
     },
-    redrawBackground: function() { 
     
+    redrawBackground: function() { 
+     
       this.graph.updateViewport(
           this.tileleft * this.tilewidth,
           this.tileright * this.tilewidth,
