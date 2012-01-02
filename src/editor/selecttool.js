@@ -5,11 +5,11 @@ define(function(require) {
   
   SelectTool.prototype = {
     activate: function() {
-      
+     this.editor.cursor('crosshair');
       
     },
     deactivate: function() {
-    
+       this.editor.cursor('default');
     }
   };
   

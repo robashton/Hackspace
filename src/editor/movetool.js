@@ -6,10 +6,10 @@ define(function(require) {
   
   MoveTool.prototype = {
     activate: function() {
-    
+      this.editor.cursor('pointer');
     },
     deactivate: function() {
-    
+     this.editor.cursor('default');
     }
   };
   

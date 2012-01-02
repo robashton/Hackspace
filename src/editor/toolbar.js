@@ -1,6 +1,8 @@
 define(function(require) {
 
   var $ = require('jquery');
+  var SelectTool = require('./selecttool');
+  var MoveTool = require('./movetool');
 
   var Toolbar = function(editor) {
     this.editor = editor;
@@ -10,6 +12,7 @@ define(function(require) {
     };
     this.currentTool = null;
     this.setupTools();
+    this.activateTool('move');
   };  
   
   Toolbar.prototype = {
@@ -21,11 +24,15 @@ define(function(require) {
     hookTool: function(tool) {
       var self = this;
       $('#' + tool).click(function() {
-        self.currentTool.deactivate();
-        self.currentTool = this.tools[tool];
-        self.currentTool.activate();
+        self.activateTool(tool);
       });
-    };
+    },
+    activateTool: function(tool) {
+      if(this.currentTool)
+        this.currentTool.deactivate();
+      this.currentTool = this.tools[tool];
+      this.currentTool.activate();
+    }
   };
   
   return Toolbar;   

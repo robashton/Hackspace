@@ -3482,6 +3482,7 @@ define('static/map',['require','../render/material','../render/quad','../render/
     this.tileCountHeight = parseInt(this.height / this.tileheight);
     this.tiles = new Array(this.tileCountWidth * this.tileCountHeight);
     this.templates = {};
+    this.createEmptyTiles();
   };
   
   Map.prototype = {
@@ -3498,6 +3499,17 @@ define('static/map',['require','../render/material','../render/quad','../render/
       }
     },
     
+    createEmptyTiles: function() {
+      for(var x = 0; x < this.tileCountWidth; x++) {
+        for(var y = 0; y < this.tileCountHeight ; y++) {
+          var index = this.index(x,y);
+          var tilex = x * this.tilewidth;
+          var tiley = y * this.tileheight;
+          this.tiles[index] = [];
+        }
+      }
+    },
+    
     generateRandom: function(resources) {
 
       var treeMaterial = new Material();
@@ -3509,9 +3521,7 @@ define('static/map',['require','../render/material','../render/quad','../render/
         for(var y = 0; y < this.tileCountHeight ; y++) {
           var index = this.index(x,y);
           var tilex = x * this.tilewidth;
-          var tiley = y * this.tileheight;
-          this.tiles[index] = [];
-          
+          var tiley = y * this.tileheight;          
           var treeCount = Math.random() * 5;
           
           for(var i = 0 ; i < treeCount; i++) {

@@ -1,3737 +1,4 @@
 
-define('render/color',['require'],function(require) {
-  var Color = function(a, r, g, b) {
-    this.a = a;
-    this.r = r;
-    this.g = g;
-    this.b = b;
-  };
-
-  Color.prototype = {
-    str: function() {
-      
-    }
-  };
-  return Color;
-});
-
-
-define('render/material',['require','./color'],function(require) {
-  var Color = require('./color');
-
-  var Material = function() {
-   
-  };
-  
-  Material.prototype = {
-    diffuse: new Color(255,255,255, 255),  
-    diffuseTexture: null
-  };
-  return Material;
-  
-});
-
-define('render/quad',['require'],function(require) {
-
-  var Quad = function(material) {
-    this.material = material;
-  };
-  
-  Quad.prototype = {
-    upload: function(context) {
-    //  this.material.upload(context);
-    },
-    render: function(canvas, instance) {
-      if(this.material.diffuseTexture)
-        this.drawTexturedQuad(canvas, instance);
-      else
-        this.drawPlainQuad(canvas, instance);      
-    },
-    drawTexturedQuad: function(canvas, instance) {
-      canvas.drawImage(
-        this.image('diffuseTexture'),
-        parseInt(instance.position[0]),
-        parseInt(instance.position[1]),
-        parseInt(instance.size[0]),
-        parseInt(instance.size[1]));
-    },
-    drawPlainQuad: function(canvas, instance) {
-      canvas.fillRect(
-        instance.position[0],
-        instance.position[1],
-        instance.size[0],
-        instance.size[1]);
-    },
-    image: function(name) {
-       return this.material[name].get()
-    }
-  }; 
-  
-  return Quad;
-});
-
-define('glmatrix',['require','exports','module'],function(require, exports, module) {
-
-/* 
- * glMatrix.js - High performance matrix and vector operations for WebGL
- * version 0.9.6
- */
- 
-/*
- * Copyright (c) 2011 Brandon Jones
- *
- * This software is provided 'as-is', without any express or implied
- * warranty. In no event will the authors be held liable for any damages
- * arising from the use of this software.
- *
- * Permission is granted to anyone to use this software for any purpose,
- * including commercial applications, and to alter it and redistribute it
- * freely, subject to the following restrictions:
- *
- *    1. The origin of this software must not be misrepresented; you must not
- *    claim that you wrote the original software. If you use this software
- *    in a product, an acknowledgment in the product documentation would be
- *    appreciated but is not required.
- *
- *    2. Altered source versions must be plainly marked as such, and must not
- *    be misrepresented as being the original software.
- *
- *    3. This notice may not be removed or altered from any source
- *    distribution.
- */
-
-// Fallback for systems that don't support WebGL
-if(typeof Float32Array != 'undefined') {
-    glMatrixArrayType = Float32Array;
-} else if(typeof WebGLFloatArray != 'undefined') {
-	glMatrixArrayType = WebGLFloatArray; // This is officially deprecated and should dissapear in future revisions.
-} else {
-	glMatrixArrayType = Array;
-}
-
-/*
- * vec3 - 3 Dimensional Vector
- */
-var vec3 = {};
-
-/*
- * vec3.create
- * Creates a new instance of a vec3 using the default array type
- * Any javascript array containing at least 3 numeric elements can serve as a vec3
- *
- * Params:
- * vec - Optional, vec3 containing values to initialize with
- *
- * Returns:
- * New vec3
- */
-vec3.create = function(vec) {
-	var dest = new glMatrixArrayType(3);
-	
-	if(vec) {
-		dest[0] = vec[0];
-		dest[1] = vec[1];
-		dest[2] = vec[2];
-	}
-	
-	return dest;
-};
-
-/*
- * vec3.set
- * Copies the values of one vec3 to another
- *
- * Params:
- * vec - vec3 containing values to copy
- * dest - vec3 receiving copied values
- *
- * Returns:
- * dest
- */
-vec3.set = function(vec, dest) {
-	dest[0] = vec[0];
-	dest[1] = vec[1];
-	dest[2] = vec[2];
-	
-	return dest;
-};
-
-/*
- * vec3.add
- * Performs a vector addition
- *
- * Params:
- * vec - vec3, first operand
- * vec2 - vec3, second operand
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-vec3.add = function(vec, vec2, dest) {
-	if(!dest || vec == dest) {
-		vec[0] += vec2[0];
-		vec[1] += vec2[1];
-		vec[2] += vec2[2];
-		return vec;
-	}
-	
-	dest[0] = vec[0] + vec2[0];
-	dest[1] = vec[1] + vec2[1];
-	dest[2] = vec[2] + vec2[2];
-	return dest;
-};
-
-/*
- * vec3.subtract
- * Performs a vector subtraction
- *
- * Params:
- * vec - vec3, first operand
- * vec2 - vec3, second operand
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-vec3.subtract = function(vec, vec2, dest) {
-	if(!dest || vec == dest) {
-		vec[0] -= vec2[0];
-		vec[1] -= vec2[1];
-		vec[2] -= vec2[2];
-		return vec;
-	}
-	
-	dest[0] = vec[0] - vec2[0];
-	dest[1] = vec[1] - vec2[1];
-	dest[2] = vec[2] - vec2[2];
-	return dest;
-};
-
-/*
- * vec3.negate
- * Negates the components of a vec3
- *
- * Params:
- * vec - vec3 to negate
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-vec3.negate = function(vec, dest) {
-	if(!dest) { dest = vec; }
-	
-	dest[0] = -vec[0];
-	dest[1] = -vec[1];
-	dest[2] = -vec[2];
-	return dest;
-};
-
-/*
- * vec3.scale
- * Multiplies the components of a vec3 by a scalar value
- *
- * Params:
- * vec - vec3 to scale
- * val - Numeric value to scale by
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-vec3.scale = function(vec, val, dest) {
-	if(!dest || vec == dest) {
-		vec[0] *= val;
-		vec[1] *= val;
-		vec[2] *= val;
-		return vec;
-	}
-	
-	dest[0] = vec[0]*val;
-	dest[1] = vec[1]*val;
-	dest[2] = vec[2]*val;
-	return dest;
-};
-
-/*
- * vec3.normalize
- * Generates a unit vector of the same direction as the provided vec3
- * If vector length is 0, returns [0, 0, 0]
- *
- * Params:
- * vec - vec3 to normalize
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-vec3.normalize = function(vec, dest) {
-	if(!dest) { dest = vec; }
-	
-	var x = vec[0], y = vec[1], z = vec[2];
-	var len = Math.sqrt(x*x + y*y + z*z);
-	
-	if (!len) {
-		dest[0] = 0;
-		dest[1] = 0;
-		dest[2] = 0;
-		return dest;
-	} else if (len == 1) {
-		dest[0] = x;
-		dest[1] = y;
-		dest[2] = z;
-		return dest;
-	}
-	
-	len = 1 / len;
-	dest[0] = x*len;
-	dest[1] = y*len;
-	dest[2] = z*len;
-	return dest;
-};
-
-/*
- * vec3.cross
- * Generates the cross product of two vec3s
- *
- * Params:
- * vec - vec3, first operand
- * vec2 - vec3, second operand
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-vec3.cross = function(vec, vec2, dest){
-	if(!dest) { dest = vec; }
-	
-	var x = vec[0], y = vec[1], z = vec[2];
-	var x2 = vec2[0], y2 = vec2[1], z2 = vec2[2];
-	
-	dest[0] = y*z2 - z*y2;
-	dest[1] = z*x2 - x*z2;
-	dest[2] = x*y2 - y*x2;
-	return dest;
-};
-
-/*
- * vec3.length
- * Caclulates the length of a vec3
- *
- * Params:
- * vec - vec3 to calculate length of
- *
- * Returns:
- * Length of vec
- */
-vec3.length = function(vec){
-	var x = vec[0], y = vec[1], z = vec[2];
-	return Math.sqrt(x*x + y*y + z*z);
-};
-
-/*
- * vec3.dot
- * Caclulates the dot product of two vec3s
- *
- * Params:
- * vec - vec3, first operand
- * vec2 - vec3, second operand
- *
- * Returns:
- * Dot product of vec and vec2
- */
-vec3.dot = function(vec, vec2){
-	return vec[0]*vec2[0] + vec[1]*vec2[1] + vec[2]*vec2[2];
-};
-
-/*
- * vec3.direction
- * Generates a unit vector pointing from one vector to another
- *
- * Params:
- * vec - origin vec3
- * vec2 - vec3 to point to
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-vec3.direction = function(vec, vec2, dest) {
-	if(!dest) { dest = vec; }
-	
-	var x = vec[0] - vec2[0];
-	var y = vec[1] - vec2[1];
-	var z = vec[2] - vec2[2];
-	
-	var len = Math.sqrt(x*x + y*y + z*z);
-	if (!len) { 
-		dest[0] = 0; 
-		dest[1] = 0; 
-		dest[2] = 0;
-		return dest; 
-	}
-	
-	len = 1 / len;
-	dest[0] = x * len; 
-	dest[1] = y * len; 
-	dest[2] = z * len;
-	return dest; 
-};
-
-/*
- * vec3.lerp
- * Performs a linear interpolation between two vec3
- *
- * Params:
- * vec - vec3, first vector
- * vec2 - vec3, second vector
- * lerp - interpolation amount between the two inputs
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-vec3.lerp = function(vec, vec2, lerp, dest){
-    if(!dest) { dest = vec; }
-    
-    dest[0] = vec[0] + lerp * (vec2[0] - vec[0]);
-    dest[1] = vec[1] + lerp * (vec2[1] - vec[1]);
-    dest[2] = vec[2] + lerp * (vec2[2] - vec[2]);
-    
-    return dest;
-}
-
-/*
- * vec3.str
- * Returns a string representation of a vector
- *
- * Params:
- * vec - vec3 to represent as a string
- *
- * Returns:
- * string representation of vec
- */
-vec3.str = function(vec) {
-	return '[' + vec[0] + ', ' + vec[1] + ', ' + vec[2] + ']'; 
-};
-
-/*
- * mat3 - 3x3 Matrix
- */
-var mat3 = {};
-
-/*
- * mat3.create
- * Creates a new instance of a mat3 using the default array type
- * Any javascript array containing at least 9 numeric elements can serve as a mat3
- *
- * Params:
- * mat - Optional, mat3 containing values to initialize with
- *
- * Returns:
- * New mat3
- */
-mat3.create = function(mat) {
-	var dest = new glMatrixArrayType(9);
-	
-	if(mat) {
-		dest[0] = mat[0];
-		dest[1] = mat[1];
-		dest[2] = mat[2];
-		dest[3] = mat[3];
-		dest[4] = mat[4];
-		dest[5] = mat[5];
-		dest[6] = mat[6];
-		dest[7] = mat[7];
-		dest[8] = mat[8];
-	}
-	
-	return dest;
-};
-
-/*
- * mat3.set
- * Copies the values of one mat3 to another
- *
- * Params:
- * mat - mat3 containing values to copy
- * dest - mat3 receiving copied values
- *
- * Returns:
- * dest
- */
-mat3.set = function(mat, dest) {
-	dest[0] = mat[0];
-	dest[1] = mat[1];
-	dest[2] = mat[2];
-	dest[3] = mat[3];
-	dest[4] = mat[4];
-	dest[5] = mat[5];
-	dest[6] = mat[6];
-	dest[7] = mat[7];
-	dest[8] = mat[8];
-	return dest;
-};
-
-/*
- * mat3.identity
- * Sets a mat3 to an identity matrix
- *
- * Params:
- * dest - mat3 to set
- *
- * Returns:
- * dest
- */
-mat3.identity = function(dest) {
-	dest[0] = 1;
-	dest[1] = 0;
-	dest[2] = 0;
-	dest[3] = 0;
-	dest[4] = 1;
-	dest[5] = 0;
-	dest[6] = 0;
-	dest[7] = 0;
-	dest[8] = 1;
-	return dest;
-};
-
-/*
- * mat4.transpose
- * Transposes a mat3 (flips the values over the diagonal)
- *
- * Params:
- * mat - mat3 to transpose
- * dest - Optional, mat3 receiving transposed values. If not specified result is written to mat
- *
- * Returns:
- * dest is specified, mat otherwise
- */
-mat3.transpose = function(mat, dest) {
-	// If we are transposing ourselves we can skip a few steps but have to cache some values
-	if(!dest || mat == dest) { 
-		var a01 = mat[1], a02 = mat[2];
-		var a12 = mat[5];
-		
-        mat[1] = mat[3];
-        mat[2] = mat[6];
-        mat[3] = a01;
-        mat[5] = mat[7];
-        mat[6] = a02;
-        mat[7] = a12;
-		return mat;
-	}
-	
-	dest[0] = mat[0];
-	dest[1] = mat[3];
-	dest[2] = mat[6];
-	dest[3] = mat[1];
-	dest[4] = mat[4];
-	dest[5] = mat[7];
-	dest[6] = mat[2];
-	dest[7] = mat[5];
-	dest[8] = mat[8];
-	return dest;
-};
-
-/*
- * mat3.toMat4
- * Copies the elements of a mat3 into the upper 3x3 elements of a mat4
- *
- * Params:
- * mat - mat3 containing values to copy
- * dest - Optional, mat4 receiving copied values
- *
- * Returns:
- * dest if specified, a new mat4 otherwise
- */
-mat3.toMat4 = function(mat, dest) {
-	if(!dest) { dest = mat4.create(); }
-	
-	dest[0] = mat[0];
-	dest[1] = mat[1];
-	dest[2] = mat[2];
-	dest[3] = 0;
-
-	dest[4] = mat[3];
-	dest[5] = mat[4];
-	dest[6] = mat[5];
-	dest[7] = 0;
-
-	dest[8] = mat[6];
-	dest[9] = mat[7];
-	dest[10] = mat[8];
-	dest[11] = 0;
-
-	dest[12] = 0;
-	dest[13] = 0;
-	dest[14] = 0;
-	dest[15] = 1;
-	
-	return dest;
-}
-
-/*
- * mat3.str
- * Returns a string representation of a mat3
- *
- * Params:
- * mat - mat3 to represent as a string
- *
- * Returns:
- * string representation of mat
- */
-mat3.str = function(mat) {
-	return '[' + mat[0] + ', ' + mat[1] + ', ' + mat[2] + 
-		', ' + mat[3] + ', '+ mat[4] + ', ' + mat[5] + 
-		', ' + mat[6] + ', ' + mat[7] + ', '+ mat[8] + ']';
-};
-
-/*
- * mat4 - 4x4 Matrix
- */
-var mat4 = {};
-
-/*
- * mat4.create
- * Creates a new instance of a mat4 using the default array type
- * Any javascript array containing at least 16 numeric elements can serve as a mat4
- *
- * Params:
- * mat - Optional, mat4 containing values to initialize with
- *
- * Returns:
- * New mat4
- */
-mat4.create = function(mat) {
-	var dest = new glMatrixArrayType(16);
-	
-	if(mat) {
-		dest[0] = mat[0];
-		dest[1] = mat[1];
-		dest[2] = mat[2];
-		dest[3] = mat[3];
-		dest[4] = mat[4];
-		dest[5] = mat[5];
-		dest[6] = mat[6];
-		dest[7] = mat[7];
-		dest[8] = mat[8];
-		dest[9] = mat[9];
-		dest[10] = mat[10];
-		dest[11] = mat[11];
-		dest[12] = mat[12];
-		dest[13] = mat[13];
-		dest[14] = mat[14];
-		dest[15] = mat[15];
-	}
-	
-	return dest;
-};
-
-/*
- * mat4.set
- * Copies the values of one mat4 to another
- *
- * Params:
- * mat - mat4 containing values to copy
- * dest - mat4 receiving copied values
- *
- * Returns:
- * dest
- */
-mat4.set = function(mat, dest) {
-	dest[0] = mat[0];
-	dest[1] = mat[1];
-	dest[2] = mat[2];
-	dest[3] = mat[3];
-	dest[4] = mat[4];
-	dest[5] = mat[5];
-	dest[6] = mat[6];
-	dest[7] = mat[7];
-	dest[8] = mat[8];
-	dest[9] = mat[9];
-	dest[10] = mat[10];
-	dest[11] = mat[11];
-	dest[12] = mat[12];
-	dest[13] = mat[13];
-	dest[14] = mat[14];
-	dest[15] = mat[15];
-	return dest;
-};
-
-/*
- * mat4.identity
- * Sets a mat4 to an identity matrix
- *
- * Params:
- * dest - mat4 to set
- *
- * Returns:
- * dest
- */
-mat4.identity = function(dest) {
-	dest[0] = 1;
-	dest[1] = 0;
-	dest[2] = 0;
-	dest[3] = 0;
-	dest[4] = 0;
-	dest[5] = 1;
-	dest[6] = 0;
-	dest[7] = 0;
-	dest[8] = 0;
-	dest[9] = 0;
-	dest[10] = 1;
-	dest[11] = 0;
-	dest[12] = 0;
-	dest[13] = 0;
-	dest[14] = 0;
-	dest[15] = 1;
-	return dest;
-};
-
-/*
- * mat4.transpose
- * Transposes a mat4 (flips the values over the diagonal)
- *
- * Params:
- * mat - mat4 to transpose
- * dest - Optional, mat4 receiving transposed values. If not specified result is written to mat
- *
- * Returns:
- * dest is specified, mat otherwise
- */
-mat4.transpose = function(mat, dest) {
-	// If we are transposing ourselves we can skip a few steps but have to cache some values
-	if(!dest || mat == dest) { 
-		var a01 = mat[1], a02 = mat[2], a03 = mat[3];
-		var a12 = mat[6], a13 = mat[7];
-		var a23 = mat[11];
-		
-		mat[1] = mat[4];
-		mat[2] = mat[8];
-		mat[3] = mat[12];
-		mat[4] = a01;
-		mat[6] = mat[9];
-		mat[7] = mat[13];
-		mat[8] = a02;
-		mat[9] = a12;
-		mat[11] = mat[14];
-		mat[12] = a03;
-		mat[13] = a13;
-		mat[14] = a23;
-		return mat;
-	}
-	
-	dest[0] = mat[0];
-	dest[1] = mat[4];
-	dest[2] = mat[8];
-	dest[3] = mat[12];
-	dest[4] = mat[1];
-	dest[5] = mat[5];
-	dest[6] = mat[9];
-	dest[7] = mat[13];
-	dest[8] = mat[2];
-	dest[9] = mat[6];
-	dest[10] = mat[10];
-	dest[11] = mat[14];
-	dest[12] = mat[3];
-	dest[13] = mat[7];
-	dest[14] = mat[11];
-	dest[15] = mat[15];
-	return dest;
-};
-
-/*
- * mat4.determinant
- * Calculates the determinant of a mat4
- *
- * Params:
- * mat - mat4 to calculate determinant of
- *
- * Returns:
- * determinant of mat
- */
-mat4.determinant = function(mat) {
-	// Cache the matrix values (makes for huge speed increases!)
-	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
-	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
-	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-	var a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15];
-
-	return	a30*a21*a12*a03 - a20*a31*a12*a03 - a30*a11*a22*a03 + a10*a31*a22*a03 +
-			a20*a11*a32*a03 - a10*a21*a32*a03 - a30*a21*a02*a13 + a20*a31*a02*a13 +
-			a30*a01*a22*a13 - a00*a31*a22*a13 - a20*a01*a32*a13 + a00*a21*a32*a13 +
-			a30*a11*a02*a23 - a10*a31*a02*a23 - a30*a01*a12*a23 + a00*a31*a12*a23 +
-			a10*a01*a32*a23 - a00*a11*a32*a23 - a20*a11*a02*a33 + a10*a21*a02*a33 +
-			a20*a01*a12*a33 - a00*a21*a12*a33 - a10*a01*a22*a33 + a00*a11*a22*a33;
-};
-
-/*
- * mat4.inverse
- * Calculates the inverse matrix of a mat4
- *
- * Params:
- * mat - mat4 to calculate inverse of
- * dest - Optional, mat4 receiving inverse matrix. If not specified result is written to mat
- *
- * Returns:
- * dest is specified, mat otherwise
- */
-mat4.inverse = function(mat, dest) {
-	if(!dest) { dest = mat; }
-	
-	// Cache the matrix values (makes for huge speed increases!)
-	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
-	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
-	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-	var a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15];
-	
-	var b00 = a00*a11 - a01*a10;
-	var b01 = a00*a12 - a02*a10;
-	var b02 = a00*a13 - a03*a10;
-	var b03 = a01*a12 - a02*a11;
-	var b04 = a01*a13 - a03*a11;
-	var b05 = a02*a13 - a03*a12;
-	var b06 = a20*a31 - a21*a30;
-	var b07 = a20*a32 - a22*a30;
-	var b08 = a20*a33 - a23*a30;
-	var b09 = a21*a32 - a22*a31;
-	var b10 = a21*a33 - a23*a31;
-	var b11 = a22*a33 - a23*a32;
-	
-	// Calculate the determinant (inlined to avoid double-caching)
-	var invDet = 1/(b00*b11 - b01*b10 + b02*b09 + b03*b08 - b04*b07 + b05*b06);
-	
-	dest[0] = (a11*b11 - a12*b10 + a13*b09)*invDet;
-	dest[1] = (-a01*b11 + a02*b10 - a03*b09)*invDet;
-	dest[2] = (a31*b05 - a32*b04 + a33*b03)*invDet;
-	dest[3] = (-a21*b05 + a22*b04 - a23*b03)*invDet;
-	dest[4] = (-a10*b11 + a12*b08 - a13*b07)*invDet;
-	dest[5] = (a00*b11 - a02*b08 + a03*b07)*invDet;
-	dest[6] = (-a30*b05 + a32*b02 - a33*b01)*invDet;
-	dest[7] = (a20*b05 - a22*b02 + a23*b01)*invDet;
-	dest[8] = (a10*b10 - a11*b08 + a13*b06)*invDet;
-	dest[9] = (-a00*b10 + a01*b08 - a03*b06)*invDet;
-	dest[10] = (a30*b04 - a31*b02 + a33*b00)*invDet;
-	dest[11] = (-a20*b04 + a21*b02 - a23*b00)*invDet;
-	dest[12] = (-a10*b09 + a11*b07 - a12*b06)*invDet;
-	dest[13] = (a00*b09 - a01*b07 + a02*b06)*invDet;
-	dest[14] = (-a30*b03 + a31*b01 - a32*b00)*invDet;
-	dest[15] = (a20*b03 - a21*b01 + a22*b00)*invDet;
-	
-	return dest;
-};
-
-/*
- * mat4.toRotationMat
- * Copies the upper 3x3 elements of a mat4 into another mat4
- *
- * Params:
- * mat - mat4 containing values to copy
- * dest - Optional, mat4 receiving copied values
- *
- * Returns:
- * dest is specified, a new mat4 otherwise
- */
-mat4.toRotationMat = function(mat, dest) {
-	if(!dest) { dest = mat4.create(); }
-	
-	dest[0] = mat[0];
-	dest[1] = mat[1];
-	dest[2] = mat[2];
-	dest[3] = mat[3];
-	dest[4] = mat[4];
-	dest[5] = mat[5];
-	dest[6] = mat[6];
-	dest[7] = mat[7];
-	dest[8] = mat[8];
-	dest[9] = mat[9];
-	dest[10] = mat[10];
-	dest[11] = mat[11];
-	dest[12] = 0;
-	dest[13] = 0;
-	dest[14] = 0;
-	dest[15] = 1;
-	
-	return dest;
-};
-
-/*
- * mat4.toMat3
- * Copies the upper 3x3 elements of a mat4 into a mat3
- *
- * Params:
- * mat - mat4 containing values to copy
- * dest - Optional, mat3 receiving copied values
- *
- * Returns:
- * dest is specified, a new mat3 otherwise
- */
-mat4.toMat3 = function(mat, dest) {
-	if(!dest) { dest = mat3.create(); }
-	
-	dest[0] = mat[0];
-	dest[1] = mat[1];
-	dest[2] = mat[2];
-	dest[3] = mat[4];
-	dest[4] = mat[5];
-	dest[5] = mat[6];
-	dest[6] = mat[8];
-	dest[7] = mat[9];
-	dest[8] = mat[10];
-	
-	return dest;
-};
-
-/*
- * mat4.toInverseMat3
- * Calculates the inverse of the upper 3x3 elements of a mat4 and copies the result into a mat3
- * The resulting matrix is useful for calculating transformed normals
- *
- * Params:
- * mat - mat4 containing values to invert and copy
- * dest - Optional, mat3 receiving values
- *
- * Returns:
- * dest is specified, a new mat3 otherwise
- */
-mat4.toInverseMat3 = function(mat, dest) {
-	// Cache the matrix values (makes for huge speed increases!)
-	var a00 = mat[0], a01 = mat[1], a02 = mat[2];
-	var a10 = mat[4], a11 = mat[5], a12 = mat[6];
-	var a20 = mat[8], a21 = mat[9], a22 = mat[10];
-	
-	var b01 = a22*a11-a12*a21;
-	var b11 = -a22*a10+a12*a20;
-	var b21 = a21*a10-a11*a20;
-		
-	var d = a00*b01 + a01*b11 + a02*b21;
-	if (!d) { return null; }
-	var id = 1/d;
-	
-	if(!dest) { dest = mat3.create(); }
-	
-	dest[0] = b01*id;
-	dest[1] = (-a22*a01 + a02*a21)*id;
-	dest[2] = (a12*a01 - a02*a11)*id;
-	dest[3] = b11*id;
-	dest[4] = (a22*a00 - a02*a20)*id;
-	dest[5] = (-a12*a00 + a02*a10)*id;
-	dest[6] = b21*id;
-	dest[7] = (-a21*a00 + a01*a20)*id;
-	dest[8] = (a11*a00 - a01*a10)*id;
-	
-	return dest;
-};
-
-/*
- * mat4.multiply
- * Performs a matrix multiplication
- *
- * Params:
- * mat - mat4, first operand
- * mat2 - mat4, second operand
- * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
- *
- * Returns:
- * dest if specified, mat otherwise
- */
-mat4.multiply = function(mat, mat2, dest) {
-	if(!dest) { dest = mat }
-	
-	// Cache the matrix values (makes for huge speed increases!)
-	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
-	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
-	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-	var a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15];
-	
-	var b00 = mat2[0], b01 = mat2[1], b02 = mat2[2], b03 = mat2[3];
-	var b10 = mat2[4], b11 = mat2[5], b12 = mat2[6], b13 = mat2[7];
-	var b20 = mat2[8], b21 = mat2[9], b22 = mat2[10], b23 = mat2[11];
-	var b30 = mat2[12], b31 = mat2[13], b32 = mat2[14], b33 = mat2[15];
-	
-	dest[0] = b00*a00 + b01*a10 + b02*a20 + b03*a30;
-	dest[1] = b00*a01 + b01*a11 + b02*a21 + b03*a31;
-	dest[2] = b00*a02 + b01*a12 + b02*a22 + b03*a32;
-	dest[3] = b00*a03 + b01*a13 + b02*a23 + b03*a33;
-	dest[4] = b10*a00 + b11*a10 + b12*a20 + b13*a30;
-	dest[5] = b10*a01 + b11*a11 + b12*a21 + b13*a31;
-	dest[6] = b10*a02 + b11*a12 + b12*a22 + b13*a32;
-	dest[7] = b10*a03 + b11*a13 + b12*a23 + b13*a33;
-	dest[8] = b20*a00 + b21*a10 + b22*a20 + b23*a30;
-	dest[9] = b20*a01 + b21*a11 + b22*a21 + b23*a31;
-	dest[10] = b20*a02 + b21*a12 + b22*a22 + b23*a32;
-	dest[11] = b20*a03 + b21*a13 + b22*a23 + b23*a33;
-	dest[12] = b30*a00 + b31*a10 + b32*a20 + b33*a30;
-	dest[13] = b30*a01 + b31*a11 + b32*a21 + b33*a31;
-	dest[14] = b30*a02 + b31*a12 + b32*a22 + b33*a32;
-	dest[15] = b30*a03 + b31*a13 + b32*a23 + b33*a33;
-	
-	return dest;
-};
-
-/*
- * mat4.multiplyVec3
- * Transforms a vec3 with the given matrix
- * 4th vector component is implicitly '1'
- *
- * Params:
- * mat - mat4 to transform the vector with
- * vec - vec3 to transform
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-mat4.multiplyVec3 = function(mat, vec, dest) {
-	if(!dest) { dest = vec }
-	
-	var x = vec[0], y = vec[1], z = vec[2];
-	
-	dest[0] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
-	dest[1] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
-	dest[2] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14];
-	
-	return dest;
-};
-
-/*
- * mat4.multiplyVec4
- * Transforms a vec4 with the given matrix
- *
- * Params:
- * mat - mat4 to transform the vector with
- * vec - vec4 to transform
- * dest - Optional, vec4 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-mat4.multiplyVec4 = function(mat, vec, dest) {
-	if(!dest) { dest = vec }
-	
-	var x = vec[0], y = vec[1], z = vec[2], w = vec[3];
-	
-	dest[0] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12]*w;
-	dest[1] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13]*w;
-	dest[2] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14]*w;
-	dest[3] = mat[3]*x + mat[7]*y + mat[11]*z + mat[15]*w;
-	
-	return dest;
-};
-
-/*
- * mat4.translate
- * Translates a matrix by the given vector
- *
- * Params:
- * mat - mat4 to translate
- * vec - vec3 specifying the translation
- * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
- *
- * Returns:
- * dest if specified, mat otherwise
- */
-mat4.translate = function(mat, vec, dest) {
-	var x = vec[0], y = vec[1], z = vec[2];
-	
-	if(!dest || mat == dest) {
-		mat[12] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
-		mat[13] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
-		mat[14] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14];
-		mat[15] = mat[3]*x + mat[7]*y + mat[11]*z + mat[15];
-		return mat;
-	}
-	
-	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
-	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
-	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-	
-	dest[0] = a00;
-	dest[1] = a01;
-	dest[2] = a02;
-	dest[3] = a03;
-	dest[4] = a10;
-	dest[5] = a11;
-	dest[6] = a12;
-	dest[7] = a13;
-	dest[8] = a20;
-	dest[9] = a21;
-	dest[10] = a22;
-	dest[11] = a23;
-	
-	dest[12] = a00*x + a10*y + a20*z + mat[12];
-	dest[13] = a01*x + a11*y + a21*z + mat[13];
-	dest[14] = a02*x + a12*y + a22*z + mat[14];
-	dest[15] = a03*x + a13*y + a23*z + mat[15];
-	return dest;
-};
-
-/*
- * mat4.scale
- * Scales a matrix by the given vector
- *
- * Params:
- * mat - mat4 to scale
- * vec - vec3 specifying the scale for each axis
- * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
- *
- * Returns:
- * dest if specified, mat otherwise
- */
-mat4.scale = function(mat, vec, dest) {
-	var x = vec[0], y = vec[1], z = vec[2];
-	
-	if(!dest || mat == dest) {
-		mat[0] *= x;
-		mat[1] *= x;
-		mat[2] *= x;
-		mat[3] *= x;
-		mat[4] *= y;
-		mat[5] *= y;
-		mat[6] *= y;
-		mat[7] *= y;
-		mat[8] *= z;
-		mat[9] *= z;
-		mat[10] *= z;
-		mat[11] *= z;
-		return mat;
-	}
-	
-	dest[0] = mat[0]*x;
-	dest[1] = mat[1]*x;
-	dest[2] = mat[2]*x;
-	dest[3] = mat[3]*x;
-	dest[4] = mat[4]*y;
-	dest[5] = mat[5]*y;
-	dest[6] = mat[6]*y;
-	dest[7] = mat[7]*y;
-	dest[8] = mat[8]*z;
-	dest[9] = mat[9]*z;
-	dest[10] = mat[10]*z;
-	dest[11] = mat[11]*z;
-	dest[12] = mat[12];
-	dest[13] = mat[13];
-	dest[14] = mat[14];
-	dest[15] = mat[15];
-	return dest;
-};
-
-/*
- * mat4.rotate
- * Rotates a matrix by the given angle around the specified axis
- * If rotating around a primary axis (X,Y,Z) one of the specialized rotation functions should be used instead for performance
- *
- * Params:
- * mat - mat4 to rotate
- * angle - angle (in radians) to rotate
- * axis - vec3 representing the axis to rotate around 
- * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
- *
- * Returns:
- * dest if specified, mat otherwise
- */
-mat4.rotate = function(mat, angle, axis, dest) {
-	var x = axis[0], y = axis[1], z = axis[2];
-	var len = Math.sqrt(x*x + y*y + z*z);
-	if (!len) { return null; }
-	if (len != 1) {
-		len = 1 / len;
-		x *= len; 
-		y *= len; 
-		z *= len;
-	}
-	
-	var s = Math.sin(angle);
-	var c = Math.cos(angle);
-	var t = 1-c;
-	
-	// Cache the matrix values (makes for huge speed increases!)
-	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
-	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
-	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-	
-	// Construct the elements of the rotation matrix
-	var b00 = x*x*t + c, b01 = y*x*t + z*s, b02 = z*x*t - y*s;
-	var b10 = x*y*t - z*s, b11 = y*y*t + c, b12 = z*y*t + x*s;
-	var b20 = x*z*t + y*s, b21 = y*z*t - x*s, b22 = z*z*t + c;
-	
-	if(!dest) { 
-		dest = mat 
-	} else if(mat != dest) { // If the source and destination differ, copy the unchanged last row
-		dest[12] = mat[12];
-		dest[13] = mat[13];
-		dest[14] = mat[14];
-		dest[15] = mat[15];
-	}
-	
-	// Perform rotation-specific matrix multiplication
-	dest[0] = a00*b00 + a10*b01 + a20*b02;
-	dest[1] = a01*b00 + a11*b01 + a21*b02;
-	dest[2] = a02*b00 + a12*b01 + a22*b02;
-	dest[3] = a03*b00 + a13*b01 + a23*b02;
-	
-	dest[4] = a00*b10 + a10*b11 + a20*b12;
-	dest[5] = a01*b10 + a11*b11 + a21*b12;
-	dest[6] = a02*b10 + a12*b11 + a22*b12;
-	dest[7] = a03*b10 + a13*b11 + a23*b12;
-	
-	dest[8] = a00*b20 + a10*b21 + a20*b22;
-	dest[9] = a01*b20 + a11*b21 + a21*b22;
-	dest[10] = a02*b20 + a12*b21 + a22*b22;
-	dest[11] = a03*b20 + a13*b21 + a23*b22;
-	return dest;
-};
-
-/*
- * mat4.rotateX
- * Rotates a matrix by the given angle around the X axis
- *
- * Params:
- * mat - mat4 to rotate
- * angle - angle (in radians) to rotate
- * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
- *
- * Returns:
- * dest if specified, mat otherwise
- */
-mat4.rotateX = function(mat, angle, dest) {
-	var s = Math.sin(angle);
-	var c = Math.cos(angle);
-	
-	// Cache the matrix values (makes for huge speed increases!)
-	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
-	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-
-	if(!dest) { 
-		dest = mat 
-	} else if(mat != dest) { // If the source and destination differ, copy the unchanged rows
-		dest[0] = mat[0];
-		dest[1] = mat[1];
-		dest[2] = mat[2];
-		dest[3] = mat[3];
-		
-		dest[12] = mat[12];
-		dest[13] = mat[13];
-		dest[14] = mat[14];
-		dest[15] = mat[15];
-	}
-	
-	// Perform axis-specific matrix multiplication
-	dest[4] = a10*c + a20*s;
-	dest[5] = a11*c + a21*s;
-	dest[6] = a12*c + a22*s;
-	dest[7] = a13*c + a23*s;
-	
-	dest[8] = a10*-s + a20*c;
-	dest[9] = a11*-s + a21*c;
-	dest[10] = a12*-s + a22*c;
-	dest[11] = a13*-s + a23*c;
-	return dest;
-};
-
-/*
- * mat4.rotateY
- * Rotates a matrix by the given angle around the Y axis
- *
- * Params:
- * mat - mat4 to rotate
- * angle - angle (in radians) to rotate
- * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
- *
- * Returns:
- * dest if specified, mat otherwise
- */
-mat4.rotateY = function(mat, angle, dest) {
-	var s = Math.sin(angle);
-	var c = Math.cos(angle);
-	
-	// Cache the matrix values (makes for huge speed increases!)
-	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
-	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
-	
-	if(!dest) { 
-		dest = mat 
-	} else if(mat != dest) { // If the source and destination differ, copy the unchanged rows
-		dest[4] = mat[4];
-		dest[5] = mat[5];
-		dest[6] = mat[6];
-		dest[7] = mat[7];
-		
-		dest[12] = mat[12];
-		dest[13] = mat[13];
-		dest[14] = mat[14];
-		dest[15] = mat[15];
-	}
-	
-	// Perform axis-specific matrix multiplication
-	dest[0] = a00*c + a20*-s;
-	dest[1] = a01*c + a21*-s;
-	dest[2] = a02*c + a22*-s;
-	dest[3] = a03*c + a23*-s;
-	
-	dest[8] = a00*s + a20*c;
-	dest[9] = a01*s + a21*c;
-	dest[10] = a02*s + a22*c;
-	dest[11] = a03*s + a23*c;
-	return dest;
-};
-
-/*
- * mat4.rotateZ
- * Rotates a matrix by the given angle around the Z axis
- *
- * Params:
- * mat - mat4 to rotate
- * angle - angle (in radians) to rotate
- * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
- *
- * Returns:
- * dest if specified, mat otherwise
- */
-mat4.rotateZ = function(mat, angle, dest) {
-	var s = Math.sin(angle);
-	var c = Math.cos(angle);
-	
-	// Cache the matrix values (makes for huge speed increases!)
-	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
-	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
-	
-	if(!dest) { 
-		dest = mat 
-	} else if(mat != dest) { // If the source and destination differ, copy the unchanged last row
-		dest[8] = mat[8];
-		dest[9] = mat[9];
-		dest[10] = mat[10];
-		dest[11] = mat[11];
-		
-		dest[12] = mat[12];
-		dest[13] = mat[13];
-		dest[14] = mat[14];
-		dest[15] = mat[15];
-	}
-	
-	// Perform axis-specific matrix multiplication
-	dest[0] = a00*c + a10*s;
-	dest[1] = a01*c + a11*s;
-	dest[2] = a02*c + a12*s;
-	dest[3] = a03*c + a13*s;
-	
-	dest[4] = a00*-s + a10*c;
-	dest[5] = a01*-s + a11*c;
-	dest[6] = a02*-s + a12*c;
-	dest[7] = a03*-s + a13*c;
-	
-	return dest;
-};
-
-/*
- * mat4.frustum
- * Generates a frustum matrix with the given bounds
- *
- * Params:
- * left, right - scalar, left and right bounds of the frustum
- * bottom, top - scalar, bottom and top bounds of the frustum
- * near, far - scalar, near and far bounds of the frustum
- * dest - Optional, mat4 frustum matrix will be written into
- *
- * Returns:
- * dest if specified, a new mat4 otherwise
- */
-mat4.frustum = function(left, right, bottom, top, near, far, dest) {
-	if(!dest) { dest = mat4.create(); }
-	var rl = (right - left);
-	var tb = (top - bottom);
-	var fn = (far - near);
-	dest[0] = (near*2) / rl;
-	dest[1] = 0;
-	dest[2] = 0;
-	dest[3] = 0;
-	dest[4] = 0;
-	dest[5] = (near*2) / tb;
-	dest[6] = 0;
-	dest[7] = 0;
-	dest[8] = (right + left) / rl;
-	dest[9] = (top + bottom) / tb;
-	dest[10] = -(far + near) / fn;
-	dest[11] = -1;
-	dest[12] = 0;
-	dest[13] = 0;
-	dest[14] = -(far*near*2) / fn;
-	dest[15] = 0;
-	return dest;
-};
-
-/*
- * mat4.perspective
- * Generates a perspective projection matrix with the given bounds
- *
- * Params:
- * fovy - scalar, vertical field of view
- * aspect - scalar, aspect ratio. typically viewport width/height
- * near, far - scalar, near and far bounds of the frustum
- * dest - Optional, mat4 frustum matrix will be written into
- *
- * Returns:
- * dest if specified, a new mat4 otherwise
- */
-mat4.perspective = function(fovy, aspect, near, far, dest) {
-	var top = near*Math.tan(fovy*Math.PI / 360.0);
-	var right = top*aspect;
-	return mat4.frustum(-right, right, -top, top, near, far, dest);
-};
-
-/*
- * mat4.ortho
- * Generates a orthogonal projection matrix with the given bounds
- *
- * Params:
- * left, right - scalar, left and right bounds of the frustum
- * bottom, top - scalar, bottom and top bounds of the frustum
- * near, far - scalar, near and far bounds of the frustum
- * dest - Optional, mat4 frustum matrix will be written into
- *
- * Returns:
- * dest if specified, a new mat4 otherwise
- */
-mat4.ortho = function(left, right, bottom, top, near, far, dest) {
-	if(!dest) { dest = mat4.create(); }
-	var rl = (right - left);
-	var tb = (top - bottom);
-	var fn = (far - near);
-	dest[0] = 2 / rl;
-	dest[1] = 0;
-	dest[2] = 0;
-	dest[3] = 0;
-	dest[4] = 0;
-	dest[5] = 2 / tb;
-	dest[6] = 0;
-	dest[7] = 0;
-	dest[8] = 0;
-	dest[9] = 0;
-	dest[10] = -2 / fn;
-	dest[11] = 0;
-	dest[12] = -(left + right) / rl;
-	dest[13] = -(top + bottom) / tb;
-	dest[14] = -(far + near) / fn;
-	dest[15] = 1;
-	return dest;
-};
-
-/*
- * mat4.ortho
- * Generates a look-at matrix with the given eye position, focal point, and up axis
- *
- * Params:
- * eye - vec3, position of the viewer
- * center - vec3, point the viewer is looking at
- * up - vec3 pointing "up"
- * dest - Optional, mat4 frustum matrix will be written into
- *
- * Returns:
- * dest if specified, a new mat4 otherwise
- */
-mat4.lookAt = function(eye, center, up, dest) {
-	if(!dest) { dest = mat4.create(); }
-	
-	var eyex = eye[0],
-		eyey = eye[1],
-		eyez = eye[2],
-		upx = up[0],
-		upy = up[1],
-		upz = up[2],
-		centerx = center[0],
-		centery = center[1],
-		centerz = center[2];
-
-	if (eyex == centerx && eyey == centery && eyez == centerz) {
-		return mat4.identity(dest);
-	}
-	
-	var z0,z1,z2,x0,x1,x2,y0,y1,y2,len;
-	
-	//vec3.direction(eye, center, z);
-	z0 = eyex - center[0];
-	z1 = eyey - center[1];
-	z2 = eyez - center[2];
-	
-	// normalize (no check needed for 0 because of early return)
-	len = 1/Math.sqrt(z0*z0 + z1*z1 + z2*z2);
-	z0 *= len;
-	z1 *= len;
-	z2 *= len;
-	
-	//vec3.normalize(vec3.cross(up, z, x));
-	x0 = upy*z2 - upz*z1;
-	x1 = upz*z0 - upx*z2;
-	x2 = upx*z1 - upy*z0;
-	len = Math.sqrt(x0*x0 + x1*x1 + x2*x2);
-	if (!len) {
-		x0 = 0;
-		x1 = 0;
-		x2 = 0;
-	} else {
-		len = 1/len;
-		x0 *= len;
-		x1 *= len;
-		x2 *= len;
-	};
-	
-	//vec3.normalize(vec3.cross(z, x, y));
-	y0 = z1*x2 - z2*x1;
-	y1 = z2*x0 - z0*x2;
-	y2 = z0*x1 - z1*x0;
-	
-	len = Math.sqrt(y0*y0 + y1*y1 + y2*y2);
-	if (!len) {
-		y0 = 0;
-		y1 = 0;
-		y2 = 0;
-	} else {
-		len = 1/len;
-		y0 *= len;
-		y1 *= len;
-		y2 *= len;
-	}
-	
-	dest[0] = x0;
-	dest[1] = y0;
-	dest[2] = z0;
-	dest[3] = 0;
-	dest[4] = x1;
-	dest[5] = y1;
-	dest[6] = z1;
-	dest[7] = 0;
-	dest[8] = x2;
-	dest[9] = y2;
-	dest[10] = z2;
-	dest[11] = 0;
-	dest[12] = -(x0*eyex + x1*eyey + x2*eyez);
-	dest[13] = -(y0*eyex + y1*eyey + y2*eyez);
-	dest[14] = -(z0*eyex + z1*eyey + z2*eyez);
-	dest[15] = 1;
-	
-	return dest;
-};
-
-/*
- * mat4.str
- * Returns a string representation of a mat4
- *
- * Params:
- * mat - mat4 to represent as a string
- *
- * Returns:
- * string representation of mat
- */
-mat4.str = function(mat) {
-	return '[' + mat[0] + ', ' + mat[1] + ', ' + mat[2] + ', ' + mat[3] + 
-		', '+ mat[4] + ', ' + mat[5] + ', ' + mat[6] + ', ' + mat[7] + 
-		', '+ mat[8] + ', ' + mat[9] + ', ' + mat[10] + ', ' + mat[11] + 
-		', '+ mat[12] + ', ' + mat[13] + ', ' + mat[14] + ', ' + mat[15] + ']';
-};
-
-/*
- * quat4 - Quaternions 
- */
-quat4 = {};
-
-/*
- * quat4.create
- * Creates a new instance of a quat4 using the default array type
- * Any javascript array containing at least 4 numeric elements can serve as a quat4
- *
- * Params:
- * quat - Optional, quat4 containing values to initialize with
- *
- * Returns:
- * New quat4
- */
-quat4.create = function(quat) {
-	var dest = new glMatrixArrayType(4);
-	
-	if(quat) {
-		dest[0] = quat[0];
-		dest[1] = quat[1];
-		dest[2] = quat[2];
-		dest[3] = quat[3];
-	}
-	
-	return dest;
-};
-
-/*
- * quat4.set
- * Copies the values of one quat4 to another
- *
- * Params:
- * quat - quat4 containing values to copy
- * dest - quat4 receiving copied values
- *
- * Returns:
- * dest
- */
-quat4.set = function(quat, dest) {
-	dest[0] = quat[0];
-	dest[1] = quat[1];
-	dest[2] = quat[2];
-	dest[3] = quat[3];
-	
-	return dest;
-};
-
-/*
- * quat4.calculateW
- * Calculates the W component of a quat4 from the X, Y, and Z components.
- * Assumes that quaternion is 1 unit in length. 
- * Any existing W component will be ignored. 
- *
- * Params:
- * quat - quat4 to calculate W component of
- * dest - Optional, quat4 receiving calculated values. If not specified result is written to quat
- *
- * Returns:
- * dest if specified, quat otherwise
- */
-quat4.calculateW = function(quat, dest) {
-	var x = quat[0], y = quat[1], z = quat[2];
-
-	if(!dest || quat == dest) {
-		quat[3] = -Math.sqrt(Math.abs(1.0 - x*x - y*y - z*z));
-		return quat;
-	}
-	dest[0] = x;
-	dest[1] = y;
-	dest[2] = z;
-	dest[3] = -Math.sqrt(Math.abs(1.0 - x*x - y*y - z*z));
-	return dest;
-}
-
-/*
- * quat4.inverse
- * Calculates the inverse of a quat4
- *
- * Params:
- * quat - quat4 to calculate inverse of
- * dest - Optional, quat4 receiving inverse values. If not specified result is written to quat
- *
- * Returns:
- * dest if specified, quat otherwise
- */
-quat4.inverse = function(quat, dest) {
-	if(!dest || quat == dest) {
-		quat[0] *= -1;
-		quat[1] *= -1;
-		quat[2] *= -1;
-		return quat;
-	}
-	dest[0] = -quat[0];
-	dest[1] = -quat[1];
-	dest[2] = -quat[2];
-	dest[3] = quat[3];
-	return dest;
-}
-
-/*
- * quat4.length
- * Calculates the length of a quat4
- *
- * Params:
- * quat - quat4 to calculate length of
- *
- * Returns:
- * Length of quat
- */
-quat4.length = function(quat) {
-	var x = quat[0], y = quat[1], z = quat[2], w = quat[3];
-	return Math.sqrt(x*x + y*y + z*z + w*w);
-}
-
-/*
- * quat4.normalize
- * Generates a unit quaternion of the same direction as the provided quat4
- * If quaternion length is 0, returns [0, 0, 0, 0]
- *
- * Params:
- * quat - quat4 to normalize
- * dest - Optional, quat4 receiving operation result. If not specified result is written to quat
- *
- * Returns:
- * dest if specified, quat otherwise
- */
-quat4.normalize = function(quat, dest) {
-	if(!dest) { dest = quat; }
-	
-	var x = quat[0], y = quat[1], z = quat[2], w = quat[3];
-	var len = Math.sqrt(x*x + y*y + z*z + w*w);
-	if(len == 0) {
-		dest[0] = 0;
-		dest[1] = 0;
-		dest[2] = 0;
-		dest[3] = 0;
-		return dest;
-	}
-	len = 1/len;
-	dest[0] = x * len;
-	dest[1] = y * len;
-	dest[2] = z * len;
-	dest[3] = w * len;
-	
-	return dest;
-}
-
-/*
- * quat4.multiply
- * Performs a quaternion multiplication
- *
- * Params:
- * quat - quat4, first operand
- * quat2 - quat4, second operand
- * dest - Optional, quat4 receiving operation result. If not specified result is written to quat
- *
- * Returns:
- * dest if specified, quat otherwise
- */
-quat4.multiply = function(quat, quat2, dest) {
-	if(!dest) { dest = quat; }
-	
-	var qax = quat[0], qay = quat[1], qaz = quat[2], qaw = quat[3];
-	var qbx = quat2[0], qby = quat2[1], qbz = quat2[2], qbw = quat2[3];
-	
-	dest[0] = qax*qbw + qaw*qbx + qay*qbz - qaz*qby;
-	dest[1] = qay*qbw + qaw*qby + qaz*qbx - qax*qbz;
-	dest[2] = qaz*qbw + qaw*qbz + qax*qby - qay*qbx;
-	dest[3] = qaw*qbw - qax*qbx - qay*qby - qaz*qbz;
-	
-	return dest;
-}
-
-/*
- * quat4.multiplyVec3
- * Transforms a vec3 with the given quaternion
- *
- * Params:
- * quat - quat4 to transform the vector with
- * vec - vec3 to transform
- * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
- *
- * Returns:
- * dest if specified, vec otherwise
- */
-quat4.multiplyVec3 = function(quat, vec, dest) {
-	if(!dest) { dest = vec; }
-	
-	var x = vec[0], y = vec[1], z = vec[2];
-	var qx = quat[0], qy = quat[1], qz = quat[2], qw = quat[3];
-
-	// calculate quat * vec
-	var ix = qw*x + qy*z - qz*y;
-	var iy = qw*y + qz*x - qx*z;
-	var iz = qw*z + qx*y - qy*x;
-	var iw = -qx*x - qy*y - qz*z;
-	
-	// calculate result * inverse quat
-	dest[0] = ix*qw + iw*-qx + iy*-qz - iz*-qy;
-	dest[1] = iy*qw + iw*-qy + iz*-qx - ix*-qz;
-	dest[2] = iz*qw + iw*-qz + ix*-qy - iy*-qx;
-	
-	return dest;
-}
-
-/*
- * quat4.toMat3
- * Calculates a 3x3 matrix from the given quat4
- *
- * Params:
- * quat - quat4 to create matrix from
- * dest - Optional, mat3 receiving operation result
- *
- * Returns:
- * dest if specified, a new mat3 otherwise
- */
-quat4.toMat3 = function(quat, dest) {
-	if(!dest) { dest = mat3.create(); }
-	
-	var x = quat[0], y = quat[1], z = quat[2], w = quat[3];
-
-	var x2 = x + x;
-	var y2 = y + y;
-	var z2 = z + z;
-
-	var xx = x*x2;
-	var xy = x*y2;
-	var xz = x*z2;
-
-	var yy = y*y2;
-	var yz = y*z2;
-	var zz = z*z2;
-
-	var wx = w*x2;
-	var wy = w*y2;
-	var wz = w*z2;
-
-	dest[0] = 1 - (yy + zz);
-	dest[1] = xy - wz;
-	dest[2] = xz + wy;
-
-	dest[3] = xy + wz;
-	dest[4] = 1 - (xx + zz);
-	dest[5] = yz - wx;
-
-	dest[6] = xz - wy;
-	dest[7] = yz + wx;
-	dest[8] = 1 - (xx + yy);
-	
-	return dest;
-}
-
-/*
- * quat4.toMat4
- * Calculates a 4x4 matrix from the given quat4
- *
- * Params:
- * quat - quat4 to create matrix from
- * dest - Optional, mat4 receiving operation result
- *
- * Returns:
- * dest if specified, a new mat4 otherwise
- */
-quat4.toMat4 = function(quat, dest) {
-	if(!dest) { dest = mat4.create(); }
-	
-	var x = quat[0], y = quat[1], z = quat[2], w = quat[3];
-
-	var x2 = x + x;
-	var y2 = y + y;
-	var z2 = z + z;
-
-	var xx = x*x2;
-	var xy = x*y2;
-	var xz = x*z2;
-
-	var yy = y*y2;
-	var yz = y*z2;
-	var zz = z*z2;
-
-	var wx = w*x2;
-	var wy = w*y2;
-	var wz = w*z2;
-
-	dest[0] = 1 - (yy + zz);
-	dest[1] = xy - wz;
-	dest[2] = xz + wy;
-	dest[3] = 0;
-
-	dest[4] = xy + wz;
-	dest[5] = 1 - (xx + zz);
-	dest[6] = yz - wx;
-	dest[7] = 0;
-
-	dest[8] = xz - wy;
-	dest[9] = yz + wx;
-	dest[10] = 1 - (xx + yy);
-	dest[11] = 0;
-
-	dest[12] = 0;
-	dest[13] = 0;
-	dest[14] = 0;
-	dest[15] = 1;
-	
-	return dest;
-}
-
-/*
- * quat4.slerp
- * Performs a spherical linear interpolation between two quat4
- *
- * Params:
- * quat - quat4, first quaternion
- * quat2 - quat4, second quaternion
- * slerp - interpolation amount between the two inputs
- * dest - Optional, quat4 receiving operation result. If not specified result is written to quat
- *
- * Returns:
- * dest if specified, quat otherwise
- */
-quat4.slerp = function(quat, quat2, slerp, dest) {
-    if(!dest) { dest = quat; }
-    
-	var cosHalfTheta =  quat[0]*quat2[0] + quat[1]*quat2[1] + quat[2]*quat2[2] + quat[3]*quat2[3];
-	
-	if (Math.abs(cosHalfTheta) >= 1.0){
-	    if(dest != quat) {
-		    dest[0] = quat[0];
-		    dest[1] = quat[1];
-		    dest[2] = quat[2];
-		    dest[3] = quat[3];
-		}
-		return dest;
-	}
-	
-	var halfTheta = Math.acos(cosHalfTheta);
-	var sinHalfTheta = Math.sqrt(1.0 - cosHalfTheta*cosHalfTheta);
-
-	if (Math.abs(sinHalfTheta) < 0.001){
-		dest[0] = (quat[0]*0.5 + quat2[0]*0.5);
-		dest[1] = (quat[1]*0.5 + quat2[1]*0.5);
-		dest[2] = (quat[2]*0.5 + quat2[2]*0.5);
-		dest[3] = (quat[3]*0.5 + quat2[3]*0.5);
-		return dest;
-	}
-	
-	var ratioA = Math.sin((1 - slerp)*halfTheta) / sinHalfTheta;
-	var ratioB = Math.sin(slerp*halfTheta) / sinHalfTheta; 
-	
-	dest[0] = (quat[0]*ratioA + quat2[0]*ratioB);
-	dest[1] = (quat[1]*ratioA + quat2[1]*ratioB);
-	dest[2] = (quat[2]*ratioA + quat2[2]*ratioB);
-	dest[3] = (quat[3]*ratioA + quat2[3]*ratioB);
-	
-	return dest;
-}
-
-
-/*
- * quat4.str
- * Returns a string representation of a quaternion
- *
- * Params:
- * quat - quat4 to represent as a string
- *
- * Returns:
- * string representation of quat
- */
-quat4.str = function(quat) {
-	return '[' + quat[0] + ', ' + quat[1] + ', ' + quat[2] + ', ' + quat[3] + ']'; 
-}
-
-return {
-  vec3: vec3,
-  mat4: mat4,
-  mat3: mat3
-};
-});
-
-define('render/instance',['require','glmatrix'],function(require) {
-  var vec3 = require('glmatrix').vec3;
-
-  var Instance = function(model) {
-    this.model = model;
-    this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([0,0,0]);
-  };
-  
-  Instance.prototype = {
-    visible: function(viewport) {
-      return true;
-    },
-    scale: function(x, y, z) {
-      this.size[0] = x || 0;
-      this.size[1] = y || 0;
-      this.size[2] = z || 0;
-    },
-    translate: function(x, y, z) {
-      this.position[0] = x || 0;
-      this.position[1] = y || 0;
-      this.position[2] = z || 0;
-    },
-    render: function(context) {     
-      this.model.upload(context);
-      this.model.render(context, this);
-    }
-  };
-  
-  return Instance;
-});
-
-//     Underscore.js 1.2.3
-//     (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
-//     Underscore is freely distributable under the MIT license.
-//     Portions of Underscore are inspired or borrowed from Prototype,
-//     Oliver Steele's Functional, and John Resig's Micro-Templating.
-//     For all details and documentation:
-//     http://documentcloud.github.com/underscore
-
-(function() {
-
-  // Baseline setup
-  // --------------
-
-  // Establish the root object, `window` in the browser, or `global` on the server.
-  var root = this;
-
-  // Save the previous value of the `_` variable.
-  var previousUnderscore = root._;
-
-  // Establish the object that gets returned to break out of a loop iteration.
-  var breaker = {};
-
-  // Save bytes in the minified (but not gzipped) version:
-  var ArrayProto = Array.prototype, ObjProto = Object.prototype, FuncProto = Function.prototype;
-
-  // Create quick reference variables for speed access to core prototypes.
-  var slice            = ArrayProto.slice,
-      concat           = ArrayProto.concat,
-      unshift          = ArrayProto.unshift,
-      toString         = ObjProto.toString,
-      hasOwnProperty   = ObjProto.hasOwnProperty;
-
-  // All **ECMAScript 5** native function implementations that we hope to use
-  // are declared here.
-  var
-    nativeForEach      = ArrayProto.forEach,
-    nativeMap          = ArrayProto.map,
-    nativeReduce       = ArrayProto.reduce,
-    nativeReduceRight  = ArrayProto.reduceRight,
-    nativeFilter       = ArrayProto.filter,
-    nativeEvery        = ArrayProto.every,
-    nativeSome         = ArrayProto.some,
-    nativeIndexOf      = ArrayProto.indexOf,
-    nativeLastIndexOf  = ArrayProto.lastIndexOf,
-    nativeIsArray      = Array.isArray,
-    nativeKeys         = Object.keys,
-    nativeBind         = FuncProto.bind;
-
-  // Create a safe reference to the Underscore object for use below.
-  var _ = function(obj) { return new wrapper(obj); };
-
-  // Export the Underscore object for **Node.js** and **"CommonJS"**, with
-  // backwards-compatibility for the old `require()` API. If we're not in
-  // CommonJS, add `_` to the global object.
-  if (typeof exports !== 'undefined') {
-    if (typeof module !== 'undefined' && module.exports) {
-      exports = module.exports = _;
-    }
-    exports._ = _;
-  } else if (typeof define === 'function' && define.amd) {
-    // Register as a named module with AMD.
-    define('underscore',[], function() {
-      return _;
-    });
-  } else {
-    // Exported as a string, for Closure Compiler "advanced" mode.
-    root['_'] = _;
-  }
-
-  // Current version.
-  _.VERSION = '1.2.3';
-
-  // Collection Functions
-  // --------------------
-
-  // The cornerstone, an `each` implementation, aka `forEach`.
-  // Handles objects with the built-in `forEach`, arrays, and raw objects.
-  // Delegates to **ECMAScript 5**'s native `forEach` if available.
-  var each = _.each = _.forEach = function(obj, iterator, context) {
-    if (obj == null) return;
-    if (nativeForEach && obj.forEach === nativeForEach) {
-      obj.forEach(iterator, context);
-    } else if (obj.length === +obj.length) {
-      for (var i = 0, l = obj.length; i < l; i++) {
-        if (i in obj && iterator.call(context, obj[i], i, obj) === breaker) return;
-      }
-    } else {
-      for (var key in obj) {
-        if (hasOwnProperty.call(obj, key)) {
-          if (iterator.call(context, obj[key], key, obj) === breaker) return;
-        }
-      }
-    }
-  };
-
-  // Return the results of applying the iterator to each element.
-  // Delegates to **ECMAScript 5**'s native `map` if available.
-  _.map = function(obj, iterator, context) {
-    var results = [];
-    if (obj == null) return results;
-    if (nativeMap && obj.map === nativeMap) return obj.map(iterator, context);
-    each(obj, function(value, index, list) {
-      results[results.length] = iterator.call(context, value, index, list);
-    });
-    return results;
-  };
-
-  // **Reduce** builds up a single result from a list of values, aka `inject`,
-  // or `foldl`. Delegates to **ECMAScript 5**'s native `reduce` if available.
-  _.reduce = _.foldl = _.inject = function(obj, iterator, memo, context) {
-    var initial = arguments.length > 2;
-    if (obj == null) obj = [];
-    if (nativeReduce && obj.reduce === nativeReduce) {
-      if (context) iterator = _.bind(iterator, context);
-      return initial ? obj.reduce(iterator, memo) : obj.reduce(iterator);
-    }
-    each(obj, function(value, index, list) {
-      if (!initial) {
-        memo = value;
-        initial = true;
-      } else {
-        memo = iterator.call(context, memo, value, index, list);
-      }
-    });
-    if (!initial) throw new TypeError('Reduce of empty array with no initial value');
-    return memo;
-  };
-
-  // The right-associative version of reduce, also known as `foldr`.
-  // Delegates to **ECMAScript 5**'s native `reduceRight` if available.
-  _.reduceRight = _.foldr = function(obj, iterator, memo, context) {
-    var initial = arguments.length > 2;
-    if (obj == null) obj = [];
-    if (nativeReduceRight && obj.reduceRight === nativeReduceRight) {
-      if (context) iterator = _.bind(iterator, context);
-      return initial ? obj.reduceRight(iterator, memo) : obj.reduceRight(iterator);
-    }
-    var reversed = _.toArray(obj).reverse();
-    if (context && !initial) iterator = _.bind(iterator, context);
-    return initial ? _.reduce(reversed, iterator, memo, context) : _.reduce(reversed, iterator);
-  };
-
-  // Return the first value which passes a truth test. Aliased as `detect`.
-  _.find = _.detect = function(obj, iterator, context) {
-    var result;
-    any(obj, function(value, index, list) {
-      if (iterator.call(context, value, index, list)) {
-        result = value;
-        return true;
-      }
-    });
-    return result;
-  };
-
-  // Return all the elements that pass a truth test.
-  // Delegates to **ECMAScript 5**'s native `filter` if available.
-  // Aliased as `select`.
-  _.filter = _.select = function(obj, iterator, context) {
-    var results = [];
-    if (obj == null) return results;
-    if (nativeFilter && obj.filter === nativeFilter) return obj.filter(iterator, context);
-    each(obj, function(value, index, list) {
-      if (iterator.call(context, value, index, list)) results[results.length] = value;
-    });
-    return results;
-  };
-
-  // Return all the elements for which a truth test fails.
-  _.reject = function(obj, iterator, context) {
-    var results = [];
-    if (obj == null) return results;
-    each(obj, function(value, index, list) {
-      if (!iterator.call(context, value, index, list)) results[results.length] = value;
-    });
-    return results;
-  };
-
-  // Determine whether all of the elements match a truth test.
-  // Delegates to **ECMAScript 5**'s native `every` if available.
-  // Aliased as `all`.
-  _.every = _.all = function(obj, iterator, context) {
-    var result = true;
-    if (obj == null) return result;
-    if (nativeEvery && obj.every === nativeEvery) return obj.every(iterator, context);
-    each(obj, function(value, index, list) {
-      if (!(result = result && iterator.call(context, value, index, list))) return breaker;
-    });
-    return result;
-  };
-
-  // Determine if at least one element in the object matches a truth test.
-  // Delegates to **ECMAScript 5**'s native `some` if available.
-  // Aliased as `any`.
-  var any = _.some = _.any = function(obj, iterator, context) {
-    iterator || (iterator = _.identity);
-    var result = false;
-    if (obj == null) return result;
-    if (nativeSome && obj.some === nativeSome) return obj.some(iterator, context);
-    each(obj, function(value, index, list) {
-      if (result || (result = iterator.call(context, value, index, list))) return breaker;
-    });
-    return !!result;
-  };
-
-  // Determine if a given value is included in the array or object using `===`.
-  // Aliased as `contains`.
-  _.include = _.contains = function(obj, target) {
-    var found = false;
-    if (obj == null) return found;
-    if (nativeIndexOf && obj.indexOf === nativeIndexOf) return obj.indexOf(target) != -1;
-    found = any(obj, function(value) {
-      return value === target;
-    });
-    return found;
-  };
-
-  // Invoke a method (with arguments) on every item in a collection.
-  _.invoke = function(obj, method) {
-    var args = slice.call(arguments, 2);
-    return _.map(obj, function(value) {
-      return (method.call ? method || value : value[method]).apply(value, args);
-    });
-  };
-
-  // Convenience version of a common use case of `map`: fetching a property.
-  _.pluck = function(obj, key) {
-    return _.map(obj, function(value){ return value[key]; });
-  };
-
-  // Return the maximum element or (element-based computation).
-  _.max = function(obj, iterator, context) {
-    if (!iterator && _.isArray(obj)) return Math.max.apply(Math, obj);
-    if (!iterator && _.isEmpty(obj)) return -Infinity;
-    var result = {computed : -Infinity};
-    each(obj, function(value, index, list) {
-      var computed = iterator ? iterator.call(context, value, index, list) : value;
-      computed >= result.computed && (result = {value : value, computed : computed});
-    });
-    return result.value;
-  };
-
-  // Return the minimum element (or element-based computation).
-  _.min = function(obj, iterator, context) {
-    if (!iterator && _.isArray(obj)) return Math.min.apply(Math, obj);
-    if (!iterator && _.isEmpty(obj)) return Infinity;
-    var result = {computed : Infinity};
-    each(obj, function(value, index, list) {
-      var computed = iterator ? iterator.call(context, value, index, list) : value;
-      computed < result.computed && (result = {value : value, computed : computed});
-    });
-    return result.value;
-  };
-
-  // Shuffle an array.
-  _.shuffle = function(obj) {
-    var shuffled = [], rand;
-    each(obj, function(value, index, list) {
-      if (index == 0) {
-        shuffled[0] = value;
-      } else {
-        rand = Math.floor(Math.random() * (index + 1));
-        shuffled[index] = shuffled[rand];
-        shuffled[rand] = value;
-      }
-    });
-    return shuffled;
-  };
-
-  // Sort the object's values by a criterion produced by an iterator.
-  _.sortBy = function(obj, iterator, context) {
-    return _.pluck(_.map(obj, function(value, index, list) {
-      return {
-        value : value,
-        criteria : iterator.call(context, value, index, list)
-      };
-    }).sort(function(left, right) {
-      var a = left.criteria, b = right.criteria;
-      return a < b ? -1 : a > b ? 1 : 0;
-    }), 'value');
-  };
-
-  // Groups the object's values by a criterion. Pass either a string attribute
-  // to group by, or a function that returns the criterion.
-  _.groupBy = function(obj, val) {
-    var result = {};
-    var iterator = _.isFunction(val) ? val : function(obj) { return obj[val]; };
-    each(obj, function(value, index) {
-      var key = iterator(value, index);
-      (result[key] || (result[key] = [])).push(value);
-    });
-    return result;
-  };
-
-  // Use a comparator function to figure out at what index an object should
-  // be inserted so as to maintain order. Uses binary search.
-  _.sortedIndex = function(array, obj, iterator) {
-    iterator || (iterator = _.identity);
-    var low = 0, high = array.length;
-    while (low < high) {
-      var mid = (low + high) >> 1;
-      iterator(array[mid]) < iterator(obj) ? low = mid + 1 : high = mid;
-    }
-    return low;
-  };
-
-  // Safely convert anything iterable into a real, live array.
-  _.toArray = function(iterable) {
-    if (!iterable)                return [];
-    if (iterable.toArray)         return iterable.toArray();
-    if (_.isArray(iterable))      return slice.call(iterable);
-    if (_.isArguments(iterable))  return slice.call(iterable);
-    return _.values(iterable);
-  };
-
-  // Return the number of elements in an object.
-  _.size = function(obj) {
-    return _.toArray(obj).length;
-  };
-
-  // Array Functions
-  // ---------------
-
-  // Get the first element of an array. Passing **n** will return the first N
-  // values in the array. Aliased as `head`. The **guard** check allows it to work
-  // with `_.map`.
-  _.first = _.head = function(array, n, guard) {
-    return (n != null) && !guard ? slice.call(array, 0, n) : array[0];
-  };
-
-  // Returns everything but the last entry of the array. Especcialy useful on
-  // the arguments object. Passing **n** will return all the values in
-  // the array, excluding the last N. The **guard** check allows it to work with
-  // `_.map`.
-  _.initial = function(array, n, guard) {
-    return slice.call(array, 0, array.length - ((n == null) || guard ? 1 : n));
-  };
-
-  // Get the last element of an array. Passing **n** will return the last N
-  // values in the array. The **guard** check allows it to work with `_.map`.
-  _.last = function(array, n, guard) {
-    if ((n != null) && !guard) {
-      return slice.call(array, Math.max(array.length - n, 0));
-    } else {
-      return array[array.length - 1];
-    }
-  };
-
-  // Returns everything but the first entry of the array. Aliased as `tail`.
-  // Especially useful on the arguments object. Passing an **index** will return
-  // the rest of the values in the array from that index onward. The **guard**
-  // check allows it to work with `_.map`.
-  _.rest = _.tail = function(array, index, guard) {
-    return slice.call(array, (index == null) || guard ? 1 : index);
-  };
-
-  // Trim out all falsy values from an array.
-  _.compact = function(array) {
-    return _.filter(array, function(value){ return !!value; });
-  };
-
-  // Return a completely flattened version of an array.
-  _.flatten = function(array, shallow) {
-    return _.reduce(array, function(memo, value) {
-      if (_.isArray(value)) return memo.concat(shallow ? value : _.flatten(value));
-      memo[memo.length] = value;
-      return memo;
-    }, []);
-  };
-
-  // Return a version of the array that does not contain the specified value(s).
-  _.without = function(array) {
-    return _.difference(array, slice.call(arguments, 1));
-  };
-
-  // Produce a duplicate-free version of the array. If the array has already
-  // been sorted, you have the option of using a faster algorithm.
-  // Aliased as `unique`.
-  _.uniq = _.unique = function(array, isSorted, iterator) {
-    var initial = iterator ? _.map(array, iterator) : array;
-    var result = [];
-    _.reduce(initial, function(memo, el, i) {
-      if (0 == i || (isSorted === true ? _.last(memo) != el : !_.include(memo, el))) {
-        memo[memo.length] = el;
-        result[result.length] = array[i];
-      }
-      return memo;
-    }, []);
-    return result;
-  };
-
-  // Produce an array that contains the union: each distinct element from all of
-  // the passed-in arrays.
-  _.union = function() {
-    return _.uniq(_.flatten(arguments, true));
-  };
-
-  // Produce an array that contains every item shared between all the
-  // passed-in arrays. (Aliased as "intersect" for back-compat.)
-  _.intersection = _.intersect = function(array) {
-    var rest = slice.call(arguments, 1);
-    return _.filter(_.uniq(array), function(item) {
-      return _.every(rest, function(other) {
-        return _.indexOf(other, item) >= 0;
-      });
-    });
-  };
-
-  // Take the difference between one array and a number of other arrays.
-  // Only the elements present in just the first array will remain.
-  _.difference = function(array) {
-    var rest = _.flatten(slice.call(arguments, 1));
-    return _.filter(array, function(value){ return !_.include(rest, value); });
-  };
-
-  // Zip together multiple lists into a single array -- elements that share
-  // an index go together.
-  _.zip = function() {
-    var args = slice.call(arguments);
-    var length = _.max(_.pluck(args, 'length'));
-    var results = new Array(length);
-    for (var i = 0; i < length; i++) results[i] = _.pluck(args, "" + i);
-    return results;
-  };
-
-  // If the browser doesn't supply us with indexOf (I'm looking at you, **MSIE**),
-  // we need this function. Return the position of the first occurrence of an
-  // item in an array, or -1 if the item is not included in the array.
-  // Delegates to **ECMAScript 5**'s native `indexOf` if available.
-  // If the array is large and already in sort order, pass `true`
-  // for **isSorted** to use binary search.
-  _.indexOf = function(array, item, isSorted) {
-    if (array == null) return -1;
-    var i, l;
-    if (isSorted) {
-      i = _.sortedIndex(array, item);
-      return array[i] === item ? i : -1;
-    }
-    if (nativeIndexOf && array.indexOf === nativeIndexOf) return array.indexOf(item);
-    for (i = 0, l = array.length; i < l; i++) if (i in array && array[i] === item) return i;
-    return -1;
-  };
-
-  // Delegates to **ECMAScript 5**'s native `lastIndexOf` if available.
-  _.lastIndexOf = function(array, item) {
-    if (array == null) return -1;
-    if (nativeLastIndexOf && array.lastIndexOf === nativeLastIndexOf) return array.lastIndexOf(item);
-    var i = array.length;
-    while (i--) if (i in array && array[i] === item) return i;
-    return -1;
-  };
-
-  // Generate an integer Array containing an arithmetic progression. A port of
-  // the native Python `range()` function. See
-  // [the Python documentation](http://docs.python.org/library/functions.html#range).
-  _.range = function(start, stop, step) {
-    if (arguments.length <= 1) {
-      stop = start || 0;
-      start = 0;
-    }
-    step = arguments[2] || 1;
-
-    var len = Math.max(Math.ceil((stop - start) / step), 0);
-    var idx = 0;
-    var range = new Array(len);
-
-    while(idx < len) {
-      range[idx++] = start;
-      start += step;
-    }
-
-    return range;
-  };
-
-  // Function (ahem) Functions
-  // ------------------
-
-  // Reusable constructor function for prototype setting.
-  var ctor = function(){};
-
-  // Create a function bound to a given object (assigning `this`, and arguments,
-  // optionally). Binding with arguments is also known as `curry`.
-  // Delegates to **ECMAScript 5**'s native `Function.bind` if available.
-  // We check for `func.bind` first, to fail fast when `func` is undefined.
-  _.bind = function bind(func, context) {
-    var bound, args;
-    if (func.bind === nativeBind && nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
-    if (!_.isFunction(func)) throw new TypeError;
-    args = slice.call(arguments, 2);
-    return bound = function() {
-      if (!(this instanceof bound)) return func.apply(context, args.concat(slice.call(arguments)));
-      ctor.prototype = func.prototype;
-      var self = new ctor;
-      var result = func.apply(self, args.concat(slice.call(arguments)));
-      if (Object(result) === result) return result;
-      return self;
-    };
-  };
-
-  // Bind all of an object's methods to that object. Useful for ensuring that
-  // all callbacks defined on an object belong to it.
-  _.bindAll = function(obj) {
-    var funcs = slice.call(arguments, 1);
-    if (funcs.length == 0) funcs = _.functions(obj);
-    each(funcs, function(f) { obj[f] = _.bind(obj[f], obj); });
-    return obj;
-  };
-
-  // Memoize an expensive function by storing its results.
-  _.memoize = function(func, hasher) {
-    var memo = {};
-    hasher || (hasher = _.identity);
-    return function() {
-      var key = hasher.apply(this, arguments);
-      return hasOwnProperty.call(memo, key) ? memo[key] : (memo[key] = func.apply(this, arguments));
-    };
-  };
-
-  // Delays a function for the given number of milliseconds, and then calls
-  // it with the arguments supplied.
-  _.delay = function(func, wait) {
-    var args = slice.call(arguments, 2);
-    return setTimeout(function(){ return func.apply(func, args); }, wait);
-  };
-
-  // Defers a function, scheduling it to run after the current call stack has
-  // cleared.
-  _.defer = function(func) {
-    return _.delay.apply(_, [func, 1].concat(slice.call(arguments, 1)));
-  };
-
-  // Returns a function, that, when invoked, will only be triggered at most once
-  // during a given window of time.
-  _.throttle = function(func, wait) {
-    var context, args, timeout, throttling, more;
-    var whenDone = _.debounce(function(){ more = throttling = false; }, wait);
-    return function() {
-      context = this; args = arguments;
-      var later = function() {
-        timeout = null;
-        if (more) func.apply(context, args);
-        whenDone();
-      };
-      if (!timeout) timeout = setTimeout(later, wait);
-      if (throttling) {
-        more = true;
-      } else {
-        func.apply(context, args);
-      }
-      whenDone();
-      throttling = true;
-    };
-  };
-
-  // Returns a function, that, as long as it continues to be invoked, will not
-  // be triggered. The function will be called after it stops being called for
-  // N milliseconds.
-  _.debounce = function(func, wait) {
-    var timeout;
-    return function() {
-      var context = this, args = arguments;
-      var later = function() {
-        timeout = null;
-        func.apply(context, args);
-      };
-      clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
-    };
-  };
-
-  // Returns a function that will be executed at most one time, no matter how
-  // often you call it. Useful for lazy initialization.
-  _.once = function(func) {
-    var ran = false, memo;
-    return function() {
-      if (ran) return memo;
-      ran = true;
-      return memo = func.apply(this, arguments);
-    };
-  };
-
-  // Returns the first function passed as an argument to the second,
-  // allowing you to adjust arguments, run code before and after, and
-  // conditionally execute the original function.
-  _.wrap = function(func, wrapper) {
-    return function() {
-      var args = concat.apply([func], arguments);
-      return wrapper.apply(this, args);
-    };
-  };
-
-  // Returns a function that is the composition of a list of functions, each
-  // consuming the return value of the function that follows.
-  _.compose = function() {
-    var funcs = arguments;
-    return function() {
-      var args = arguments;
-      for (var i = funcs.length - 1; i >= 0; i--) {
-        args = [funcs[i].apply(this, args)];
-      }
-      return args[0];
-    };
-  };
-
-  // Returns a function that will only be executed after being called N times.
-  _.after = function(times, func) {
-    if (times <= 0) return func();
-    return function() {
-      if (--times < 1) { return func.apply(this, arguments); }
-    };
-  };
-
-  // Object Functions
-  // ----------------
-
-  // Retrieve the names of an object's properties.
-  // Delegates to **ECMAScript 5**'s native `Object.keys`
-  _.keys = nativeKeys || function(obj) {
-    if (obj !== Object(obj)) throw new TypeError('Invalid object');
-    var keys = [];
-    for (var key in obj) if (hasOwnProperty.call(obj, key)) keys[keys.length] = key;
-    return keys;
-  };
-
-  // Retrieve the values of an object's properties.
-  _.values = function(obj) {
-    return _.map(obj, _.identity);
-  };
-
-  // Return a sorted list of the function names available on the object.
-  // Aliased as `methods`
-  _.functions = _.methods = function(obj) {
-    var names = [];
-    for (var key in obj) {
-      if (_.isFunction(obj[key])) names.push(key);
-    }
-    return names.sort();
-  };
-
-  // Extend a given object with all the properties in passed-in object(s).
-  _.extend = function(obj) {
-    each(slice.call(arguments, 1), function(source) {
-      for (var prop in source) {
-        if (source[prop] !== void 0) obj[prop] = source[prop];
-      }
-    });
-    return obj;
-  };
-
-  // Fill in a given object with default properties.
-  _.defaults = function(obj) {
-    each(slice.call(arguments, 1), function(source) {
-      for (var prop in source) {
-        if (obj[prop] == null) obj[prop] = source[prop];
-      }
-    });
-    return obj;
-  };
-
-  // Create a (shallow-cloned) duplicate of an object.
-  _.clone = function(obj) {
-    if (!_.isObject(obj)) return obj;
-    return _.isArray(obj) ? obj.slice() : _.extend({}, obj);
-  };
-
-  // Invokes interceptor with the obj, and then returns obj.
-  // The primary purpose of this method is to "tap into" a method chain, in
-  // order to perform operations on intermediate results within the chain.
-  _.tap = function(obj, interceptor) {
-    interceptor(obj);
-    return obj;
-  };
-
-  // Internal recursive comparison function.
-  function eq(a, b, stack) {
-    // Identical objects are equal. `0 === -0`, but they aren't identical.
-    // See the Harmony `egal` proposal: http://wiki.ecmascript.org/doku.php?id=harmony:egal.
-    if (a === b) return a !== 0 || 1 / a == 1 / b;
-    // A strict comparison is necessary because `null == undefined`.
-    if (a == null || b == null) return a === b;
-    // Unwrap any wrapped objects.
-    if (a._chain) a = a._wrapped;
-    if (b._chain) b = b._wrapped;
-    // Invoke a custom `isEqual` method if one is provided.
-    if (a.isEqual && _.isFunction(a.isEqual)) return a.isEqual(b);
-    if (b.isEqual && _.isFunction(b.isEqual)) return b.isEqual(a);
-    // Compare `[[Class]]` names.
-    var className = toString.call(a);
-    if (className != toString.call(b)) return false;
-    switch (className) {
-      // Strings, numbers, dates, and booleans are compared by value.
-      case '[object String]':
-        // Primitives and their corresponding object wrappers are equivalent; thus, `"5"` is
-        // equivalent to `new String("5")`.
-        return a == String(b);
-      case '[object Number]':
-        // `NaN`s are equivalent, but non-reflexive. An `egal` comparison is performed for
-        // other numeric values.
-        return a != +a ? b != +b : (a == 0 ? 1 / a == 1 / b : a == +b);
-      case '[object Date]':
-      case '[object Boolean]':
-        // Coerce dates and booleans to numeric primitive values. Dates are compared by their
-        // millisecond representations. Note that invalid dates with millisecond representations
-        // of `NaN` are not equivalent.
-        return +a == +b;
-      // RegExps are compared by their source patterns and flags.
-      case '[object RegExp]':
-        return a.source == b.source &&
-               a.global == b.global &&
-               a.multiline == b.multiline &&
-               a.ignoreCase == b.ignoreCase;
-    }
-    if (typeof a != 'object' || typeof b != 'object') return false;
-    // Assume equality for cyclic structures. The algorithm for detecting cyclic
-    // structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
-    var length = stack.length;
-    while (length--) {
-      // Linear search. Performance is inversely proportional to the number of
-      // unique nested structures.
-      if (stack[length] == a) return true;
-    }
-    // Add the first object to the stack of traversed objects.
-    stack.push(a);
-    var size = 0, result = true;
-    // Recursively compare objects and arrays.
-    if (className == '[object Array]') {
-      // Compare array lengths to determine if a deep comparison is necessary.
-      size = a.length;
-      result = size == b.length;
-      if (result) {
-        // Deep compare the contents, ignoring non-numeric properties.
-        while (size--) {
-          // Ensure commutative equality for sparse arrays.
-          if (!(result = size in a == size in b && eq(a[size], b[size], stack))) break;
-        }
-      }
-    } else {
-      // Objects with different constructors are not equivalent.
-      if ('constructor' in a != 'constructor' in b || a.constructor != b.constructor) return false;
-      // Deep compare objects.
-      for (var key in a) {
-        if (hasOwnProperty.call(a, key)) {
-          // Count the expected number of properties.
-          size++;
-          // Deep compare each member.
-          if (!(result = hasOwnProperty.call(b, key) && eq(a[key], b[key], stack))) break;
-        }
-      }
-      // Ensure that both objects contain the same number of properties.
-      if (result) {
-        for (key in b) {
-          if (hasOwnProperty.call(b, key) && !(size--)) break;
-        }
-        result = !size;
-      }
-    }
-    // Remove the first object from the stack of traversed objects.
-    stack.pop();
-    return result;
-  }
-
-  // Perform a deep comparison to check if two objects are equal.
-  _.isEqual = function(a, b) {
-    return eq(a, b, []);
-  };
-
-  // Is a given array, string, or object empty?
-  // An "empty" object has no enumerable own-properties.
-  _.isEmpty = function(obj) {
-    if (_.isArray(obj) || _.isString(obj)) return obj.length === 0;
-    for (var key in obj) if (hasOwnProperty.call(obj, key)) return false;
-    return true;
-  };
-
-  // Is a given value a DOM element?
-  _.isElement = function(obj) {
-    return !!(obj && obj.nodeType == 1);
-  };
-
-  // Is a given value an array?
-  // Delegates to ECMA5's native Array.isArray
-  _.isArray = nativeIsArray || function(obj) {
-    return toString.call(obj) == '[object Array]';
-  };
-
-  // Is a given variable an object?
-  _.isObject = function(obj) {
-    return obj === Object(obj);
-  };
-
-  // Is a given variable an arguments object?
-  _.isArguments = function(obj) {
-    return toString.call(obj) == '[object Arguments]';
-  };
-  if (!_.isArguments(arguments)) {
-    _.isArguments = function(obj) {
-      return !!(obj && hasOwnProperty.call(obj, 'callee'));
-    };
-  }
-
-  // Is a given value a function?
-  _.isFunction = function(obj) {
-    return toString.call(obj) == '[object Function]';
-  };
-
-  // Is a given value a string?
-  _.isString = function(obj) {
-    return toString.call(obj) == '[object String]';
-  };
-
-  // Is a given value a number?
-  _.isNumber = function(obj) {
-    return toString.call(obj) == '[object Number]';
-  };
-
-  // Is the given value `NaN`?
-  _.isNaN = function(obj) {
-    // `NaN` is the only value for which `===` is not reflexive.
-    return obj !== obj;
-  };
-
-  // Is a given value a boolean?
-  _.isBoolean = function(obj) {
-    return obj === true || obj === false || toString.call(obj) == '[object Boolean]';
-  };
-
-  // Is a given value a date?
-  _.isDate = function(obj) {
-    return toString.call(obj) == '[object Date]';
-  };
-
-  // Is the given value a regular expression?
-  _.isRegExp = function(obj) {
-    return toString.call(obj) == '[object RegExp]';
-  };
-
-  // Is a given value equal to null?
-  _.isNull = function(obj) {
-    return obj === null;
-  };
-
-  // Is a given variable undefined?
-  _.isUndefined = function(obj) {
-    return obj === void 0;
-  };
-
-  // Utility Functions
-  // -----------------
-
-  // Run Underscore.js in *noConflict* mode, returning the `_` variable to its
-  // previous owner. Returns a reference to the Underscore object.
-  _.noConflict = function() {
-    root._ = previousUnderscore;
-    return this;
-  };
-
-  // Keep the identity function around for default iterators.
-  _.identity = function(value) {
-    return value;
-  };
-
-  // Run a function **n** times.
-  _.times = function (n, iterator, context) {
-    for (var i = 0; i < n; i++) iterator.call(context, i);
-  };
-
-  // Escape a string for HTML interpolation.
-  _.escape = function(string) {
-    return (''+string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g,'&#x2F;');
-  };
-
-  // Add your own custom functions to the Underscore object, ensuring that
-  // they're correctly added to the OOP wrapper as well.
-  _.mixin = function(obj) {
-    each(_.functions(obj), function(name){
-      addToWrapper(name, _[name] = obj[name]);
-    });
-  };
-
-  // Generate a unique integer id (unique within the entire client session).
-  // Useful for temporary DOM ids.
-  var idCounter = 0;
-  _.uniqueId = function(prefix) {
-    var id = idCounter++;
-    return prefix ? prefix + id : id;
-  };
-
-  // By default, Underscore uses ERB-style template delimiters, change the
-  // following template settings to use alternative delimiters.
-  _.templateSettings = {
-    evaluate    : /<%([\s\S]+?)%>/g,
-    interpolate : /<%=([\s\S]+?)%>/g,
-    escape      : /<%-([\s\S]+?)%>/g
-  };
-
-  // JavaScript micro-templating, similar to John Resig's implementation.
-  // Underscore templating handles arbitrary delimiters, preserves whitespace,
-  // and correctly escapes quotes within interpolated code.
-  _.template = function(str, data) {
-    var c  = _.templateSettings;
-    var tmpl = 'var __p=[],print=function(){__p.push.apply(__p,arguments);};' +
-      'with(obj||{}){__p.push(\'' +
-      str.replace(/\\/g, '\\\\')
-         .replace(/'/g, "\\'")
-         .replace(c.escape, function(match, code) {
-           return "',_.escape(" + code.replace(/\\'/g, "'") + "),'";
-         })
-         .replace(c.interpolate, function(match, code) {
-           return "'," + code.replace(/\\'/g, "'") + ",'";
-         })
-         .replace(c.evaluate || null, function(match, code) {
-           return "');" + code.replace(/\\'/g, "'")
-                              .replace(/[\r\n\t]/g, ' ') + ";__p.push('";
-         })
-         .replace(/\r/g, '\\r')
-         .replace(/\n/g, '\\n')
-         .replace(/\t/g, '\\t')
-         + "');}return __p.join('');";
-    var func = new Function('obj', '_', tmpl);
-    if (data) return func(data, _);
-    return function(data) {
-      return func.call(this, data, _);
-    };
-  };
-
-  // The OOP Wrapper
-  // ---------------
-
-  // If Underscore is called as a function, it returns a wrapped object that
-  // can be used OO-style. This wrapper holds altered versions of all the
-  // underscore functions. Wrapped objects may be chained.
-  var wrapper = function(obj) { this._wrapped = obj; };
-
-  // Expose `wrapper.prototype` as `_.prototype`
-  _.prototype = wrapper.prototype;
-
-  // Helper function to continue chaining intermediate results.
-  var result = function(obj, chain) {
-    return chain ? _(obj).chain() : obj;
-  };
-
-  // A method to easily add functions to the OOP wrapper.
-  var addToWrapper = function(name, func) {
-    wrapper.prototype[name] = function() {
-      var args = slice.call(arguments);
-      unshift.call(args, this._wrapped);
-      return result(func.apply(_, args), this._chain);
-    };
-  };
-
-  // Add all of the Underscore functions to the wrapper object.
-  _.mixin(_);
-
-  // Add all mutator Array functions to the wrapper.
-  each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
-    var method = ArrayProto[name];
-    wrapper.prototype[name] = function() {
-      method.apply(this._wrapped, arguments);
-      return result(this._wrapped, this._chain);
-    };
-  });
-
-  // Add all accessor Array functions to the wrapper.
-  each(['concat', 'join', 'slice'], function(name) {
-    var method = ArrayProto[name];
-    wrapper.prototype[name] = function() {
-      return result(method.apply(this._wrapped, arguments), this._chain);
-    };
-  });
-
-  // Start chaining a wrapped Underscore object.
-  wrapper.prototype.chain = function() {
-    this._chain = true;
-    return this;
-  };
-
-  // Extracts the result from a wrapped and chained object.
-  wrapper.prototype.value = function() {
-    return this._wrapped;
-  };
-
-}).call(this);
-
-define('render/rendergraph',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var RenderGraph = function() {};
-  
-  RenderGraph.prototype = {
-    items: [],
-    
-    viewport: {
-      left: 0,
-      right: 0,
-      top: 0,
-      bottom: 0,
-    },
-    
-    updateViewport: function(left, right, top, bottom) {
-      this.viewport = {
-        left: left,
-        right: right,
-        top: top,
-        bottom: bottom
-      };
-    },
-    
-    add: function(item) {
-      this.items.push(item);
-    },
-    
-    remove: function(item) {
-      this.items = _.without(this.items, [item]);
-    },    
-    
-    clear: function() {
-      this.items = [];
-    },
-        
-    uploadTransforms: function(context) {
-      this.applyScale(context);
-      this.applyTranslate(context);
-    },
-    
-    applyTranslate: function(context) {
-      context.translate(-parseInt(this.viewport.left), - parseInt(this.viewport.top));
-    },
-    
-    applyScale: function(context) {
-      var canvas = context.canvas;
-      var canvasWidth = canvas.width;
-      var canvasHeight = canvas.height;
-      
-      var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
-      var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
-      
-      context.scale(parseInt(scalex), parseInt(scaley));
-    },
-    
-    pass: function(callback) {
-      var self = this;
-      _(this.items).chain()
-       .filter(function(item) { return item.visible(self.viewport); })
-       .each(callback);
-    },
-  };
-  
-  return RenderGraph;
-});
-
-define('render/canvasrender',['require'],function(require) {
-
-  var CanvasRender = function(context) {
-    this.context = context;
-  };
-  CanvasRender.prototype = {
-    clear: function() {
-      this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
-    },
-    draw: function(graph) {
-      var self = this;
-      
-      this.context.save();
-      graph.uploadTransforms(this.context);
-      
-//      console.log('hi');
-      graph.pass(function(item) {
-    //    console.log('hey');
-        item.render(self.context);
-      });
-     
-     this.context.restore();    
-    }  
-  };
-  
-  return CanvasRender;
-});
-
-define('shared/eventcontainer',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var EventContainer = function(defaultContext) {
-    this.handlers = [];
-    this.defaultContext = defaultContext;
-  }; 
-  
-  EventContainer.prototype = {
-    raise: function(source, data) {
-     for(var i = 0; i < this.handlers.length; i++) {
-        var handler = this.handlers[i];
-        handler.method.call(handler.context || this.defaultContext, data, source);   
-     }
-    },
-    add: function(method, context) {
-      this.handlers.push({
-        method: method,
-        context: context      
-      });
-    },
-    remove: function(method, context) {
-      this.handlers = _(this.handlers).filter(function(item) {
-        return item.method !== method || item.context !== context;
-      });
-    }
-  };
-  
-  return EventContainer;
-});
-
-define('shared/eventable',['require','./eventcontainer'],function(require) {
-  var EventContainer = require('./eventcontainer');
-  
-  var Eventable = function() {
-    this.eventListeners = {};
-    this.allContainer = new EventContainer(this);
-  };
-  
-  Eventable.prototype = {
-    on: function(eventName, callback, context) {
-      this.eventContainerFor(eventName).add(callback, context);
-    },
-    
-    off: function(eventName, callback, context) {
-      this.eventContainerFor(eventName).remove(callback, context);
-    },
-
-    onAny: function(callback, context) {
-      this.allContainer.add(callback, context);
-    },
-
-    raise: function(eventName, data) {
-      var container = this.eventListeners[eventName];
-
-      if(container)
-        container.raise(this, data);
-
-      this.allContainer.raise(this, {
-        event: eventName,
-        data: data
-      });
-    },
-
-    eventContainerFor: function(eventName) {
-      var container = this.eventListeners[eventName];
-      if(!container) {
-        container =  new EventContainer(this);
-        this.eventListeners[eventName] = container;
-      }
-      return container;
-    }
-  };
-  
-  return Eventable;
-
-});
-
-define('resources/texture',['require'],function(require) {
-  var Texture = function(factory, path) {
-    this.img = null;
-    this.path = path;
-    this.factory = factory;
-    this.loaded = false;
-  };
-  
-  Texture.prototype = {
-    get: function() {
-      return this.img;
-    },
-    
-    preload: function(callback) {
-     var data = this.factory.getData(this.path);
-     this.img = new Image();
-     this.img.onload = callback;
-     this.img.src = "data:image/png;base64," + data;
-     this.loaded = true;
-    },
-  };
-  
-  return Texture;
-});
-
-define('scene/camera',['require','glmatrix'],function(require) {
-  var vec3 = require('glmatrix').vec3;
-
-  var Camera = function(aspectRatio, fieldOfView) {
-    this.aspectRatio = aspectRatio;
-    this.fieldOfView = fieldOfView;
-    this.centre = vec3.create([0,0,0]);
-    this.distance = 512.0;
-    
-    this.width = 0;
-    this.height = 0;
-  };
-  
-  Camera.prototype = {
-    lookAt: function(x, y, z) {
-      this.centre[0] = x || 0;
-      this.centre[1] = y || 0;
-      this.centre[2] = z || 0;
-    },
-    updateViewport: function(graph) {
-      this.calculateDimensions();
-      
-      var left = Math.max(this.centre[0] - this.width / 2.0, 0);
-      var top = Math.max(this.centre[1] - this.height / 2.0, 0);
-      var right = left + this.width;
-      var bottom = top + this.height;      
-      
-      graph.updateViewport(left, right, top, bottom);
-    
-    },
-    calculateDimensions: function() {
-      this.width = this.distance * Math.tan(this.fieldOfView);
-      this.height = this.width / this.aspectRatio;
-    }
-  };
-  
-  return Camera; 
-});
-
-define('entities/components/renderable',['require','../../render/instance'],function(require) {
-
-  var Instance = require('../../render/instance');
-
-  var Renderable = function(model) {
-    this.scene = null;
-    this.instance = null;
-    this.model = model;
-  };
-  
-  Renderable.prototype = {    
-    onSizeChanged: function(data) {
-      this.instance.scale(data.x, data.y, data.z);
-    },    
-    
-    onPositionChanged: function(data) {
-      this.instance.translate(data.x, data.y, data.z);
-    },
-       
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-      this.instance = new Instance(this.model);
-      this.scene.graph.add(this.instance);
-    },    
-    
-    onRemovedFromScene: function() {
-      this.scene.graph.remove(this.instance);
-    }
-  };  
-  
-  return Renderable;
-  
-});
-
-define('entities/components/tangible',['require','glmatrix'],function(require) {
-
-  var vec3 = require('glmatrix').vec3;
-
-  var Tangible = function(x, y, width, height) {
-    this.position = vec3.create([x,y,0]);
-    this.size = vec3.create([width, height,0]);
-  };
-  
-  Tangible.prototype = {
-  
-    moveTo: function(x, y, z) {
-      this.parent.raise('PositionChanged', {
-        x: x || 0,
-        y: y || 0,
-        z: z || 0
-      });
-    },
-    
-    scaleTo: function(x, y, z) {
-      this.parent.raise('SizeChanged', {
-          x: x || 0.0,
-          y: y || 0.0,
-          z: z || 0.0
-        });
-    },
-    
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-      this.moveTo(this.position[0], this.position[1], this.position[2]);
-      this.scaleTo(this.size[0], this.size[1], this.size[2]);
-    },   
-    
-    onPositionChanged: function(data) {
-      this.position[0] = data.x;
-      this.position[1] = data.y;
-      this.position[2] = data.z;
-    },
-    
-    onSizeChanged: function(data) {
-      this.size[0] = data.x;
-      this.size[1] = data.y;
-      this.size[2] = data.z;
-    }
-  };
-  
-  return Tangible;
-});
-
-define('entities/components/directable',['require','glmatrix'],function(require) {
-
-  var vec3 = require('glmatrix').vec3;
-
-  var Directable = function(speed) {
-    this.position = vec3.create([0,0,0]);
-    this.direction = vec3.create([0,0,0]);
-    this.destination = vec3.create([0,0,0]);
-    this.buffer = vec3.create([0,0,0]);
-    this.speed = speed;
-    this.moving = false;
-  };
-  
-  Directable.prototype = {    
-    updateDestination: function(x, y, z) {
-      this.parent.raise('DestinationChanged', {
-        x: x || 0,
-        y: y || 0,
-        z: z || 0
-      });
-    },
-    onPositionChanged: function(data) {
-      this.position[0] = data.x;
-      this.position[1] = data.y;
-      this.position[2] = data.z;
-    },
-    onDestinationChanged: function(data) {
-      this.destination[0] = data.x;
-      this.destination[1] = data.y;
-      this.destination[2] = data.z;
-      this.calculateNewDirection();
-      this.moving = true;
-    },
-    calculateNewDirection: function() {
-      vec3.subtract(this.destination, this.position, this.direction);
-      vec3.normalize(this.direction);
-    },
-    onTick: function() {
-      if(this.moving) {
-        this.moveTowardsDestination();
-        this.determineIfDestinationReached()
-      }
-      this.parent.raise('Debug', 'Player: ' + [this.position[0], this.position[1], this.position[2]]);
-    },
-    determineIfDestinationReached: function() {
-      vec3.subtract(this.destination, this.position, this.buffer);
-      var length = vec3.length(this.buffer);
-      if(length < 5) {
-        this.moving = false;
-      }
-    },
-    moveTowardsDestination: function() {
-      this.parent.dispatch('moveTo', [
-        this.position[0] + this.direction[0] * this.speed,
-        this.position[1] + this.direction[1] * this.speed,
-        this.position[2] + this.direction[2] * this.speed
-      ]);
-    }
-  };  
-  
-  return Directable;
-  
-});
-
-define('entities/components/trackable',['require'],function(require) {
-
-  var Trackable = function() {
-    this.scene = null;
-  };
-  
-  Trackable.prototype = {    
-    updateCamera: function(data) {
-      this.scene.camera.lookAt(data.x, data.y, data.z);
-    },
-    onPositionChanged: function(data) {
-      if(this.scene)
-        this.updateCamera(data);
-    },
-       
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-    }
-  };  
-  
-  return Trackable;
-  
-});
-
-define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
-  var _ = require('underscore');
-  var Eventable = require('../shared/eventable');
-  
-  var ComponentBag = function() {
-    Eventable.call(this);
-   
-    this.components = [];
-    this.eventHandlers = {};
-    this.commandHandlers = {};
-  };
-  
-  ComponentBag.prototype = {
-     
-    attach: function(component) {
-      this.components.push(component);
-      this.registerHandlers(component);
-      component.parent = this;
-    },
-    
-    registerHandlers: function(component) {
-      for(var key in component) {
-        var item = component[key];
-        if(item && item.call)
-          this.tryRegisterHandler(component, key, item);
-      }
-    },
-    
-    tryRegisterHandler: function(component, key, handler) {
-      if(key.indexOf('on') === 0)
-        this.registerEventHandler(component, key, handler);
-      else
-        this.registerCommandHandler(component, key, handler);
-    },
-    
-    registerEventHandler: function(component, key, handler) {
-      this.on(key.substr(2), handler, component);
-    },
-    
-    registerCommandHandler: function(component, key, handler) {      
-      this.commandHandlers[key] = {
-        component: component,
-        method: handler
-      };
-    },
-        
-    dispatch: function(command, data) {
-      var handler = this.findCommandHandler(command);
-      if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
-      handler.method.apply(handler.component, data); 
-    },
-    
-    findCommandHandler: function(key) {
-      return this.commandHandlers[key];
-    }
-  };
-  _.extend(ComponentBag.prototype, Eventable.prototype);
-  return ComponentBag;
-});
-
-define('scene/entity',['require','./componentbag','underscore'],function(require) {
-
-  var ComponentBag = require('./componentbag');
-  var _ = require('underscore');
-
-  var Entity = function(id) {
-    ComponentBag.call(this);    
-    this.id = id;
-    
-    this.onAny(this.propogateEventToScene);
-  };
-  
-  Entity.prototype = {
-    setScene: function(scene) {
-      this.scene = scene;
-      if(scene)
-        this.raise('AddedToScene', scene);
-      else
-        this.raise('RemovedFromScene');
-    },
-    tick: function() {
-      this.raise('Tick');
-    },
-    propogateEventToScene: function(data) {
-      if(this.scene)
-        this.scene.broadcast(data.event, data.data);
-    }
-  };
-  _.extend(Entity.prototype, ComponentBag.prototype);
- 
-  return Entity;
-  
-});
-
-define('entities/character',['require','underscore','./components/renderable','./components/tangible','./components/directable','./components/trackable','../scene/entity'],function(require) {
-
-  var _ = require('underscore');
-  
-  var Renderable = require('./components/renderable');
-  var Tangible = require('./components/tangible');
-  var Directable = require('./components/directable');
-  var Trackable = require('./components/trackable');
-  var Entity = require('../scene/entity');
-
-  var Character = function(id,  x ,y, width, height, model) {
-    Entity.call(this, id);
-    
-    this.attach(new Renderable(model));
-    this.attach(new Tangible(x, y, width, height));
-    this.attach(new Directable(3.0));
-    this.attach(new Trackable());
-  };  
-  Character.prototype = {};  
-  _.extend(Character.prototype, Entity.prototype);
-  
-  return Character;
-});
-
-define('scene/scene',['require','underscore','../render/rendergraph','../shared/eventable'],function(require) {
-
-  var _ = require('underscore');
-  var RenderGraph = require('../render/rendergraph');
-  var Eventable = require('../shared/eventable');
-  
-  var Scene = function(resources, renderer, camera) {
-    Eventable.call(this);
-    this.entities = [];
-    this.entitiesById = {};
-    this.camera = camera;
-    this.renderer = renderer;
-    this.graph = new RenderGraph();
-    this.resources = resources;
-  };
-  
-  Scene.prototype = {
-    tick: function() {
-      _(this.entities).each(function(entity){
-        if(entity.tick) 
-          entity.tick();
-      });
-    },
-    render: function() {
-      this.camera.updateViewport(this.graph);
-      this.renderer.clear();
-      this.renderer.draw(this.graph);
-    },
-    add: function(entity) {
-      this.entities.push(entity);
-      this.entitiesById[entity.id] = entity;
-      entity.setScene(this);
-    },
-    remove: function(entity) {
-      this.entities = _(this.entities).without(entity);
-      delete this.entities[entity.id];
-      entity.setScene(null);
-    },
-    dispatch: function(id, command, data) {
-      var entity = this.entitiesById[id];
-      entity.dispatch(command, data);
-    },
-    broadcast: function(event, data) {
-      this.raise(event, data);
-    }
-  };
-  _.extend(Scene.prototype, Eventable.prototype);
-  
-  return Scene;  
-});
-
-define('entities/controller',['require','underscore','../scene/entity'],function(require) {
-
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-
-  var Controller = function() {
-    Entity.call(this, "controller");   
-    this.scene = null;
-        
-    this.on('AddedToScene', this.hookSceneEvents);
-  };  
-  Controller.prototype = {
-    hookSceneEvents: function(scene) {
-      scene.on('PrimaryAction', this.issueMovementCommandToPlayer, this);
-    },
-    
-    issueMovementCommandToPlayer: function(data) {
-      this.scene.dispatch('player', 'updateDestination', [data.x, data.y]);
-    }
-  };  
-  _.extend(Controller.prototype, Entity.prototype);
-  
-  return Controller;
-});
-
-define('static/map',['require','../render/material','../render/quad','../render/instance'],function(require) {
-
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  var Instance = require('../render/instance');
-
-  var Map = function(width, height, tilewidth, tileheight) {
-    this.width = width;
-    this.height = height;
-    this.tilewidth = tilewidth;
-    this.tileheight = tileheight;
-    this.tileCountWidth = parseInt(this.width / this.tileheight);
-    this.tileCountHeight = parseInt(this.height / this.tileheight);
-    this.tiles = new Array(this.tileCountWidth * this.tileCountHeight);
-    this.templates = {};
-  };
-  
-  Map.prototype = {
-    populateGraph: function(graph) {             
-      graph.clear();
-      
-      for(var x = 0; x < this.tileCountWidth; x++) {
-        for(var y = 0; y < this.tileCountHeight ; y++) {
-          var index = this.index(x, y);
-          for(var i = 0; i < this.tiles[index].length ; i++) {
-            graph.add(this.tiles[index][i]);            
-          }          
-        }
-      }
-    },
-    
-    generateRandom: function(resources) {
-
-      var treeMaterial = new Material();
-      treeMaterial.diffuseTexture = resources.get('/main/tree.png');
-      this.models = {};
-      this.models.tree = new Quad(treeMaterial);
-      
-      for(var x = 0; x < this.tileCountWidth; x++) {
-        for(var y = 0; y < this.tileCountHeight ; y++) {
-          var index = this.index(x,y);
-          var tilex = x * this.tilewidth;
-          var tiley = y * this.tileheight;
-          this.tiles[index] = [];
-          
-          var treeCount = Math.random() * 5;
-          
-          for(var i = 0 ; i < treeCount; i++) {
-            var xloc = Math.random() * this.tilewidth;
-            var yloc = Math.random() * this.tileheight;
-            
-            var instance = new Instance(this.models.tree);
-            instance.scale(25,25, 0);
-            instance.translate(xloc + tilex, yloc + tiley, 0);
-            
- 
-            this.tiles[index].push(instance);
-          }
-        }     
-      }    
-    },
-    index: function(x, y) {
-      return x + y * this.tileCountWidth;
-    }
-  };
-  
-  return Map;
-
-});
-
-define('static/scenery',['require','underscore','../scene/entity','./map','../render/rendergraph','../render/canvasrender'],function(require) {
-
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-  var Map = require('./map');
-  var RenderGraph = require('../render/rendergraph');
-  var CanvasRender = require('../render/canvasrender');
-
-  var Scenery = function(renderWidth, renderHeight, tileWidth, tileHeight) {
-    Entity.call(this, "scenery");
-    
-    this.tilewidth = tileWidth;
-    this.tileheight = tileHeight;
-    this.scene = null;
-    this.map = null;
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = renderWidth + tileWidth;
-    this.canvas.height = renderHeight + tileHeight;
-    this.context = this.canvas.getContext('2d');
-    this.graph = new RenderGraph();
-    this.renderer = new CanvasRender(this.context);
-    
-    this.tileleft = -1;
-    this.tiletop = -1;
-    this.tilebottom = -1;
-    this.tileright = -1;
-    
-    this.on('AddedToScene', this.onAddedToScene);
-  };
-  
-  Scenery.prototype = {
-    loadMap: function(map) {
-      this.map = map;
-    },
-    visible: function() { 
-      return true; 
-    },
-    render: function(context) {   
-      if(!this.map) return;
-      this.evaluateStatus();
-      
-      var rx = this.scene.graph.viewport.left % this.tilewidth;
-      var ry = this.scene.graph.viewport.top % this.tileheight;
-      var dx = 0;
-      var dy = 0;
-      
-      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
-                  
-      context.drawImage(this.context.canvas, 
-        rx, ry, 
-      context.canvas.width, context.canvas.height, 
-        rx + this.tileleft * this.tilewidth, ry + this.tiletop * this.tileheight, 
-      context.canvas.width, context.canvas.height); 
-    },
-    onAddedToScene: function(scene) {
-      this.scene = scene; 
-      this.scene.graph.add(this);   
-    },
-    evaluateStatus: function() {
-      
-      var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
-      var tiletop = parseInt(this.scene.graph.viewport.top / this.tileheight);
-      var tileright = parseInt(this.scene.graph.viewport.right / this.tilewidth) + 1;
-      var tilebottom = parseInt(this.scene.graph.viewport.bottom / this.tileheight) + 1;
-      
-      tileleft = Math.max(tileleft, 0);
-      tiletop = Math.max(tiletop, 0);
-      tileright = Math.min(tileright, this.map.tileCountWidth-1);
-      tilebottom = Math.min(tilebottom, this.map.tileCountHeight-1);
-      
-      if(tileleft !== this.tileleft || 
-         tiletop  !== this.tiletop || 
-         tileright !== this.tileright ||
-         tilebottom !== this.tilebottom) {
-         
-        this.tileleft = tileleft;
-        this.tileright = tileright;
-        this.tiletop = tiletop;
-        this.tilebottom = tilebottom;
-        this.redrawBackground();
-      }
-    },
-    
-    redrawBackground: function() { 
-     
-      this.graph.updateViewport(
-          this.tileleft * this.tilewidth,
-          this.tileright * this.tilewidth,
-          this.tiletop * this.tileheight,
-          this.tilebottom * this.tileheight);         
-        
-      this.map.populateGraph(this.graph);      
-      this.renderer.clear();
-      this.renderer.draw(this.graph);      
-    }
-  };
-  
-  _.extend(Scenery.prototype, Entity.prototype);
-  
-  return Scenery;
-
-});
-
-define('entities/debug',['require','underscore','../scene/entity'],function(require) {
-
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-
-  var Debug = function() {
-    Entity.call(this, "debug");   
-    this.scene = null;
-        
-    this.on('Tick', this.clearDebug);
-    this.on('AddedToScene', this.hookSceneEvents);
-  };  
-  Debug.prototype = {
-    hookSceneEvents: function(scene) {
-      scene.on('Debug', this.addDebugMessage, this);
-    },
-    clearDebug: function() {
-      $('#debug').html('');
-    },
-    addDebugMessage: function(data) {
-       var msg = $('<p/>');
-       msg.text(data.toString());
-       $('#debug').append(msg);
-    }
-  };  
-  _.extend(Debug.prototype, Entity.prototype);
-  
-  return Debug;
-});
-
 /*!
  * jQuery JavaScript Library v1.7.1
  * http://jquery.com/
@@ -12999,6 +9266,34 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 
 })( window );
 
+define('render/canvasrender',['require'],function(require) {
+
+  var CanvasRender = function(context) {
+    this.context = context;
+  };
+  CanvasRender.prototype = {
+    clear: function() {
+      this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
+    },
+    draw: function(graph) {
+      var self = this;
+      
+      this.context.save();
+      graph.uploadTransforms(this.context);
+      
+//      console.log('hi');
+      graph.pass(function(item) {
+    //    console.log('hey');
+        item.render(self.context);
+      });
+     
+     this.context.restore();    
+    }  
+  };
+  
+  return CanvasRender;
+});
+
 define('resources/package',['require','jquery'],function(require) {
   var $ = require('jquery');
   
@@ -13030,6 +9325,1091 @@ define('resources/package',['require','jquery'],function(require) {
   
   return Package;    
 
+});
+
+//     Underscore.js 1.2.3
+//     (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
+//     Underscore is freely distributable under the MIT license.
+//     Portions of Underscore are inspired or borrowed from Prototype,
+//     Oliver Steele's Functional, and John Resig's Micro-Templating.
+//     For all details and documentation:
+//     http://documentcloud.github.com/underscore
+
+(function() {
+
+  // Baseline setup
+  // --------------
+
+  // Establish the root object, `window` in the browser, or `global` on the server.
+  var root = this;
+
+  // Save the previous value of the `_` variable.
+  var previousUnderscore = root._;
+
+  // Establish the object that gets returned to break out of a loop iteration.
+  var breaker = {};
+
+  // Save bytes in the minified (but not gzipped) version:
+  var ArrayProto = Array.prototype, ObjProto = Object.prototype, FuncProto = Function.prototype;
+
+  // Create quick reference variables for speed access to core prototypes.
+  var slice            = ArrayProto.slice,
+      concat           = ArrayProto.concat,
+      unshift          = ArrayProto.unshift,
+      toString         = ObjProto.toString,
+      hasOwnProperty   = ObjProto.hasOwnProperty;
+
+  // All **ECMAScript 5** native function implementations that we hope to use
+  // are declared here.
+  var
+    nativeForEach      = ArrayProto.forEach,
+    nativeMap          = ArrayProto.map,
+    nativeReduce       = ArrayProto.reduce,
+    nativeReduceRight  = ArrayProto.reduceRight,
+    nativeFilter       = ArrayProto.filter,
+    nativeEvery        = ArrayProto.every,
+    nativeSome         = ArrayProto.some,
+    nativeIndexOf      = ArrayProto.indexOf,
+    nativeLastIndexOf  = ArrayProto.lastIndexOf,
+    nativeIsArray      = Array.isArray,
+    nativeKeys         = Object.keys,
+    nativeBind         = FuncProto.bind;
+
+  // Create a safe reference to the Underscore object for use below.
+  var _ = function(obj) { return new wrapper(obj); };
+
+  // Export the Underscore object for **Node.js** and **"CommonJS"**, with
+  // backwards-compatibility for the old `require()` API. If we're not in
+  // CommonJS, add `_` to the global object.
+  if (typeof exports !== 'undefined') {
+    if (typeof module !== 'undefined' && module.exports) {
+      exports = module.exports = _;
+    }
+    exports._ = _;
+  } else if (typeof define === 'function' && define.amd) {
+    // Register as a named module with AMD.
+    define('underscore',[], function() {
+      return _;
+    });
+  } else {
+    // Exported as a string, for Closure Compiler "advanced" mode.
+    root['_'] = _;
+  }
+
+  // Current version.
+  _.VERSION = '1.2.3';
+
+  // Collection Functions
+  // --------------------
+
+  // The cornerstone, an `each` implementation, aka `forEach`.
+  // Handles objects with the built-in `forEach`, arrays, and raw objects.
+  // Delegates to **ECMAScript 5**'s native `forEach` if available.
+  var each = _.each = _.forEach = function(obj, iterator, context) {
+    if (obj == null) return;
+    if (nativeForEach && obj.forEach === nativeForEach) {
+      obj.forEach(iterator, context);
+    } else if (obj.length === +obj.length) {
+      for (var i = 0, l = obj.length; i < l; i++) {
+        if (i in obj && iterator.call(context, obj[i], i, obj) === breaker) return;
+      }
+    } else {
+      for (var key in obj) {
+        if (hasOwnProperty.call(obj, key)) {
+          if (iterator.call(context, obj[key], key, obj) === breaker) return;
+        }
+      }
+    }
+  };
+
+  // Return the results of applying the iterator to each element.
+  // Delegates to **ECMAScript 5**'s native `map` if available.
+  _.map = function(obj, iterator, context) {
+    var results = [];
+    if (obj == null) return results;
+    if (nativeMap && obj.map === nativeMap) return obj.map(iterator, context);
+    each(obj, function(value, index, list) {
+      results[results.length] = iterator.call(context, value, index, list);
+    });
+    return results;
+  };
+
+  // **Reduce** builds up a single result from a list of values, aka `inject`,
+  // or `foldl`. Delegates to **ECMAScript 5**'s native `reduce` if available.
+  _.reduce = _.foldl = _.inject = function(obj, iterator, memo, context) {
+    var initial = arguments.length > 2;
+    if (obj == null) obj = [];
+    if (nativeReduce && obj.reduce === nativeReduce) {
+      if (context) iterator = _.bind(iterator, context);
+      return initial ? obj.reduce(iterator, memo) : obj.reduce(iterator);
+    }
+    each(obj, function(value, index, list) {
+      if (!initial) {
+        memo = value;
+        initial = true;
+      } else {
+        memo = iterator.call(context, memo, value, index, list);
+      }
+    });
+    if (!initial) throw new TypeError('Reduce of empty array with no initial value');
+    return memo;
+  };
+
+  // The right-associative version of reduce, also known as `foldr`.
+  // Delegates to **ECMAScript 5**'s native `reduceRight` if available.
+  _.reduceRight = _.foldr = function(obj, iterator, memo, context) {
+    var initial = arguments.length > 2;
+    if (obj == null) obj = [];
+    if (nativeReduceRight && obj.reduceRight === nativeReduceRight) {
+      if (context) iterator = _.bind(iterator, context);
+      return initial ? obj.reduceRight(iterator, memo) : obj.reduceRight(iterator);
+    }
+    var reversed = _.toArray(obj).reverse();
+    if (context && !initial) iterator = _.bind(iterator, context);
+    return initial ? _.reduce(reversed, iterator, memo, context) : _.reduce(reversed, iterator);
+  };
+
+  // Return the first value which passes a truth test. Aliased as `detect`.
+  _.find = _.detect = function(obj, iterator, context) {
+    var result;
+    any(obj, function(value, index, list) {
+      if (iterator.call(context, value, index, list)) {
+        result = value;
+        return true;
+      }
+    });
+    return result;
+  };
+
+  // Return all the elements that pass a truth test.
+  // Delegates to **ECMAScript 5**'s native `filter` if available.
+  // Aliased as `select`.
+  _.filter = _.select = function(obj, iterator, context) {
+    var results = [];
+    if (obj == null) return results;
+    if (nativeFilter && obj.filter === nativeFilter) return obj.filter(iterator, context);
+    each(obj, function(value, index, list) {
+      if (iterator.call(context, value, index, list)) results[results.length] = value;
+    });
+    return results;
+  };
+
+  // Return all the elements for which a truth test fails.
+  _.reject = function(obj, iterator, context) {
+    var results = [];
+    if (obj == null) return results;
+    each(obj, function(value, index, list) {
+      if (!iterator.call(context, value, index, list)) results[results.length] = value;
+    });
+    return results;
+  };
+
+  // Determine whether all of the elements match a truth test.
+  // Delegates to **ECMAScript 5**'s native `every` if available.
+  // Aliased as `all`.
+  _.every = _.all = function(obj, iterator, context) {
+    var result = true;
+    if (obj == null) return result;
+    if (nativeEvery && obj.every === nativeEvery) return obj.every(iterator, context);
+    each(obj, function(value, index, list) {
+      if (!(result = result && iterator.call(context, value, index, list))) return breaker;
+    });
+    return result;
+  };
+
+  // Determine if at least one element in the object matches a truth test.
+  // Delegates to **ECMAScript 5**'s native `some` if available.
+  // Aliased as `any`.
+  var any = _.some = _.any = function(obj, iterator, context) {
+    iterator || (iterator = _.identity);
+    var result = false;
+    if (obj == null) return result;
+    if (nativeSome && obj.some === nativeSome) return obj.some(iterator, context);
+    each(obj, function(value, index, list) {
+      if (result || (result = iterator.call(context, value, index, list))) return breaker;
+    });
+    return !!result;
+  };
+
+  // Determine if a given value is included in the array or object using `===`.
+  // Aliased as `contains`.
+  _.include = _.contains = function(obj, target) {
+    var found = false;
+    if (obj == null) return found;
+    if (nativeIndexOf && obj.indexOf === nativeIndexOf) return obj.indexOf(target) != -1;
+    found = any(obj, function(value) {
+      return value === target;
+    });
+    return found;
+  };
+
+  // Invoke a method (with arguments) on every item in a collection.
+  _.invoke = function(obj, method) {
+    var args = slice.call(arguments, 2);
+    return _.map(obj, function(value) {
+      return (method.call ? method || value : value[method]).apply(value, args);
+    });
+  };
+
+  // Convenience version of a common use case of `map`: fetching a property.
+  _.pluck = function(obj, key) {
+    return _.map(obj, function(value){ return value[key]; });
+  };
+
+  // Return the maximum element or (element-based computation).
+  _.max = function(obj, iterator, context) {
+    if (!iterator && _.isArray(obj)) return Math.max.apply(Math, obj);
+    if (!iterator && _.isEmpty(obj)) return -Infinity;
+    var result = {computed : -Infinity};
+    each(obj, function(value, index, list) {
+      var computed = iterator ? iterator.call(context, value, index, list) : value;
+      computed >= result.computed && (result = {value : value, computed : computed});
+    });
+    return result.value;
+  };
+
+  // Return the minimum element (or element-based computation).
+  _.min = function(obj, iterator, context) {
+    if (!iterator && _.isArray(obj)) return Math.min.apply(Math, obj);
+    if (!iterator && _.isEmpty(obj)) return Infinity;
+    var result = {computed : Infinity};
+    each(obj, function(value, index, list) {
+      var computed = iterator ? iterator.call(context, value, index, list) : value;
+      computed < result.computed && (result = {value : value, computed : computed});
+    });
+    return result.value;
+  };
+
+  // Shuffle an array.
+  _.shuffle = function(obj) {
+    var shuffled = [], rand;
+    each(obj, function(value, index, list) {
+      if (index == 0) {
+        shuffled[0] = value;
+      } else {
+        rand = Math.floor(Math.random() * (index + 1));
+        shuffled[index] = shuffled[rand];
+        shuffled[rand] = value;
+      }
+    });
+    return shuffled;
+  };
+
+  // Sort the object's values by a criterion produced by an iterator.
+  _.sortBy = function(obj, iterator, context) {
+    return _.pluck(_.map(obj, function(value, index, list) {
+      return {
+        value : value,
+        criteria : iterator.call(context, value, index, list)
+      };
+    }).sort(function(left, right) {
+      var a = left.criteria, b = right.criteria;
+      return a < b ? -1 : a > b ? 1 : 0;
+    }), 'value');
+  };
+
+  // Groups the object's values by a criterion. Pass either a string attribute
+  // to group by, or a function that returns the criterion.
+  _.groupBy = function(obj, val) {
+    var result = {};
+    var iterator = _.isFunction(val) ? val : function(obj) { return obj[val]; };
+    each(obj, function(value, index) {
+      var key = iterator(value, index);
+      (result[key] || (result[key] = [])).push(value);
+    });
+    return result;
+  };
+
+  // Use a comparator function to figure out at what index an object should
+  // be inserted so as to maintain order. Uses binary search.
+  _.sortedIndex = function(array, obj, iterator) {
+    iterator || (iterator = _.identity);
+    var low = 0, high = array.length;
+    while (low < high) {
+      var mid = (low + high) >> 1;
+      iterator(array[mid]) < iterator(obj) ? low = mid + 1 : high = mid;
+    }
+    return low;
+  };
+
+  // Safely convert anything iterable into a real, live array.
+  _.toArray = function(iterable) {
+    if (!iterable)                return [];
+    if (iterable.toArray)         return iterable.toArray();
+    if (_.isArray(iterable))      return slice.call(iterable);
+    if (_.isArguments(iterable))  return slice.call(iterable);
+    return _.values(iterable);
+  };
+
+  // Return the number of elements in an object.
+  _.size = function(obj) {
+    return _.toArray(obj).length;
+  };
+
+  // Array Functions
+  // ---------------
+
+  // Get the first element of an array. Passing **n** will return the first N
+  // values in the array. Aliased as `head`. The **guard** check allows it to work
+  // with `_.map`.
+  _.first = _.head = function(array, n, guard) {
+    return (n != null) && !guard ? slice.call(array, 0, n) : array[0];
+  };
+
+  // Returns everything but the last entry of the array. Especcialy useful on
+  // the arguments object. Passing **n** will return all the values in
+  // the array, excluding the last N. The **guard** check allows it to work with
+  // `_.map`.
+  _.initial = function(array, n, guard) {
+    return slice.call(array, 0, array.length - ((n == null) || guard ? 1 : n));
+  };
+
+  // Get the last element of an array. Passing **n** will return the last N
+  // values in the array. The **guard** check allows it to work with `_.map`.
+  _.last = function(array, n, guard) {
+    if ((n != null) && !guard) {
+      return slice.call(array, Math.max(array.length - n, 0));
+    } else {
+      return array[array.length - 1];
+    }
+  };
+
+  // Returns everything but the first entry of the array. Aliased as `tail`.
+  // Especially useful on the arguments object. Passing an **index** will return
+  // the rest of the values in the array from that index onward. The **guard**
+  // check allows it to work with `_.map`.
+  _.rest = _.tail = function(array, index, guard) {
+    return slice.call(array, (index == null) || guard ? 1 : index);
+  };
+
+  // Trim out all falsy values from an array.
+  _.compact = function(array) {
+    return _.filter(array, function(value){ return !!value; });
+  };
+
+  // Return a completely flattened version of an array.
+  _.flatten = function(array, shallow) {
+    return _.reduce(array, function(memo, value) {
+      if (_.isArray(value)) return memo.concat(shallow ? value : _.flatten(value));
+      memo[memo.length] = value;
+      return memo;
+    }, []);
+  };
+
+  // Return a version of the array that does not contain the specified value(s).
+  _.without = function(array) {
+    return _.difference(array, slice.call(arguments, 1));
+  };
+
+  // Produce a duplicate-free version of the array. If the array has already
+  // been sorted, you have the option of using a faster algorithm.
+  // Aliased as `unique`.
+  _.uniq = _.unique = function(array, isSorted, iterator) {
+    var initial = iterator ? _.map(array, iterator) : array;
+    var result = [];
+    _.reduce(initial, function(memo, el, i) {
+      if (0 == i || (isSorted === true ? _.last(memo) != el : !_.include(memo, el))) {
+        memo[memo.length] = el;
+        result[result.length] = array[i];
+      }
+      return memo;
+    }, []);
+    return result;
+  };
+
+  // Produce an array that contains the union: each distinct element from all of
+  // the passed-in arrays.
+  _.union = function() {
+    return _.uniq(_.flatten(arguments, true));
+  };
+
+  // Produce an array that contains every item shared between all the
+  // passed-in arrays. (Aliased as "intersect" for back-compat.)
+  _.intersection = _.intersect = function(array) {
+    var rest = slice.call(arguments, 1);
+    return _.filter(_.uniq(array), function(item) {
+      return _.every(rest, function(other) {
+        return _.indexOf(other, item) >= 0;
+      });
+    });
+  };
+
+  // Take the difference between one array and a number of other arrays.
+  // Only the elements present in just the first array will remain.
+  _.difference = function(array) {
+    var rest = _.flatten(slice.call(arguments, 1));
+    return _.filter(array, function(value){ return !_.include(rest, value); });
+  };
+
+  // Zip together multiple lists into a single array -- elements that share
+  // an index go together.
+  _.zip = function() {
+    var args = slice.call(arguments);
+    var length = _.max(_.pluck(args, 'length'));
+    var results = new Array(length);
+    for (var i = 0; i < length; i++) results[i] = _.pluck(args, "" + i);
+    return results;
+  };
+
+  // If the browser doesn't supply us with indexOf (I'm looking at you, **MSIE**),
+  // we need this function. Return the position of the first occurrence of an
+  // item in an array, or -1 if the item is not included in the array.
+  // Delegates to **ECMAScript 5**'s native `indexOf` if available.
+  // If the array is large and already in sort order, pass `true`
+  // for **isSorted** to use binary search.
+  _.indexOf = function(array, item, isSorted) {
+    if (array == null) return -1;
+    var i, l;
+    if (isSorted) {
+      i = _.sortedIndex(array, item);
+      return array[i] === item ? i : -1;
+    }
+    if (nativeIndexOf && array.indexOf === nativeIndexOf) return array.indexOf(item);
+    for (i = 0, l = array.length; i < l; i++) if (i in array && array[i] === item) return i;
+    return -1;
+  };
+
+  // Delegates to **ECMAScript 5**'s native `lastIndexOf` if available.
+  _.lastIndexOf = function(array, item) {
+    if (array == null) return -1;
+    if (nativeLastIndexOf && array.lastIndexOf === nativeLastIndexOf) return array.lastIndexOf(item);
+    var i = array.length;
+    while (i--) if (i in array && array[i] === item) return i;
+    return -1;
+  };
+
+  // Generate an integer Array containing an arithmetic progression. A port of
+  // the native Python `range()` function. See
+  // [the Python documentation](http://docs.python.org/library/functions.html#range).
+  _.range = function(start, stop, step) {
+    if (arguments.length <= 1) {
+      stop = start || 0;
+      start = 0;
+    }
+    step = arguments[2] || 1;
+
+    var len = Math.max(Math.ceil((stop - start) / step), 0);
+    var idx = 0;
+    var range = new Array(len);
+
+    while(idx < len) {
+      range[idx++] = start;
+      start += step;
+    }
+
+    return range;
+  };
+
+  // Function (ahem) Functions
+  // ------------------
+
+  // Reusable constructor function for prototype setting.
+  var ctor = function(){};
+
+  // Create a function bound to a given object (assigning `this`, and arguments,
+  // optionally). Binding with arguments is also known as `curry`.
+  // Delegates to **ECMAScript 5**'s native `Function.bind` if available.
+  // We check for `func.bind` first, to fail fast when `func` is undefined.
+  _.bind = function bind(func, context) {
+    var bound, args;
+    if (func.bind === nativeBind && nativeBind) return nativeBind.apply(func, slice.call(arguments, 1));
+    if (!_.isFunction(func)) throw new TypeError;
+    args = slice.call(arguments, 2);
+    return bound = function() {
+      if (!(this instanceof bound)) return func.apply(context, args.concat(slice.call(arguments)));
+      ctor.prototype = func.prototype;
+      var self = new ctor;
+      var result = func.apply(self, args.concat(slice.call(arguments)));
+      if (Object(result) === result) return result;
+      return self;
+    };
+  };
+
+  // Bind all of an object's methods to that object. Useful for ensuring that
+  // all callbacks defined on an object belong to it.
+  _.bindAll = function(obj) {
+    var funcs = slice.call(arguments, 1);
+    if (funcs.length == 0) funcs = _.functions(obj);
+    each(funcs, function(f) { obj[f] = _.bind(obj[f], obj); });
+    return obj;
+  };
+
+  // Memoize an expensive function by storing its results.
+  _.memoize = function(func, hasher) {
+    var memo = {};
+    hasher || (hasher = _.identity);
+    return function() {
+      var key = hasher.apply(this, arguments);
+      return hasOwnProperty.call(memo, key) ? memo[key] : (memo[key] = func.apply(this, arguments));
+    };
+  };
+
+  // Delays a function for the given number of milliseconds, and then calls
+  // it with the arguments supplied.
+  _.delay = function(func, wait) {
+    var args = slice.call(arguments, 2);
+    return setTimeout(function(){ return func.apply(func, args); }, wait);
+  };
+
+  // Defers a function, scheduling it to run after the current call stack has
+  // cleared.
+  _.defer = function(func) {
+    return _.delay.apply(_, [func, 1].concat(slice.call(arguments, 1)));
+  };
+
+  // Returns a function, that, when invoked, will only be triggered at most once
+  // during a given window of time.
+  _.throttle = function(func, wait) {
+    var context, args, timeout, throttling, more;
+    var whenDone = _.debounce(function(){ more = throttling = false; }, wait);
+    return function() {
+      context = this; args = arguments;
+      var later = function() {
+        timeout = null;
+        if (more) func.apply(context, args);
+        whenDone();
+      };
+      if (!timeout) timeout = setTimeout(later, wait);
+      if (throttling) {
+        more = true;
+      } else {
+        func.apply(context, args);
+      }
+      whenDone();
+      throttling = true;
+    };
+  };
+
+  // Returns a function, that, as long as it continues to be invoked, will not
+  // be triggered. The function will be called after it stops being called for
+  // N milliseconds.
+  _.debounce = function(func, wait) {
+    var timeout;
+    return function() {
+      var context = this, args = arguments;
+      var later = function() {
+        timeout = null;
+        func.apply(context, args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  };
+
+  // Returns a function that will be executed at most one time, no matter how
+  // often you call it. Useful for lazy initialization.
+  _.once = function(func) {
+    var ran = false, memo;
+    return function() {
+      if (ran) return memo;
+      ran = true;
+      return memo = func.apply(this, arguments);
+    };
+  };
+
+  // Returns the first function passed as an argument to the second,
+  // allowing you to adjust arguments, run code before and after, and
+  // conditionally execute the original function.
+  _.wrap = function(func, wrapper) {
+    return function() {
+      var args = concat.apply([func], arguments);
+      return wrapper.apply(this, args);
+    };
+  };
+
+  // Returns a function that is the composition of a list of functions, each
+  // consuming the return value of the function that follows.
+  _.compose = function() {
+    var funcs = arguments;
+    return function() {
+      var args = arguments;
+      for (var i = funcs.length - 1; i >= 0; i--) {
+        args = [funcs[i].apply(this, args)];
+      }
+      return args[0];
+    };
+  };
+
+  // Returns a function that will only be executed after being called N times.
+  _.after = function(times, func) {
+    if (times <= 0) return func();
+    return function() {
+      if (--times < 1) { return func.apply(this, arguments); }
+    };
+  };
+
+  // Object Functions
+  // ----------------
+
+  // Retrieve the names of an object's properties.
+  // Delegates to **ECMAScript 5**'s native `Object.keys`
+  _.keys = nativeKeys || function(obj) {
+    if (obj !== Object(obj)) throw new TypeError('Invalid object');
+    var keys = [];
+    for (var key in obj) if (hasOwnProperty.call(obj, key)) keys[keys.length] = key;
+    return keys;
+  };
+
+  // Retrieve the values of an object's properties.
+  _.values = function(obj) {
+    return _.map(obj, _.identity);
+  };
+
+  // Return a sorted list of the function names available on the object.
+  // Aliased as `methods`
+  _.functions = _.methods = function(obj) {
+    var names = [];
+    for (var key in obj) {
+      if (_.isFunction(obj[key])) names.push(key);
+    }
+    return names.sort();
+  };
+
+  // Extend a given object with all the properties in passed-in object(s).
+  _.extend = function(obj) {
+    each(slice.call(arguments, 1), function(source) {
+      for (var prop in source) {
+        if (source[prop] !== void 0) obj[prop] = source[prop];
+      }
+    });
+    return obj;
+  };
+
+  // Fill in a given object with default properties.
+  _.defaults = function(obj) {
+    each(slice.call(arguments, 1), function(source) {
+      for (var prop in source) {
+        if (obj[prop] == null) obj[prop] = source[prop];
+      }
+    });
+    return obj;
+  };
+
+  // Create a (shallow-cloned) duplicate of an object.
+  _.clone = function(obj) {
+    if (!_.isObject(obj)) return obj;
+    return _.isArray(obj) ? obj.slice() : _.extend({}, obj);
+  };
+
+  // Invokes interceptor with the obj, and then returns obj.
+  // The primary purpose of this method is to "tap into" a method chain, in
+  // order to perform operations on intermediate results within the chain.
+  _.tap = function(obj, interceptor) {
+    interceptor(obj);
+    return obj;
+  };
+
+  // Internal recursive comparison function.
+  function eq(a, b, stack) {
+    // Identical objects are equal. `0 === -0`, but they aren't identical.
+    // See the Harmony `egal` proposal: http://wiki.ecmascript.org/doku.php?id=harmony:egal.
+    if (a === b) return a !== 0 || 1 / a == 1 / b;
+    // A strict comparison is necessary because `null == undefined`.
+    if (a == null || b == null) return a === b;
+    // Unwrap any wrapped objects.
+    if (a._chain) a = a._wrapped;
+    if (b._chain) b = b._wrapped;
+    // Invoke a custom `isEqual` method if one is provided.
+    if (a.isEqual && _.isFunction(a.isEqual)) return a.isEqual(b);
+    if (b.isEqual && _.isFunction(b.isEqual)) return b.isEqual(a);
+    // Compare `[[Class]]` names.
+    var className = toString.call(a);
+    if (className != toString.call(b)) return false;
+    switch (className) {
+      // Strings, numbers, dates, and booleans are compared by value.
+      case '[object String]':
+        // Primitives and their corresponding object wrappers are equivalent; thus, `"5"` is
+        // equivalent to `new String("5")`.
+        return a == String(b);
+      case '[object Number]':
+        // `NaN`s are equivalent, but non-reflexive. An `egal` comparison is performed for
+        // other numeric values.
+        return a != +a ? b != +b : (a == 0 ? 1 / a == 1 / b : a == +b);
+      case '[object Date]':
+      case '[object Boolean]':
+        // Coerce dates and booleans to numeric primitive values. Dates are compared by their
+        // millisecond representations. Note that invalid dates with millisecond representations
+        // of `NaN` are not equivalent.
+        return +a == +b;
+      // RegExps are compared by their source patterns and flags.
+      case '[object RegExp]':
+        return a.source == b.source &&
+               a.global == b.global &&
+               a.multiline == b.multiline &&
+               a.ignoreCase == b.ignoreCase;
+    }
+    if (typeof a != 'object' || typeof b != 'object') return false;
+    // Assume equality for cyclic structures. The algorithm for detecting cyclic
+    // structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
+    var length = stack.length;
+    while (length--) {
+      // Linear search. Performance is inversely proportional to the number of
+      // unique nested structures.
+      if (stack[length] == a) return true;
+    }
+    // Add the first object to the stack of traversed objects.
+    stack.push(a);
+    var size = 0, result = true;
+    // Recursively compare objects and arrays.
+    if (className == '[object Array]') {
+      // Compare array lengths to determine if a deep comparison is necessary.
+      size = a.length;
+      result = size == b.length;
+      if (result) {
+        // Deep compare the contents, ignoring non-numeric properties.
+        while (size--) {
+          // Ensure commutative equality for sparse arrays.
+          if (!(result = size in a == size in b && eq(a[size], b[size], stack))) break;
+        }
+      }
+    } else {
+      // Objects with different constructors are not equivalent.
+      if ('constructor' in a != 'constructor' in b || a.constructor != b.constructor) return false;
+      // Deep compare objects.
+      for (var key in a) {
+        if (hasOwnProperty.call(a, key)) {
+          // Count the expected number of properties.
+          size++;
+          // Deep compare each member.
+          if (!(result = hasOwnProperty.call(b, key) && eq(a[key], b[key], stack))) break;
+        }
+      }
+      // Ensure that both objects contain the same number of properties.
+      if (result) {
+        for (key in b) {
+          if (hasOwnProperty.call(b, key) && !(size--)) break;
+        }
+        result = !size;
+      }
+    }
+    // Remove the first object from the stack of traversed objects.
+    stack.pop();
+    return result;
+  }
+
+  // Perform a deep comparison to check if two objects are equal.
+  _.isEqual = function(a, b) {
+    return eq(a, b, []);
+  };
+
+  // Is a given array, string, or object empty?
+  // An "empty" object has no enumerable own-properties.
+  _.isEmpty = function(obj) {
+    if (_.isArray(obj) || _.isString(obj)) return obj.length === 0;
+    for (var key in obj) if (hasOwnProperty.call(obj, key)) return false;
+    return true;
+  };
+
+  // Is a given value a DOM element?
+  _.isElement = function(obj) {
+    return !!(obj && obj.nodeType == 1);
+  };
+
+  // Is a given value an array?
+  // Delegates to ECMA5's native Array.isArray
+  _.isArray = nativeIsArray || function(obj) {
+    return toString.call(obj) == '[object Array]';
+  };
+
+  // Is a given variable an object?
+  _.isObject = function(obj) {
+    return obj === Object(obj);
+  };
+
+  // Is a given variable an arguments object?
+  _.isArguments = function(obj) {
+    return toString.call(obj) == '[object Arguments]';
+  };
+  if (!_.isArguments(arguments)) {
+    _.isArguments = function(obj) {
+      return !!(obj && hasOwnProperty.call(obj, 'callee'));
+    };
+  }
+
+  // Is a given value a function?
+  _.isFunction = function(obj) {
+    return toString.call(obj) == '[object Function]';
+  };
+
+  // Is a given value a string?
+  _.isString = function(obj) {
+    return toString.call(obj) == '[object String]';
+  };
+
+  // Is a given value a number?
+  _.isNumber = function(obj) {
+    return toString.call(obj) == '[object Number]';
+  };
+
+  // Is the given value `NaN`?
+  _.isNaN = function(obj) {
+    // `NaN` is the only value for which `===` is not reflexive.
+    return obj !== obj;
+  };
+
+  // Is a given value a boolean?
+  _.isBoolean = function(obj) {
+    return obj === true || obj === false || toString.call(obj) == '[object Boolean]';
+  };
+
+  // Is a given value a date?
+  _.isDate = function(obj) {
+    return toString.call(obj) == '[object Date]';
+  };
+
+  // Is the given value a regular expression?
+  _.isRegExp = function(obj) {
+    return toString.call(obj) == '[object RegExp]';
+  };
+
+  // Is a given value equal to null?
+  _.isNull = function(obj) {
+    return obj === null;
+  };
+
+  // Is a given variable undefined?
+  _.isUndefined = function(obj) {
+    return obj === void 0;
+  };
+
+  // Utility Functions
+  // -----------------
+
+  // Run Underscore.js in *noConflict* mode, returning the `_` variable to its
+  // previous owner. Returns a reference to the Underscore object.
+  _.noConflict = function() {
+    root._ = previousUnderscore;
+    return this;
+  };
+
+  // Keep the identity function around for default iterators.
+  _.identity = function(value) {
+    return value;
+  };
+
+  // Run a function **n** times.
+  _.times = function (n, iterator, context) {
+    for (var i = 0; i < n; i++) iterator.call(context, i);
+  };
+
+  // Escape a string for HTML interpolation.
+  _.escape = function(string) {
+    return (''+string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g,'&#x2F;');
+  };
+
+  // Add your own custom functions to the Underscore object, ensuring that
+  // they're correctly added to the OOP wrapper as well.
+  _.mixin = function(obj) {
+    each(_.functions(obj), function(name){
+      addToWrapper(name, _[name] = obj[name]);
+    });
+  };
+
+  // Generate a unique integer id (unique within the entire client session).
+  // Useful for temporary DOM ids.
+  var idCounter = 0;
+  _.uniqueId = function(prefix) {
+    var id = idCounter++;
+    return prefix ? prefix + id : id;
+  };
+
+  // By default, Underscore uses ERB-style template delimiters, change the
+  // following template settings to use alternative delimiters.
+  _.templateSettings = {
+    evaluate    : /<%([\s\S]+?)%>/g,
+    interpolate : /<%=([\s\S]+?)%>/g,
+    escape      : /<%-([\s\S]+?)%>/g
+  };
+
+  // JavaScript micro-templating, similar to John Resig's implementation.
+  // Underscore templating handles arbitrary delimiters, preserves whitespace,
+  // and correctly escapes quotes within interpolated code.
+  _.template = function(str, data) {
+    var c  = _.templateSettings;
+    var tmpl = 'var __p=[],print=function(){__p.push.apply(__p,arguments);};' +
+      'with(obj||{}){__p.push(\'' +
+      str.replace(/\\/g, '\\\\')
+         .replace(/'/g, "\\'")
+         .replace(c.escape, function(match, code) {
+           return "',_.escape(" + code.replace(/\\'/g, "'") + "),'";
+         })
+         .replace(c.interpolate, function(match, code) {
+           return "'," + code.replace(/\\'/g, "'") + ",'";
+         })
+         .replace(c.evaluate || null, function(match, code) {
+           return "');" + code.replace(/\\'/g, "'")
+                              .replace(/[\r\n\t]/g, ' ') + ";__p.push('";
+         })
+         .replace(/\r/g, '\\r')
+         .replace(/\n/g, '\\n')
+         .replace(/\t/g, '\\t')
+         + "');}return __p.join('');";
+    var func = new Function('obj', '_', tmpl);
+    if (data) return func(data, _);
+    return function(data) {
+      return func.call(this, data, _);
+    };
+  };
+
+  // The OOP Wrapper
+  // ---------------
+
+  // If Underscore is called as a function, it returns a wrapped object that
+  // can be used OO-style. This wrapper holds altered versions of all the
+  // underscore functions. Wrapped objects may be chained.
+  var wrapper = function(obj) { this._wrapped = obj; };
+
+  // Expose `wrapper.prototype` as `_.prototype`
+  _.prototype = wrapper.prototype;
+
+  // Helper function to continue chaining intermediate results.
+  var result = function(obj, chain) {
+    return chain ? _(obj).chain() : obj;
+  };
+
+  // A method to easily add functions to the OOP wrapper.
+  var addToWrapper = function(name, func) {
+    wrapper.prototype[name] = function() {
+      var args = slice.call(arguments);
+      unshift.call(args, this._wrapped);
+      return result(func.apply(_, args), this._chain);
+    };
+  };
+
+  // Add all of the Underscore functions to the wrapper object.
+  _.mixin(_);
+
+  // Add all mutator Array functions to the wrapper.
+  each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
+    var method = ArrayProto[name];
+    wrapper.prototype[name] = function() {
+      method.apply(this._wrapped, arguments);
+      return result(this._wrapped, this._chain);
+    };
+  });
+
+  // Add all accessor Array functions to the wrapper.
+  each(['concat', 'join', 'slice'], function(name) {
+    var method = ArrayProto[name];
+    wrapper.prototype[name] = function() {
+      return result(method.apply(this._wrapped, arguments), this._chain);
+    };
+  });
+
+  // Start chaining a wrapped Underscore object.
+  wrapper.prototype.chain = function() {
+    this._chain = true;
+    return this;
+  };
+
+  // Extracts the result from a wrapped and chained object.
+  wrapper.prototype.value = function() {
+    return this._wrapped;
+  };
+
+}).call(this);
+
+define('shared/eventcontainer',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var EventContainer = function(defaultContext) {
+    this.handlers = [];
+    this.defaultContext = defaultContext;
+  }; 
+  
+  EventContainer.prototype = {
+    raise: function(source, data) {
+     for(var i = 0; i < this.handlers.length; i++) {
+        var handler = this.handlers[i];
+        handler.method.call(handler.context || this.defaultContext, data, source);   
+     }
+    },
+    add: function(method, context) {
+      this.handlers.push({
+        method: method,
+        context: context      
+      });
+    },
+    remove: function(method, context) {
+      this.handlers = _(this.handlers).filter(function(item) {
+        return item.method !== method || item.context !== context;
+      });
+    }
+  };
+  
+  return EventContainer;
+});
+
+define('shared/eventable',['require','./eventcontainer'],function(require) {
+  var EventContainer = require('./eventcontainer');
+  
+  var Eventable = function() {
+    this.eventListeners = {};
+    this.allContainer = new EventContainer(this);
+  };
+  
+  Eventable.prototype = {
+    on: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).add(callback, context);
+    },
+    
+    off: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).remove(callback, context);
+    },
+
+    onAny: function(callback, context) {
+      this.allContainer.add(callback, context);
+    },
+
+    raise: function(eventName, data) {
+      var container = this.eventListeners[eventName];
+
+      if(container)
+        container.raise(this, data);
+
+      this.allContainer.raise(this, {
+        event: eventName,
+        data: data
+      });
+    },
+
+    eventContainerFor: function(eventName) {
+      var container = this.eventListeners[eventName];
+      if(!container) {
+        container =  new EventContainer(this);
+        this.eventListeners[eventName] = container;
+      }
+      return container;
+    }
+  };
+  
+  return Eventable;
+
+});
+
+define('resources/texture',['require'],function(require) {
+  var Texture = function(factory, path) {
+    this.img = null;
+    this.path = path;
+    this.factory = factory;
+    this.loaded = false;
+  };
+  
+  Texture.prototype = {
+    get: function() {
+      return this.img;
+    },
+    
+    preload: function(callback) {
+     var data = this.factory.getData(this.path);
+     this.img = new Image();
+     this.img.onload = callback;
+     this.img.src = "data:image/png;base64," + data;
+     this.loaded = true;
+    },
+  };
+  
+  return Texture;
 });
 
 define('resources/packagedresources',['require','./package','../shared/eventable','underscore','./texture'],function(require) {
@@ -13105,111 +10485,2396 @@ define('resources/packagedresources',['require','./package','../shared/eventable
   return PackagedResources;
 });
 
-define('input/inputtranslator',['require','../shared/eventable','jquery','underscore'],function(require) {
+define('glmatrix',['require','exports','module'],function(require, exports, module) {
 
-  var Eventable = require('../shared/eventable');
-  var $ = require('jquery');
+/* 
+ * glMatrix.js - High performance matrix and vector operations for WebGL
+ * version 0.9.6
+ */
+ 
+/*
+ * Copyright (c) 2011 Brandon Jones
+ *
+ * This software is provided 'as-is', without any express or implied
+ * warranty. In no event will the authors be held liable for any damages
+ * arising from the use of this software.
+ *
+ * Permission is granted to anyone to use this software for any purpose,
+ * including commercial applications, and to alter it and redistribute it
+ * freely, subject to the following restrictions:
+ *
+ *    1. The origin of this software must not be misrepresented; you must not
+ *    claim that you wrote the original software. If you use this software
+ *    in a product, an acknowledgment in the product documentation would be
+ *    appreciated but is not required.
+ *
+ *    2. Altered source versions must be plainly marked as such, and must not
+ *    be misrepresented as being the original software.
+ *
+ *    3. This notice may not be removed or altered from any source
+ *    distribution.
+ */
+
+// Fallback for systems that don't support WebGL
+if(typeof Float32Array != 'undefined') {
+    glMatrixArrayType = Float32Array;
+} else if(typeof WebGLFloatArray != 'undefined') {
+	glMatrixArrayType = WebGLFloatArray; // This is officially deprecated and should dissapear in future revisions.
+} else {
+	glMatrixArrayType = Array;
+}
+
+/*
+ * vec3 - 3 Dimensional Vector
+ */
+var vec3 = {};
+
+/*
+ * vec3.create
+ * Creates a new instance of a vec3 using the default array type
+ * Any javascript array containing at least 3 numeric elements can serve as a vec3
+ *
+ * Params:
+ * vec - Optional, vec3 containing values to initialize with
+ *
+ * Returns:
+ * New vec3
+ */
+vec3.create = function(vec) {
+	var dest = new glMatrixArrayType(3);
+	
+	if(vec) {
+		dest[0] = vec[0];
+		dest[1] = vec[1];
+		dest[2] = vec[2];
+	}
+	
+	return dest;
+};
+
+/*
+ * vec3.set
+ * Copies the values of one vec3 to another
+ *
+ * Params:
+ * vec - vec3 containing values to copy
+ * dest - vec3 receiving copied values
+ *
+ * Returns:
+ * dest
+ */
+vec3.set = function(vec, dest) {
+	dest[0] = vec[0];
+	dest[1] = vec[1];
+	dest[2] = vec[2];
+	
+	return dest;
+};
+
+/*
+ * vec3.add
+ * Performs a vector addition
+ *
+ * Params:
+ * vec - vec3, first operand
+ * vec2 - vec3, second operand
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+vec3.add = function(vec, vec2, dest) {
+	if(!dest || vec == dest) {
+		vec[0] += vec2[0];
+		vec[1] += vec2[1];
+		vec[2] += vec2[2];
+		return vec;
+	}
+	
+	dest[0] = vec[0] + vec2[0];
+	dest[1] = vec[1] + vec2[1];
+	dest[2] = vec[2] + vec2[2];
+	return dest;
+};
+
+/*
+ * vec3.subtract
+ * Performs a vector subtraction
+ *
+ * Params:
+ * vec - vec3, first operand
+ * vec2 - vec3, second operand
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+vec3.subtract = function(vec, vec2, dest) {
+	if(!dest || vec == dest) {
+		vec[0] -= vec2[0];
+		vec[1] -= vec2[1];
+		vec[2] -= vec2[2];
+		return vec;
+	}
+	
+	dest[0] = vec[0] - vec2[0];
+	dest[1] = vec[1] - vec2[1];
+	dest[2] = vec[2] - vec2[2];
+	return dest;
+};
+
+/*
+ * vec3.negate
+ * Negates the components of a vec3
+ *
+ * Params:
+ * vec - vec3 to negate
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+vec3.negate = function(vec, dest) {
+	if(!dest) { dest = vec; }
+	
+	dest[0] = -vec[0];
+	dest[1] = -vec[1];
+	dest[2] = -vec[2];
+	return dest;
+};
+
+/*
+ * vec3.scale
+ * Multiplies the components of a vec3 by a scalar value
+ *
+ * Params:
+ * vec - vec3 to scale
+ * val - Numeric value to scale by
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+vec3.scale = function(vec, val, dest) {
+	if(!dest || vec == dest) {
+		vec[0] *= val;
+		vec[1] *= val;
+		vec[2] *= val;
+		return vec;
+	}
+	
+	dest[0] = vec[0]*val;
+	dest[1] = vec[1]*val;
+	dest[2] = vec[2]*val;
+	return dest;
+};
+
+/*
+ * vec3.normalize
+ * Generates a unit vector of the same direction as the provided vec3
+ * If vector length is 0, returns [0, 0, 0]
+ *
+ * Params:
+ * vec - vec3 to normalize
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+vec3.normalize = function(vec, dest) {
+	if(!dest) { dest = vec; }
+	
+	var x = vec[0], y = vec[1], z = vec[2];
+	var len = Math.sqrt(x*x + y*y + z*z);
+	
+	if (!len) {
+		dest[0] = 0;
+		dest[1] = 0;
+		dest[2] = 0;
+		return dest;
+	} else if (len == 1) {
+		dest[0] = x;
+		dest[1] = y;
+		dest[2] = z;
+		return dest;
+	}
+	
+	len = 1 / len;
+	dest[0] = x*len;
+	dest[1] = y*len;
+	dest[2] = z*len;
+	return dest;
+};
+
+/*
+ * vec3.cross
+ * Generates the cross product of two vec3s
+ *
+ * Params:
+ * vec - vec3, first operand
+ * vec2 - vec3, second operand
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+vec3.cross = function(vec, vec2, dest){
+	if(!dest) { dest = vec; }
+	
+	var x = vec[0], y = vec[1], z = vec[2];
+	var x2 = vec2[0], y2 = vec2[1], z2 = vec2[2];
+	
+	dest[0] = y*z2 - z*y2;
+	dest[1] = z*x2 - x*z2;
+	dest[2] = x*y2 - y*x2;
+	return dest;
+};
+
+/*
+ * vec3.length
+ * Caclulates the length of a vec3
+ *
+ * Params:
+ * vec - vec3 to calculate length of
+ *
+ * Returns:
+ * Length of vec
+ */
+vec3.length = function(vec){
+	var x = vec[0], y = vec[1], z = vec[2];
+	return Math.sqrt(x*x + y*y + z*z);
+};
+
+/*
+ * vec3.dot
+ * Caclulates the dot product of two vec3s
+ *
+ * Params:
+ * vec - vec3, first operand
+ * vec2 - vec3, second operand
+ *
+ * Returns:
+ * Dot product of vec and vec2
+ */
+vec3.dot = function(vec, vec2){
+	return vec[0]*vec2[0] + vec[1]*vec2[1] + vec[2]*vec2[2];
+};
+
+/*
+ * vec3.direction
+ * Generates a unit vector pointing from one vector to another
+ *
+ * Params:
+ * vec - origin vec3
+ * vec2 - vec3 to point to
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+vec3.direction = function(vec, vec2, dest) {
+	if(!dest) { dest = vec; }
+	
+	var x = vec[0] - vec2[0];
+	var y = vec[1] - vec2[1];
+	var z = vec[2] - vec2[2];
+	
+	var len = Math.sqrt(x*x + y*y + z*z);
+	if (!len) { 
+		dest[0] = 0; 
+		dest[1] = 0; 
+		dest[2] = 0;
+		return dest; 
+	}
+	
+	len = 1 / len;
+	dest[0] = x * len; 
+	dest[1] = y * len; 
+	dest[2] = z * len;
+	return dest; 
+};
+
+/*
+ * vec3.lerp
+ * Performs a linear interpolation between two vec3
+ *
+ * Params:
+ * vec - vec3, first vector
+ * vec2 - vec3, second vector
+ * lerp - interpolation amount between the two inputs
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+vec3.lerp = function(vec, vec2, lerp, dest){
+    if(!dest) { dest = vec; }
+    
+    dest[0] = vec[0] + lerp * (vec2[0] - vec[0]);
+    dest[1] = vec[1] + lerp * (vec2[1] - vec[1]);
+    dest[2] = vec[2] + lerp * (vec2[2] - vec[2]);
+    
+    return dest;
+}
+
+/*
+ * vec3.str
+ * Returns a string representation of a vector
+ *
+ * Params:
+ * vec - vec3 to represent as a string
+ *
+ * Returns:
+ * string representation of vec
+ */
+vec3.str = function(vec) {
+	return '[' + vec[0] + ', ' + vec[1] + ', ' + vec[2] + ']'; 
+};
+
+/*
+ * mat3 - 3x3 Matrix
+ */
+var mat3 = {};
+
+/*
+ * mat3.create
+ * Creates a new instance of a mat3 using the default array type
+ * Any javascript array containing at least 9 numeric elements can serve as a mat3
+ *
+ * Params:
+ * mat - Optional, mat3 containing values to initialize with
+ *
+ * Returns:
+ * New mat3
+ */
+mat3.create = function(mat) {
+	var dest = new glMatrixArrayType(9);
+	
+	if(mat) {
+		dest[0] = mat[0];
+		dest[1] = mat[1];
+		dest[2] = mat[2];
+		dest[3] = mat[3];
+		dest[4] = mat[4];
+		dest[5] = mat[5];
+		dest[6] = mat[6];
+		dest[7] = mat[7];
+		dest[8] = mat[8];
+	}
+	
+	return dest;
+};
+
+/*
+ * mat3.set
+ * Copies the values of one mat3 to another
+ *
+ * Params:
+ * mat - mat3 containing values to copy
+ * dest - mat3 receiving copied values
+ *
+ * Returns:
+ * dest
+ */
+mat3.set = function(mat, dest) {
+	dest[0] = mat[0];
+	dest[1] = mat[1];
+	dest[2] = mat[2];
+	dest[3] = mat[3];
+	dest[4] = mat[4];
+	dest[5] = mat[5];
+	dest[6] = mat[6];
+	dest[7] = mat[7];
+	dest[8] = mat[8];
+	return dest;
+};
+
+/*
+ * mat3.identity
+ * Sets a mat3 to an identity matrix
+ *
+ * Params:
+ * dest - mat3 to set
+ *
+ * Returns:
+ * dest
+ */
+mat3.identity = function(dest) {
+	dest[0] = 1;
+	dest[1] = 0;
+	dest[2] = 0;
+	dest[3] = 0;
+	dest[4] = 1;
+	dest[5] = 0;
+	dest[6] = 0;
+	dest[7] = 0;
+	dest[8] = 1;
+	return dest;
+};
+
+/*
+ * mat4.transpose
+ * Transposes a mat3 (flips the values over the diagonal)
+ *
+ * Params:
+ * mat - mat3 to transpose
+ * dest - Optional, mat3 receiving transposed values. If not specified result is written to mat
+ *
+ * Returns:
+ * dest is specified, mat otherwise
+ */
+mat3.transpose = function(mat, dest) {
+	// If we are transposing ourselves we can skip a few steps but have to cache some values
+	if(!dest || mat == dest) { 
+		var a01 = mat[1], a02 = mat[2];
+		var a12 = mat[5];
+		
+        mat[1] = mat[3];
+        mat[2] = mat[6];
+        mat[3] = a01;
+        mat[5] = mat[7];
+        mat[6] = a02;
+        mat[7] = a12;
+		return mat;
+	}
+	
+	dest[0] = mat[0];
+	dest[1] = mat[3];
+	dest[2] = mat[6];
+	dest[3] = mat[1];
+	dest[4] = mat[4];
+	dest[5] = mat[7];
+	dest[6] = mat[2];
+	dest[7] = mat[5];
+	dest[8] = mat[8];
+	return dest;
+};
+
+/*
+ * mat3.toMat4
+ * Copies the elements of a mat3 into the upper 3x3 elements of a mat4
+ *
+ * Params:
+ * mat - mat3 containing values to copy
+ * dest - Optional, mat4 receiving copied values
+ *
+ * Returns:
+ * dest if specified, a new mat4 otherwise
+ */
+mat3.toMat4 = function(mat, dest) {
+	if(!dest) { dest = mat4.create(); }
+	
+	dest[0] = mat[0];
+	dest[1] = mat[1];
+	dest[2] = mat[2];
+	dest[3] = 0;
+
+	dest[4] = mat[3];
+	dest[5] = mat[4];
+	dest[6] = mat[5];
+	dest[7] = 0;
+
+	dest[8] = mat[6];
+	dest[9] = mat[7];
+	dest[10] = mat[8];
+	dest[11] = 0;
+
+	dest[12] = 0;
+	dest[13] = 0;
+	dest[14] = 0;
+	dest[15] = 1;
+	
+	return dest;
+}
+
+/*
+ * mat3.str
+ * Returns a string representation of a mat3
+ *
+ * Params:
+ * mat - mat3 to represent as a string
+ *
+ * Returns:
+ * string representation of mat
+ */
+mat3.str = function(mat) {
+	return '[' + mat[0] + ', ' + mat[1] + ', ' + mat[2] + 
+		', ' + mat[3] + ', '+ mat[4] + ', ' + mat[5] + 
+		', ' + mat[6] + ', ' + mat[7] + ', '+ mat[8] + ']';
+};
+
+/*
+ * mat4 - 4x4 Matrix
+ */
+var mat4 = {};
+
+/*
+ * mat4.create
+ * Creates a new instance of a mat4 using the default array type
+ * Any javascript array containing at least 16 numeric elements can serve as a mat4
+ *
+ * Params:
+ * mat - Optional, mat4 containing values to initialize with
+ *
+ * Returns:
+ * New mat4
+ */
+mat4.create = function(mat) {
+	var dest = new glMatrixArrayType(16);
+	
+	if(mat) {
+		dest[0] = mat[0];
+		dest[1] = mat[1];
+		dest[2] = mat[2];
+		dest[3] = mat[3];
+		dest[4] = mat[4];
+		dest[5] = mat[5];
+		dest[6] = mat[6];
+		dest[7] = mat[7];
+		dest[8] = mat[8];
+		dest[9] = mat[9];
+		dest[10] = mat[10];
+		dest[11] = mat[11];
+		dest[12] = mat[12];
+		dest[13] = mat[13];
+		dest[14] = mat[14];
+		dest[15] = mat[15];
+	}
+	
+	return dest;
+};
+
+/*
+ * mat4.set
+ * Copies the values of one mat4 to another
+ *
+ * Params:
+ * mat - mat4 containing values to copy
+ * dest - mat4 receiving copied values
+ *
+ * Returns:
+ * dest
+ */
+mat4.set = function(mat, dest) {
+	dest[0] = mat[0];
+	dest[1] = mat[1];
+	dest[2] = mat[2];
+	dest[3] = mat[3];
+	dest[4] = mat[4];
+	dest[5] = mat[5];
+	dest[6] = mat[6];
+	dest[7] = mat[7];
+	dest[8] = mat[8];
+	dest[9] = mat[9];
+	dest[10] = mat[10];
+	dest[11] = mat[11];
+	dest[12] = mat[12];
+	dest[13] = mat[13];
+	dest[14] = mat[14];
+	dest[15] = mat[15];
+	return dest;
+};
+
+/*
+ * mat4.identity
+ * Sets a mat4 to an identity matrix
+ *
+ * Params:
+ * dest - mat4 to set
+ *
+ * Returns:
+ * dest
+ */
+mat4.identity = function(dest) {
+	dest[0] = 1;
+	dest[1] = 0;
+	dest[2] = 0;
+	dest[3] = 0;
+	dest[4] = 0;
+	dest[5] = 1;
+	dest[6] = 0;
+	dest[7] = 0;
+	dest[8] = 0;
+	dest[9] = 0;
+	dest[10] = 1;
+	dest[11] = 0;
+	dest[12] = 0;
+	dest[13] = 0;
+	dest[14] = 0;
+	dest[15] = 1;
+	return dest;
+};
+
+/*
+ * mat4.transpose
+ * Transposes a mat4 (flips the values over the diagonal)
+ *
+ * Params:
+ * mat - mat4 to transpose
+ * dest - Optional, mat4 receiving transposed values. If not specified result is written to mat
+ *
+ * Returns:
+ * dest is specified, mat otherwise
+ */
+mat4.transpose = function(mat, dest) {
+	// If we are transposing ourselves we can skip a few steps but have to cache some values
+	if(!dest || mat == dest) { 
+		var a01 = mat[1], a02 = mat[2], a03 = mat[3];
+		var a12 = mat[6], a13 = mat[7];
+		var a23 = mat[11];
+		
+		mat[1] = mat[4];
+		mat[2] = mat[8];
+		mat[3] = mat[12];
+		mat[4] = a01;
+		mat[6] = mat[9];
+		mat[7] = mat[13];
+		mat[8] = a02;
+		mat[9] = a12;
+		mat[11] = mat[14];
+		mat[12] = a03;
+		mat[13] = a13;
+		mat[14] = a23;
+		return mat;
+	}
+	
+	dest[0] = mat[0];
+	dest[1] = mat[4];
+	dest[2] = mat[8];
+	dest[3] = mat[12];
+	dest[4] = mat[1];
+	dest[5] = mat[5];
+	dest[6] = mat[9];
+	dest[7] = mat[13];
+	dest[8] = mat[2];
+	dest[9] = mat[6];
+	dest[10] = mat[10];
+	dest[11] = mat[14];
+	dest[12] = mat[3];
+	dest[13] = mat[7];
+	dest[14] = mat[11];
+	dest[15] = mat[15];
+	return dest;
+};
+
+/*
+ * mat4.determinant
+ * Calculates the determinant of a mat4
+ *
+ * Params:
+ * mat - mat4 to calculate determinant of
+ *
+ * Returns:
+ * determinant of mat
+ */
+mat4.determinant = function(mat) {
+	// Cache the matrix values (makes for huge speed increases!)
+	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+	var a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15];
+
+	return	a30*a21*a12*a03 - a20*a31*a12*a03 - a30*a11*a22*a03 + a10*a31*a22*a03 +
+			a20*a11*a32*a03 - a10*a21*a32*a03 - a30*a21*a02*a13 + a20*a31*a02*a13 +
+			a30*a01*a22*a13 - a00*a31*a22*a13 - a20*a01*a32*a13 + a00*a21*a32*a13 +
+			a30*a11*a02*a23 - a10*a31*a02*a23 - a30*a01*a12*a23 + a00*a31*a12*a23 +
+			a10*a01*a32*a23 - a00*a11*a32*a23 - a20*a11*a02*a33 + a10*a21*a02*a33 +
+			a20*a01*a12*a33 - a00*a21*a12*a33 - a10*a01*a22*a33 + a00*a11*a22*a33;
+};
+
+/*
+ * mat4.inverse
+ * Calculates the inverse matrix of a mat4
+ *
+ * Params:
+ * mat - mat4 to calculate inverse of
+ * dest - Optional, mat4 receiving inverse matrix. If not specified result is written to mat
+ *
+ * Returns:
+ * dest is specified, mat otherwise
+ */
+mat4.inverse = function(mat, dest) {
+	if(!dest) { dest = mat; }
+	
+	// Cache the matrix values (makes for huge speed increases!)
+	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+	var a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15];
+	
+	var b00 = a00*a11 - a01*a10;
+	var b01 = a00*a12 - a02*a10;
+	var b02 = a00*a13 - a03*a10;
+	var b03 = a01*a12 - a02*a11;
+	var b04 = a01*a13 - a03*a11;
+	var b05 = a02*a13 - a03*a12;
+	var b06 = a20*a31 - a21*a30;
+	var b07 = a20*a32 - a22*a30;
+	var b08 = a20*a33 - a23*a30;
+	var b09 = a21*a32 - a22*a31;
+	var b10 = a21*a33 - a23*a31;
+	var b11 = a22*a33 - a23*a32;
+	
+	// Calculate the determinant (inlined to avoid double-caching)
+	var invDet = 1/(b00*b11 - b01*b10 + b02*b09 + b03*b08 - b04*b07 + b05*b06);
+	
+	dest[0] = (a11*b11 - a12*b10 + a13*b09)*invDet;
+	dest[1] = (-a01*b11 + a02*b10 - a03*b09)*invDet;
+	dest[2] = (a31*b05 - a32*b04 + a33*b03)*invDet;
+	dest[3] = (-a21*b05 + a22*b04 - a23*b03)*invDet;
+	dest[4] = (-a10*b11 + a12*b08 - a13*b07)*invDet;
+	dest[5] = (a00*b11 - a02*b08 + a03*b07)*invDet;
+	dest[6] = (-a30*b05 + a32*b02 - a33*b01)*invDet;
+	dest[7] = (a20*b05 - a22*b02 + a23*b01)*invDet;
+	dest[8] = (a10*b10 - a11*b08 + a13*b06)*invDet;
+	dest[9] = (-a00*b10 + a01*b08 - a03*b06)*invDet;
+	dest[10] = (a30*b04 - a31*b02 + a33*b00)*invDet;
+	dest[11] = (-a20*b04 + a21*b02 - a23*b00)*invDet;
+	dest[12] = (-a10*b09 + a11*b07 - a12*b06)*invDet;
+	dest[13] = (a00*b09 - a01*b07 + a02*b06)*invDet;
+	dest[14] = (-a30*b03 + a31*b01 - a32*b00)*invDet;
+	dest[15] = (a20*b03 - a21*b01 + a22*b00)*invDet;
+	
+	return dest;
+};
+
+/*
+ * mat4.toRotationMat
+ * Copies the upper 3x3 elements of a mat4 into another mat4
+ *
+ * Params:
+ * mat - mat4 containing values to copy
+ * dest - Optional, mat4 receiving copied values
+ *
+ * Returns:
+ * dest is specified, a new mat4 otherwise
+ */
+mat4.toRotationMat = function(mat, dest) {
+	if(!dest) { dest = mat4.create(); }
+	
+	dest[0] = mat[0];
+	dest[1] = mat[1];
+	dest[2] = mat[2];
+	dest[3] = mat[3];
+	dest[4] = mat[4];
+	dest[5] = mat[5];
+	dest[6] = mat[6];
+	dest[7] = mat[7];
+	dest[8] = mat[8];
+	dest[9] = mat[9];
+	dest[10] = mat[10];
+	dest[11] = mat[11];
+	dest[12] = 0;
+	dest[13] = 0;
+	dest[14] = 0;
+	dest[15] = 1;
+	
+	return dest;
+};
+
+/*
+ * mat4.toMat3
+ * Copies the upper 3x3 elements of a mat4 into a mat3
+ *
+ * Params:
+ * mat - mat4 containing values to copy
+ * dest - Optional, mat3 receiving copied values
+ *
+ * Returns:
+ * dest is specified, a new mat3 otherwise
+ */
+mat4.toMat3 = function(mat, dest) {
+	if(!dest) { dest = mat3.create(); }
+	
+	dest[0] = mat[0];
+	dest[1] = mat[1];
+	dest[2] = mat[2];
+	dest[3] = mat[4];
+	dest[4] = mat[5];
+	dest[5] = mat[6];
+	dest[6] = mat[8];
+	dest[7] = mat[9];
+	dest[8] = mat[10];
+	
+	return dest;
+};
+
+/*
+ * mat4.toInverseMat3
+ * Calculates the inverse of the upper 3x3 elements of a mat4 and copies the result into a mat3
+ * The resulting matrix is useful for calculating transformed normals
+ *
+ * Params:
+ * mat - mat4 containing values to invert and copy
+ * dest - Optional, mat3 receiving values
+ *
+ * Returns:
+ * dest is specified, a new mat3 otherwise
+ */
+mat4.toInverseMat3 = function(mat, dest) {
+	// Cache the matrix values (makes for huge speed increases!)
+	var a00 = mat[0], a01 = mat[1], a02 = mat[2];
+	var a10 = mat[4], a11 = mat[5], a12 = mat[6];
+	var a20 = mat[8], a21 = mat[9], a22 = mat[10];
+	
+	var b01 = a22*a11-a12*a21;
+	var b11 = -a22*a10+a12*a20;
+	var b21 = a21*a10-a11*a20;
+		
+	var d = a00*b01 + a01*b11 + a02*b21;
+	if (!d) { return null; }
+	var id = 1/d;
+	
+	if(!dest) { dest = mat3.create(); }
+	
+	dest[0] = b01*id;
+	dest[1] = (-a22*a01 + a02*a21)*id;
+	dest[2] = (a12*a01 - a02*a11)*id;
+	dest[3] = b11*id;
+	dest[4] = (a22*a00 - a02*a20)*id;
+	dest[5] = (-a12*a00 + a02*a10)*id;
+	dest[6] = b21*id;
+	dest[7] = (-a21*a00 + a01*a20)*id;
+	dest[8] = (a11*a00 - a01*a10)*id;
+	
+	return dest;
+};
+
+/*
+ * mat4.multiply
+ * Performs a matrix multiplication
+ *
+ * Params:
+ * mat - mat4, first operand
+ * mat2 - mat4, second operand
+ * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
+ *
+ * Returns:
+ * dest if specified, mat otherwise
+ */
+mat4.multiply = function(mat, mat2, dest) {
+	if(!dest) { dest = mat }
+	
+	// Cache the matrix values (makes for huge speed increases!)
+	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+	var a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15];
+	
+	var b00 = mat2[0], b01 = mat2[1], b02 = mat2[2], b03 = mat2[3];
+	var b10 = mat2[4], b11 = mat2[5], b12 = mat2[6], b13 = mat2[7];
+	var b20 = mat2[8], b21 = mat2[9], b22 = mat2[10], b23 = mat2[11];
+	var b30 = mat2[12], b31 = mat2[13], b32 = mat2[14], b33 = mat2[15];
+	
+	dest[0] = b00*a00 + b01*a10 + b02*a20 + b03*a30;
+	dest[1] = b00*a01 + b01*a11 + b02*a21 + b03*a31;
+	dest[2] = b00*a02 + b01*a12 + b02*a22 + b03*a32;
+	dest[3] = b00*a03 + b01*a13 + b02*a23 + b03*a33;
+	dest[4] = b10*a00 + b11*a10 + b12*a20 + b13*a30;
+	dest[5] = b10*a01 + b11*a11 + b12*a21 + b13*a31;
+	dest[6] = b10*a02 + b11*a12 + b12*a22 + b13*a32;
+	dest[7] = b10*a03 + b11*a13 + b12*a23 + b13*a33;
+	dest[8] = b20*a00 + b21*a10 + b22*a20 + b23*a30;
+	dest[9] = b20*a01 + b21*a11 + b22*a21 + b23*a31;
+	dest[10] = b20*a02 + b21*a12 + b22*a22 + b23*a32;
+	dest[11] = b20*a03 + b21*a13 + b22*a23 + b23*a33;
+	dest[12] = b30*a00 + b31*a10 + b32*a20 + b33*a30;
+	dest[13] = b30*a01 + b31*a11 + b32*a21 + b33*a31;
+	dest[14] = b30*a02 + b31*a12 + b32*a22 + b33*a32;
+	dest[15] = b30*a03 + b31*a13 + b32*a23 + b33*a33;
+	
+	return dest;
+};
+
+/*
+ * mat4.multiplyVec3
+ * Transforms a vec3 with the given matrix
+ * 4th vector component is implicitly '1'
+ *
+ * Params:
+ * mat - mat4 to transform the vector with
+ * vec - vec3 to transform
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+mat4.multiplyVec3 = function(mat, vec, dest) {
+	if(!dest) { dest = vec }
+	
+	var x = vec[0], y = vec[1], z = vec[2];
+	
+	dest[0] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
+	dest[1] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
+	dest[2] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14];
+	
+	return dest;
+};
+
+/*
+ * mat4.multiplyVec4
+ * Transforms a vec4 with the given matrix
+ *
+ * Params:
+ * mat - mat4 to transform the vector with
+ * vec - vec4 to transform
+ * dest - Optional, vec4 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+mat4.multiplyVec4 = function(mat, vec, dest) {
+	if(!dest) { dest = vec }
+	
+	var x = vec[0], y = vec[1], z = vec[2], w = vec[3];
+	
+	dest[0] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12]*w;
+	dest[1] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13]*w;
+	dest[2] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14]*w;
+	dest[3] = mat[3]*x + mat[7]*y + mat[11]*z + mat[15]*w;
+	
+	return dest;
+};
+
+/*
+ * mat4.translate
+ * Translates a matrix by the given vector
+ *
+ * Params:
+ * mat - mat4 to translate
+ * vec - vec3 specifying the translation
+ * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
+ *
+ * Returns:
+ * dest if specified, mat otherwise
+ */
+mat4.translate = function(mat, vec, dest) {
+	var x = vec[0], y = vec[1], z = vec[2];
+	
+	if(!dest || mat == dest) {
+		mat[12] = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
+		mat[13] = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
+		mat[14] = mat[2]*x + mat[6]*y + mat[10]*z + mat[14];
+		mat[15] = mat[3]*x + mat[7]*y + mat[11]*z + mat[15];
+		return mat;
+	}
+	
+	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+	
+	dest[0] = a00;
+	dest[1] = a01;
+	dest[2] = a02;
+	dest[3] = a03;
+	dest[4] = a10;
+	dest[5] = a11;
+	dest[6] = a12;
+	dest[7] = a13;
+	dest[8] = a20;
+	dest[9] = a21;
+	dest[10] = a22;
+	dest[11] = a23;
+	
+	dest[12] = a00*x + a10*y + a20*z + mat[12];
+	dest[13] = a01*x + a11*y + a21*z + mat[13];
+	dest[14] = a02*x + a12*y + a22*z + mat[14];
+	dest[15] = a03*x + a13*y + a23*z + mat[15];
+	return dest;
+};
+
+/*
+ * mat4.scale
+ * Scales a matrix by the given vector
+ *
+ * Params:
+ * mat - mat4 to scale
+ * vec - vec3 specifying the scale for each axis
+ * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
+ *
+ * Returns:
+ * dest if specified, mat otherwise
+ */
+mat4.scale = function(mat, vec, dest) {
+	var x = vec[0], y = vec[1], z = vec[2];
+	
+	if(!dest || mat == dest) {
+		mat[0] *= x;
+		mat[1] *= x;
+		mat[2] *= x;
+		mat[3] *= x;
+		mat[4] *= y;
+		mat[5] *= y;
+		mat[6] *= y;
+		mat[7] *= y;
+		mat[8] *= z;
+		mat[9] *= z;
+		mat[10] *= z;
+		mat[11] *= z;
+		return mat;
+	}
+	
+	dest[0] = mat[0]*x;
+	dest[1] = mat[1]*x;
+	dest[2] = mat[2]*x;
+	dest[3] = mat[3]*x;
+	dest[4] = mat[4]*y;
+	dest[5] = mat[5]*y;
+	dest[6] = mat[6]*y;
+	dest[7] = mat[7]*y;
+	dest[8] = mat[8]*z;
+	dest[9] = mat[9]*z;
+	dest[10] = mat[10]*z;
+	dest[11] = mat[11]*z;
+	dest[12] = mat[12];
+	dest[13] = mat[13];
+	dest[14] = mat[14];
+	dest[15] = mat[15];
+	return dest;
+};
+
+/*
+ * mat4.rotate
+ * Rotates a matrix by the given angle around the specified axis
+ * If rotating around a primary axis (X,Y,Z) one of the specialized rotation functions should be used instead for performance
+ *
+ * Params:
+ * mat - mat4 to rotate
+ * angle - angle (in radians) to rotate
+ * axis - vec3 representing the axis to rotate around 
+ * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
+ *
+ * Returns:
+ * dest if specified, mat otherwise
+ */
+mat4.rotate = function(mat, angle, axis, dest) {
+	var x = axis[0], y = axis[1], z = axis[2];
+	var len = Math.sqrt(x*x + y*y + z*z);
+	if (!len) { return null; }
+	if (len != 1) {
+		len = 1 / len;
+		x *= len; 
+		y *= len; 
+		z *= len;
+	}
+	
+	var s = Math.sin(angle);
+	var c = Math.cos(angle);
+	var t = 1-c;
+	
+	// Cache the matrix values (makes for huge speed increases!)
+	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+	
+	// Construct the elements of the rotation matrix
+	var b00 = x*x*t + c, b01 = y*x*t + z*s, b02 = z*x*t - y*s;
+	var b10 = x*y*t - z*s, b11 = y*y*t + c, b12 = z*y*t + x*s;
+	var b20 = x*z*t + y*s, b21 = y*z*t - x*s, b22 = z*z*t + c;
+	
+	if(!dest) { 
+		dest = mat 
+	} else if(mat != dest) { // If the source and destination differ, copy the unchanged last row
+		dest[12] = mat[12];
+		dest[13] = mat[13];
+		dest[14] = mat[14];
+		dest[15] = mat[15];
+	}
+	
+	// Perform rotation-specific matrix multiplication
+	dest[0] = a00*b00 + a10*b01 + a20*b02;
+	dest[1] = a01*b00 + a11*b01 + a21*b02;
+	dest[2] = a02*b00 + a12*b01 + a22*b02;
+	dest[3] = a03*b00 + a13*b01 + a23*b02;
+	
+	dest[4] = a00*b10 + a10*b11 + a20*b12;
+	dest[5] = a01*b10 + a11*b11 + a21*b12;
+	dest[6] = a02*b10 + a12*b11 + a22*b12;
+	dest[7] = a03*b10 + a13*b11 + a23*b12;
+	
+	dest[8] = a00*b20 + a10*b21 + a20*b22;
+	dest[9] = a01*b20 + a11*b21 + a21*b22;
+	dest[10] = a02*b20 + a12*b21 + a22*b22;
+	dest[11] = a03*b20 + a13*b21 + a23*b22;
+	return dest;
+};
+
+/*
+ * mat4.rotateX
+ * Rotates a matrix by the given angle around the X axis
+ *
+ * Params:
+ * mat - mat4 to rotate
+ * angle - angle (in radians) to rotate
+ * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
+ *
+ * Returns:
+ * dest if specified, mat otherwise
+ */
+mat4.rotateX = function(mat, angle, dest) {
+	var s = Math.sin(angle);
+	var c = Math.cos(angle);
+	
+	// Cache the matrix values (makes for huge speed increases!)
+	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+
+	if(!dest) { 
+		dest = mat 
+	} else if(mat != dest) { // If the source and destination differ, copy the unchanged rows
+		dest[0] = mat[0];
+		dest[1] = mat[1];
+		dest[2] = mat[2];
+		dest[3] = mat[3];
+		
+		dest[12] = mat[12];
+		dest[13] = mat[13];
+		dest[14] = mat[14];
+		dest[15] = mat[15];
+	}
+	
+	// Perform axis-specific matrix multiplication
+	dest[4] = a10*c + a20*s;
+	dest[5] = a11*c + a21*s;
+	dest[6] = a12*c + a22*s;
+	dest[7] = a13*c + a23*s;
+	
+	dest[8] = a10*-s + a20*c;
+	dest[9] = a11*-s + a21*c;
+	dest[10] = a12*-s + a22*c;
+	dest[11] = a13*-s + a23*c;
+	return dest;
+};
+
+/*
+ * mat4.rotateY
+ * Rotates a matrix by the given angle around the Y axis
+ *
+ * Params:
+ * mat - mat4 to rotate
+ * angle - angle (in radians) to rotate
+ * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
+ *
+ * Returns:
+ * dest if specified, mat otherwise
+ */
+mat4.rotateY = function(mat, angle, dest) {
+	var s = Math.sin(angle);
+	var c = Math.cos(angle);
+	
+	// Cache the matrix values (makes for huge speed increases!)
+	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+	var a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+	
+	if(!dest) { 
+		dest = mat 
+	} else if(mat != dest) { // If the source and destination differ, copy the unchanged rows
+		dest[4] = mat[4];
+		dest[5] = mat[5];
+		dest[6] = mat[6];
+		dest[7] = mat[7];
+		
+		dest[12] = mat[12];
+		dest[13] = mat[13];
+		dest[14] = mat[14];
+		dest[15] = mat[15];
+	}
+	
+	// Perform axis-specific matrix multiplication
+	dest[0] = a00*c + a20*-s;
+	dest[1] = a01*c + a21*-s;
+	dest[2] = a02*c + a22*-s;
+	dest[3] = a03*c + a23*-s;
+	
+	dest[8] = a00*s + a20*c;
+	dest[9] = a01*s + a21*c;
+	dest[10] = a02*s + a22*c;
+	dest[11] = a03*s + a23*c;
+	return dest;
+};
+
+/*
+ * mat4.rotateZ
+ * Rotates a matrix by the given angle around the Z axis
+ *
+ * Params:
+ * mat - mat4 to rotate
+ * angle - angle (in radians) to rotate
+ * dest - Optional, mat4 receiving operation result. If not specified result is written to mat
+ *
+ * Returns:
+ * dest if specified, mat otherwise
+ */
+mat4.rotateZ = function(mat, angle, dest) {
+	var s = Math.sin(angle);
+	var c = Math.cos(angle);
+	
+	// Cache the matrix values (makes for huge speed increases!)
+	var a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+	var a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+	
+	if(!dest) { 
+		dest = mat 
+	} else if(mat != dest) { // If the source and destination differ, copy the unchanged last row
+		dest[8] = mat[8];
+		dest[9] = mat[9];
+		dest[10] = mat[10];
+		dest[11] = mat[11];
+		
+		dest[12] = mat[12];
+		dest[13] = mat[13];
+		dest[14] = mat[14];
+		dest[15] = mat[15];
+	}
+	
+	// Perform axis-specific matrix multiplication
+	dest[0] = a00*c + a10*s;
+	dest[1] = a01*c + a11*s;
+	dest[2] = a02*c + a12*s;
+	dest[3] = a03*c + a13*s;
+	
+	dest[4] = a00*-s + a10*c;
+	dest[5] = a01*-s + a11*c;
+	dest[6] = a02*-s + a12*c;
+	dest[7] = a03*-s + a13*c;
+	
+	return dest;
+};
+
+/*
+ * mat4.frustum
+ * Generates a frustum matrix with the given bounds
+ *
+ * Params:
+ * left, right - scalar, left and right bounds of the frustum
+ * bottom, top - scalar, bottom and top bounds of the frustum
+ * near, far - scalar, near and far bounds of the frustum
+ * dest - Optional, mat4 frustum matrix will be written into
+ *
+ * Returns:
+ * dest if specified, a new mat4 otherwise
+ */
+mat4.frustum = function(left, right, bottom, top, near, far, dest) {
+	if(!dest) { dest = mat4.create(); }
+	var rl = (right - left);
+	var tb = (top - bottom);
+	var fn = (far - near);
+	dest[0] = (near*2) / rl;
+	dest[1] = 0;
+	dest[2] = 0;
+	dest[3] = 0;
+	dest[4] = 0;
+	dest[5] = (near*2) / tb;
+	dest[6] = 0;
+	dest[7] = 0;
+	dest[8] = (right + left) / rl;
+	dest[9] = (top + bottom) / tb;
+	dest[10] = -(far + near) / fn;
+	dest[11] = -1;
+	dest[12] = 0;
+	dest[13] = 0;
+	dest[14] = -(far*near*2) / fn;
+	dest[15] = 0;
+	return dest;
+};
+
+/*
+ * mat4.perspective
+ * Generates a perspective projection matrix with the given bounds
+ *
+ * Params:
+ * fovy - scalar, vertical field of view
+ * aspect - scalar, aspect ratio. typically viewport width/height
+ * near, far - scalar, near and far bounds of the frustum
+ * dest - Optional, mat4 frustum matrix will be written into
+ *
+ * Returns:
+ * dest if specified, a new mat4 otherwise
+ */
+mat4.perspective = function(fovy, aspect, near, far, dest) {
+	var top = near*Math.tan(fovy*Math.PI / 360.0);
+	var right = top*aspect;
+	return mat4.frustum(-right, right, -top, top, near, far, dest);
+};
+
+/*
+ * mat4.ortho
+ * Generates a orthogonal projection matrix with the given bounds
+ *
+ * Params:
+ * left, right - scalar, left and right bounds of the frustum
+ * bottom, top - scalar, bottom and top bounds of the frustum
+ * near, far - scalar, near and far bounds of the frustum
+ * dest - Optional, mat4 frustum matrix will be written into
+ *
+ * Returns:
+ * dest if specified, a new mat4 otherwise
+ */
+mat4.ortho = function(left, right, bottom, top, near, far, dest) {
+	if(!dest) { dest = mat4.create(); }
+	var rl = (right - left);
+	var tb = (top - bottom);
+	var fn = (far - near);
+	dest[0] = 2 / rl;
+	dest[1] = 0;
+	dest[2] = 0;
+	dest[3] = 0;
+	dest[4] = 0;
+	dest[5] = 2 / tb;
+	dest[6] = 0;
+	dest[7] = 0;
+	dest[8] = 0;
+	dest[9] = 0;
+	dest[10] = -2 / fn;
+	dest[11] = 0;
+	dest[12] = -(left + right) / rl;
+	dest[13] = -(top + bottom) / tb;
+	dest[14] = -(far + near) / fn;
+	dest[15] = 1;
+	return dest;
+};
+
+/*
+ * mat4.ortho
+ * Generates a look-at matrix with the given eye position, focal point, and up axis
+ *
+ * Params:
+ * eye - vec3, position of the viewer
+ * center - vec3, point the viewer is looking at
+ * up - vec3 pointing "up"
+ * dest - Optional, mat4 frustum matrix will be written into
+ *
+ * Returns:
+ * dest if specified, a new mat4 otherwise
+ */
+mat4.lookAt = function(eye, center, up, dest) {
+	if(!dest) { dest = mat4.create(); }
+	
+	var eyex = eye[0],
+		eyey = eye[1],
+		eyez = eye[2],
+		upx = up[0],
+		upy = up[1],
+		upz = up[2],
+		centerx = center[0],
+		centery = center[1],
+		centerz = center[2];
+
+	if (eyex == centerx && eyey == centery && eyez == centerz) {
+		return mat4.identity(dest);
+	}
+	
+	var z0,z1,z2,x0,x1,x2,y0,y1,y2,len;
+	
+	//vec3.direction(eye, center, z);
+	z0 = eyex - center[0];
+	z1 = eyey - center[1];
+	z2 = eyez - center[2];
+	
+	// normalize (no check needed for 0 because of early return)
+	len = 1/Math.sqrt(z0*z0 + z1*z1 + z2*z2);
+	z0 *= len;
+	z1 *= len;
+	z2 *= len;
+	
+	//vec3.normalize(vec3.cross(up, z, x));
+	x0 = upy*z2 - upz*z1;
+	x1 = upz*z0 - upx*z2;
+	x2 = upx*z1 - upy*z0;
+	len = Math.sqrt(x0*x0 + x1*x1 + x2*x2);
+	if (!len) {
+		x0 = 0;
+		x1 = 0;
+		x2 = 0;
+	} else {
+		len = 1/len;
+		x0 *= len;
+		x1 *= len;
+		x2 *= len;
+	};
+	
+	//vec3.normalize(vec3.cross(z, x, y));
+	y0 = z1*x2 - z2*x1;
+	y1 = z2*x0 - z0*x2;
+	y2 = z0*x1 - z1*x0;
+	
+	len = Math.sqrt(y0*y0 + y1*y1 + y2*y2);
+	if (!len) {
+		y0 = 0;
+		y1 = 0;
+		y2 = 0;
+	} else {
+		len = 1/len;
+		y0 *= len;
+		y1 *= len;
+		y2 *= len;
+	}
+	
+	dest[0] = x0;
+	dest[1] = y0;
+	dest[2] = z0;
+	dest[3] = 0;
+	dest[4] = x1;
+	dest[5] = y1;
+	dest[6] = z1;
+	dest[7] = 0;
+	dest[8] = x2;
+	dest[9] = y2;
+	dest[10] = z2;
+	dest[11] = 0;
+	dest[12] = -(x0*eyex + x1*eyey + x2*eyez);
+	dest[13] = -(y0*eyex + y1*eyey + y2*eyez);
+	dest[14] = -(z0*eyex + z1*eyey + z2*eyez);
+	dest[15] = 1;
+	
+	return dest;
+};
+
+/*
+ * mat4.str
+ * Returns a string representation of a mat4
+ *
+ * Params:
+ * mat - mat4 to represent as a string
+ *
+ * Returns:
+ * string representation of mat
+ */
+mat4.str = function(mat) {
+	return '[' + mat[0] + ', ' + mat[1] + ', ' + mat[2] + ', ' + mat[3] + 
+		', '+ mat[4] + ', ' + mat[5] + ', ' + mat[6] + ', ' + mat[7] + 
+		', '+ mat[8] + ', ' + mat[9] + ', ' + mat[10] + ', ' + mat[11] + 
+		', '+ mat[12] + ', ' + mat[13] + ', ' + mat[14] + ', ' + mat[15] + ']';
+};
+
+/*
+ * quat4 - Quaternions 
+ */
+quat4 = {};
+
+/*
+ * quat4.create
+ * Creates a new instance of a quat4 using the default array type
+ * Any javascript array containing at least 4 numeric elements can serve as a quat4
+ *
+ * Params:
+ * quat - Optional, quat4 containing values to initialize with
+ *
+ * Returns:
+ * New quat4
+ */
+quat4.create = function(quat) {
+	var dest = new glMatrixArrayType(4);
+	
+	if(quat) {
+		dest[0] = quat[0];
+		dest[1] = quat[1];
+		dest[2] = quat[2];
+		dest[3] = quat[3];
+	}
+	
+	return dest;
+};
+
+/*
+ * quat4.set
+ * Copies the values of one quat4 to another
+ *
+ * Params:
+ * quat - quat4 containing values to copy
+ * dest - quat4 receiving copied values
+ *
+ * Returns:
+ * dest
+ */
+quat4.set = function(quat, dest) {
+	dest[0] = quat[0];
+	dest[1] = quat[1];
+	dest[2] = quat[2];
+	dest[3] = quat[3];
+	
+	return dest;
+};
+
+/*
+ * quat4.calculateW
+ * Calculates the W component of a quat4 from the X, Y, and Z components.
+ * Assumes that quaternion is 1 unit in length. 
+ * Any existing W component will be ignored. 
+ *
+ * Params:
+ * quat - quat4 to calculate W component of
+ * dest - Optional, quat4 receiving calculated values. If not specified result is written to quat
+ *
+ * Returns:
+ * dest if specified, quat otherwise
+ */
+quat4.calculateW = function(quat, dest) {
+	var x = quat[0], y = quat[1], z = quat[2];
+
+	if(!dest || quat == dest) {
+		quat[3] = -Math.sqrt(Math.abs(1.0 - x*x - y*y - z*z));
+		return quat;
+	}
+	dest[0] = x;
+	dest[1] = y;
+	dest[2] = z;
+	dest[3] = -Math.sqrt(Math.abs(1.0 - x*x - y*y - z*z));
+	return dest;
+}
+
+/*
+ * quat4.inverse
+ * Calculates the inverse of a quat4
+ *
+ * Params:
+ * quat - quat4 to calculate inverse of
+ * dest - Optional, quat4 receiving inverse values. If not specified result is written to quat
+ *
+ * Returns:
+ * dest if specified, quat otherwise
+ */
+quat4.inverse = function(quat, dest) {
+	if(!dest || quat == dest) {
+		quat[0] *= -1;
+		quat[1] *= -1;
+		quat[2] *= -1;
+		return quat;
+	}
+	dest[0] = -quat[0];
+	dest[1] = -quat[1];
+	dest[2] = -quat[2];
+	dest[3] = quat[3];
+	return dest;
+}
+
+/*
+ * quat4.length
+ * Calculates the length of a quat4
+ *
+ * Params:
+ * quat - quat4 to calculate length of
+ *
+ * Returns:
+ * Length of quat
+ */
+quat4.length = function(quat) {
+	var x = quat[0], y = quat[1], z = quat[2], w = quat[3];
+	return Math.sqrt(x*x + y*y + z*z + w*w);
+}
+
+/*
+ * quat4.normalize
+ * Generates a unit quaternion of the same direction as the provided quat4
+ * If quaternion length is 0, returns [0, 0, 0, 0]
+ *
+ * Params:
+ * quat - quat4 to normalize
+ * dest - Optional, quat4 receiving operation result. If not specified result is written to quat
+ *
+ * Returns:
+ * dest if specified, quat otherwise
+ */
+quat4.normalize = function(quat, dest) {
+	if(!dest) { dest = quat; }
+	
+	var x = quat[0], y = quat[1], z = quat[2], w = quat[3];
+	var len = Math.sqrt(x*x + y*y + z*z + w*w);
+	if(len == 0) {
+		dest[0] = 0;
+		dest[1] = 0;
+		dest[2] = 0;
+		dest[3] = 0;
+		return dest;
+	}
+	len = 1/len;
+	dest[0] = x * len;
+	dest[1] = y * len;
+	dest[2] = z * len;
+	dest[3] = w * len;
+	
+	return dest;
+}
+
+/*
+ * quat4.multiply
+ * Performs a quaternion multiplication
+ *
+ * Params:
+ * quat - quat4, first operand
+ * quat2 - quat4, second operand
+ * dest - Optional, quat4 receiving operation result. If not specified result is written to quat
+ *
+ * Returns:
+ * dest if specified, quat otherwise
+ */
+quat4.multiply = function(quat, quat2, dest) {
+	if(!dest) { dest = quat; }
+	
+	var qax = quat[0], qay = quat[1], qaz = quat[2], qaw = quat[3];
+	var qbx = quat2[0], qby = quat2[1], qbz = quat2[2], qbw = quat2[3];
+	
+	dest[0] = qax*qbw + qaw*qbx + qay*qbz - qaz*qby;
+	dest[1] = qay*qbw + qaw*qby + qaz*qbx - qax*qbz;
+	dest[2] = qaz*qbw + qaw*qbz + qax*qby - qay*qbx;
+	dest[3] = qaw*qbw - qax*qbx - qay*qby - qaz*qbz;
+	
+	return dest;
+}
+
+/*
+ * quat4.multiplyVec3
+ * Transforms a vec3 with the given quaternion
+ *
+ * Params:
+ * quat - quat4 to transform the vector with
+ * vec - vec3 to transform
+ * dest - Optional, vec3 receiving operation result. If not specified result is written to vec
+ *
+ * Returns:
+ * dest if specified, vec otherwise
+ */
+quat4.multiplyVec3 = function(quat, vec, dest) {
+	if(!dest) { dest = vec; }
+	
+	var x = vec[0], y = vec[1], z = vec[2];
+	var qx = quat[0], qy = quat[1], qz = quat[2], qw = quat[3];
+
+	// calculate quat * vec
+	var ix = qw*x + qy*z - qz*y;
+	var iy = qw*y + qz*x - qx*z;
+	var iz = qw*z + qx*y - qy*x;
+	var iw = -qx*x - qy*y - qz*z;
+	
+	// calculate result * inverse quat
+	dest[0] = ix*qw + iw*-qx + iy*-qz - iz*-qy;
+	dest[1] = iy*qw + iw*-qy + iz*-qx - ix*-qz;
+	dest[2] = iz*qw + iw*-qz + ix*-qy - iy*-qx;
+	
+	return dest;
+}
+
+/*
+ * quat4.toMat3
+ * Calculates a 3x3 matrix from the given quat4
+ *
+ * Params:
+ * quat - quat4 to create matrix from
+ * dest - Optional, mat3 receiving operation result
+ *
+ * Returns:
+ * dest if specified, a new mat3 otherwise
+ */
+quat4.toMat3 = function(quat, dest) {
+	if(!dest) { dest = mat3.create(); }
+	
+	var x = quat[0], y = quat[1], z = quat[2], w = quat[3];
+
+	var x2 = x + x;
+	var y2 = y + y;
+	var z2 = z + z;
+
+	var xx = x*x2;
+	var xy = x*y2;
+	var xz = x*z2;
+
+	var yy = y*y2;
+	var yz = y*z2;
+	var zz = z*z2;
+
+	var wx = w*x2;
+	var wy = w*y2;
+	var wz = w*z2;
+
+	dest[0] = 1 - (yy + zz);
+	dest[1] = xy - wz;
+	dest[2] = xz + wy;
+
+	dest[3] = xy + wz;
+	dest[4] = 1 - (xx + zz);
+	dest[5] = yz - wx;
+
+	dest[6] = xz - wy;
+	dest[7] = yz + wx;
+	dest[8] = 1 - (xx + yy);
+	
+	return dest;
+}
+
+/*
+ * quat4.toMat4
+ * Calculates a 4x4 matrix from the given quat4
+ *
+ * Params:
+ * quat - quat4 to create matrix from
+ * dest - Optional, mat4 receiving operation result
+ *
+ * Returns:
+ * dest if specified, a new mat4 otherwise
+ */
+quat4.toMat4 = function(quat, dest) {
+	if(!dest) { dest = mat4.create(); }
+	
+	var x = quat[0], y = quat[1], z = quat[2], w = quat[3];
+
+	var x2 = x + x;
+	var y2 = y + y;
+	var z2 = z + z;
+
+	var xx = x*x2;
+	var xy = x*y2;
+	var xz = x*z2;
+
+	var yy = y*y2;
+	var yz = y*z2;
+	var zz = z*z2;
+
+	var wx = w*x2;
+	var wy = w*y2;
+	var wz = w*z2;
+
+	dest[0] = 1 - (yy + zz);
+	dest[1] = xy - wz;
+	dest[2] = xz + wy;
+	dest[3] = 0;
+
+	dest[4] = xy + wz;
+	dest[5] = 1 - (xx + zz);
+	dest[6] = yz - wx;
+	dest[7] = 0;
+
+	dest[8] = xz - wy;
+	dest[9] = yz + wx;
+	dest[10] = 1 - (xx + yy);
+	dest[11] = 0;
+
+	dest[12] = 0;
+	dest[13] = 0;
+	dest[14] = 0;
+	dest[15] = 1;
+	
+	return dest;
+}
+
+/*
+ * quat4.slerp
+ * Performs a spherical linear interpolation between two quat4
+ *
+ * Params:
+ * quat - quat4, first quaternion
+ * quat2 - quat4, second quaternion
+ * slerp - interpolation amount between the two inputs
+ * dest - Optional, quat4 receiving operation result. If not specified result is written to quat
+ *
+ * Returns:
+ * dest if specified, quat otherwise
+ */
+quat4.slerp = function(quat, quat2, slerp, dest) {
+    if(!dest) { dest = quat; }
+    
+	var cosHalfTheta =  quat[0]*quat2[0] + quat[1]*quat2[1] + quat[2]*quat2[2] + quat[3]*quat2[3];
+	
+	if (Math.abs(cosHalfTheta) >= 1.0){
+	    if(dest != quat) {
+		    dest[0] = quat[0];
+		    dest[1] = quat[1];
+		    dest[2] = quat[2];
+		    dest[3] = quat[3];
+		}
+		return dest;
+	}
+	
+	var halfTheta = Math.acos(cosHalfTheta);
+	var sinHalfTheta = Math.sqrt(1.0 - cosHalfTheta*cosHalfTheta);
+
+	if (Math.abs(sinHalfTheta) < 0.001){
+		dest[0] = (quat[0]*0.5 + quat2[0]*0.5);
+		dest[1] = (quat[1]*0.5 + quat2[1]*0.5);
+		dest[2] = (quat[2]*0.5 + quat2[2]*0.5);
+		dest[3] = (quat[3]*0.5 + quat2[3]*0.5);
+		return dest;
+	}
+	
+	var ratioA = Math.sin((1 - slerp)*halfTheta) / sinHalfTheta;
+	var ratioB = Math.sin(slerp*halfTheta) / sinHalfTheta; 
+	
+	dest[0] = (quat[0]*ratioA + quat2[0]*ratioB);
+	dest[1] = (quat[1]*ratioA + quat2[1]*ratioB);
+	dest[2] = (quat[2]*ratioA + quat2[2]*ratioB);
+	dest[3] = (quat[3]*ratioA + quat2[3]*ratioB);
+	
+	return dest;
+}
+
+
+/*
+ * quat4.str
+ * Returns a string representation of a quaternion
+ *
+ * Params:
+ * quat - quat4 to represent as a string
+ *
+ * Returns:
+ * string representation of quat
+ */
+quat4.str = function(quat) {
+	return '[' + quat[0] + ', ' + quat[1] + ', ' + quat[2] + ', ' + quat[3] + ']'; 
+}
+
+return {
+  vec3: vec3,
+  mat4: mat4,
+  mat3: mat3
+};
+});
+
+define('scene/camera',['require','glmatrix'],function(require) {
+  var vec3 = require('glmatrix').vec3;
+
+  var Camera = function(aspectRatio, fieldOfView) {
+    this.aspectRatio = aspectRatio;
+    this.fieldOfView = fieldOfView;
+    this.centre = vec3.create([0,0,0]);
+    this.distance = 512.0;
+    
+    this.width = 0;
+    this.height = 0;
+  };
+  
+  Camera.prototype = {
+    lookAt: function(x, y, z) {
+      this.centre[0] = x || 0;
+      this.centre[1] = y || 0;
+      this.centre[2] = z || 0;
+    },
+    updateViewport: function(graph) {
+      this.calculateDimensions();
+      
+      var left = Math.max(this.centre[0] - this.width / 2.0, 0);
+      var top = Math.max(this.centre[1] - this.height / 2.0, 0);
+      var right = left + this.width;
+      var bottom = top + this.height;      
+      
+      graph.updateViewport(left, right, top, bottom);
+    
+    },
+    calculateDimensions: function() {
+      this.width = this.distance * Math.tan(this.fieldOfView);
+      this.height = this.width / this.aspectRatio;
+    }
+  };
+  
+  return Camera; 
+});
+
+define('render/rendergraph',['require','underscore'],function(require) {
   var _ = require('underscore');
 
-  var InputTranslator = function(element) {
-     Eventable.call(this);
-     var self = this;
+  var RenderGraph = function() {};
+  
+  RenderGraph.prototype = {
+    items: [],
+    
+    viewport: {
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    },
+    
+    updateViewport: function(left, right, top, bottom) {
+      this.viewport = {
+        left: left,
+        right: right,
+        top: top,
+        bottom: bottom
+      };
+    },
+    
+    add: function(item) {
+      this.items.push(item);
+    },
+    
+    remove: function(item) {
+      this.items = _.without(this.items, [item]);
+    },    
+    
+    clear: function() {
+      this.items = [];
+    },
+        
+    uploadTransforms: function(context) {
+      this.applyScale(context);
+      this.applyTranslate(context);
+    },
+    
+    applyTranslate: function(context) {
+      context.translate(-parseInt(this.viewport.left), - parseInt(this.viewport.top));
+    },
+    
+    applyScale: function(context) {
+      var canvas = context.canvas;
+      var canvasWidth = canvas.width;
+      var canvasHeight = canvas.height;
+      
+      var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
+      var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
+      
+      context.scale(parseInt(scalex), parseInt(scaley));
+    },
+    
+    pass: function(callback) {
+      var self = this;
+      _(this.items).chain()
+       .filter(function(item) { return item.visible(self.viewport); })
+       .each(callback);
+    },
+  };
+  
+  return RenderGraph;
+});
+
+define('scene/scene',['require','underscore','../render/rendergraph','../shared/eventable'],function(require) {
+
+  var _ = require('underscore');
+  var RenderGraph = require('../render/rendergraph');
+  var Eventable = require('../shared/eventable');
+  
+  var Scene = function(resources, renderer, camera) {
+    Eventable.call(this);
+    this.entities = [];
+    this.entitiesById = {};
+    this.camera = camera;
+    this.renderer = renderer;
+    this.graph = new RenderGraph();
+    this.resources = resources;
+  };
+  
+  Scene.prototype = {
+    tick: function() {
+      _(this.entities).each(function(entity){
+        if(entity.tick) 
+          entity.tick();
+      });
+    },
+    render: function() {
+      this.camera.updateViewport(this.graph);
+      this.renderer.clear();
+      this.renderer.draw(this.graph);
+    },
+    add: function(entity) {
+      this.entities.push(entity);
+      this.entitiesById[entity.id] = entity;
+      entity.setScene(this);
+    },
+    remove: function(entity) {
+      this.entities = _(this.entities).without(entity);
+      delete this.entities[entity.id];
+      entity.setScene(null);
+    },
+    dispatch: function(id, command, data) {
+      var entity = this.entitiesById[id];
+      entity.dispatch(command, data);
+    },
+    broadcast: function(event, data) {
+      this.raise(event, data);
+    }
+  };
+  _.extend(Scene.prototype, Eventable.prototype);
+  
+  return Scene;  
+});
+
+define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
+  var _ = require('underscore');
+  var Eventable = require('../shared/eventable');
+  
+  var ComponentBag = function() {
+    Eventable.call(this);
+   
+    this.components = [];
+    this.eventHandlers = {};
+    this.commandHandlers = {};
+  };
+  
+  ComponentBag.prototype = {
      
-     this.element = $(element);
+    attach: function(component) {
+      this.components.push(component);
+      this.registerHandlers(component);
+      component.parent = this;
+    },
+    
+    registerHandlers: function(component) {
+      for(var key in component) {
+        var item = component[key];
+        if(item && item.call)
+          this.tryRegisterHandler(component, key, item);
+      }
+    },
+    
+    tryRegisterHandler: function(component, key, handler) {
+      if(key.indexOf('on') === 0)
+        this.registerEventHandler(component, key, handler);
+      else
+        this.registerCommandHandler(component, key, handler);
+    },
+    
+    registerEventHandler: function(component, key, handler) {
+      this.on(key.substr(2), handler, component);
+    },
+    
+    registerCommandHandler: function(component, key, handler) {      
+      this.commandHandlers[key] = {
+        component: component,
+        method: handler
+      };
+    },
+        
+    dispatch: function(command, data) {
+      var handler = this.findCommandHandler(command);
+      if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
+      handler.method.apply(handler.component, data); 
+    },
+    
+    findCommandHandler: function(key) {
+      return this.commandHandlers[key];
+    }
+  };
+  _.extend(ComponentBag.prototype, Eventable.prototype);
+  return ComponentBag;
+});
+
+define('scene/entity',['require','./componentbag','underscore'],function(require) {
+
+  var ComponentBag = require('./componentbag');
+  var _ = require('underscore');
+
+  var Entity = function(id) {
+    ComponentBag.call(this);    
+    this.id = id;
+    
+    this.onAny(this.propogateEventToScene);
+  };
+  
+  Entity.prototype = {
+    setScene: function(scene) {
+      this.scene = scene;
+      if(scene)
+        this.raise('AddedToScene', scene);
+      else
+        this.raise('RemovedFromScene');
+    },
+    tick: function() {
+      this.raise('Tick');
+    },
+    propogateEventToScene: function(data) {
+      if(this.scene)
+        this.scene.broadcast(data.event, data.data);
+    }
+  };
+  _.extend(Entity.prototype, ComponentBag.prototype);
  
-     this.element.click(function(e) {
-      self.onMouseClick(e);
-     });
-  };
+  return Entity;
   
-  InputTranslator.prototype = {
-    onMouseClick: function(e) {
-      this.raisePrimaryAction(e.clientX, e.clientY);
-    },
-    
-    raisePrimaryAction: function(x, y) {
-      this.raise('PrimaryAction', {
-        x: x,
-        y: y
-      });
-    }
-  };
-  _.extend(InputTranslator.prototype, Eventable.prototype);
-  
-  return InputTranslator;
 });
 
-define('input/inputemitter',['require','./inputtranslator'],function(require) {
+define('render/color',['require'],function(require) {
+  var Color = function(a, r, g, b) {
+    this.a = a;
+    this.r = r;
+    this.g = g;
+    this.b = b;
+  };
 
-  var InputTranslator = require('./inputtranslator');
-  
-  var InputEmitter = function(scene, canvasElement) {
-    var self = this;
-    this.scene = scene;
-    this.canvasElement = canvasElement;
-    this.translator = new InputTranslator(canvasElement);
-    
-    this.translator.on('PrimaryAction', function(data) {
-      self.onPrimaryAction(data);
-    });
+  Color.prototype = {
+    str: function() {
+      
+    }
+  };
+  return Color;
+});
+
+
+define('render/material',['require','./color'],function(require) {
+  var Color = require('./color');
+
+  var Material = function() {
+   
   };
   
-  InputEmitter.prototype = {
-    onPrimaryAction: function(data) {
-      var transformed = this.fromCanvasToWorld(data.x, data.y);
-      this.scene.broadcast('PrimaryAction', {
-        x: transformed.x,
-        y: transformed.y
-      });
+  Material.prototype = {
+    diffuse: new Color(255,255,255, 255),  
+    diffuseTexture: null
+  };
+  return Material;
+  
+});
 
+define('render/quad',['require'],function(require) {
+
+  var Quad = function(material) {
+    this.material = material;
+  };
+  
+  Quad.prototype = {
+    upload: function(context) {
+    //  this.material.upload(context);
     },
-    
-    fromCanvasToWorld: function(x, y) {
-      var viewport = this.scene.graph.viewport;
-      
-      var canvasWidth = this.canvasElement.width;
-      var canvasHeight = this.canvasElement.height;
-           
-      var scalex = canvasWidth / (viewport.right - viewport.left);
-      var scaley = canvasHeight / (viewport.bottom - viewport.top);
-      
-      x /= scalex;
-      y /= scaley;
-           
-      x += viewport.left;
-      y += viewport.top;
-      
-      return {
-        x: x,
-        y: y
-      };      
+    render: function(canvas, instance) {
+      if(this.material.diffuseTexture)
+        this.drawTexturedQuad(canvas, instance);
+      else
+        this.drawPlainQuad(canvas, instance);      
+    },
+    drawTexturedQuad: function(canvas, instance) {
+      canvas.drawImage(
+        this.image('diffuseTexture'),
+        parseInt(instance.position[0]),
+        parseInt(instance.position[1]),
+        parseInt(instance.size[0]),
+        parseInt(instance.size[1]));
+    },
+    drawPlainQuad: function(canvas, instance) {
+      canvas.fillRect(
+        instance.position[0],
+        instance.position[1],
+        instance.size[0],
+        instance.size[1]);
+    },
+    image: function(name) {
+       return this.material[name].get()
+    }
+  }; 
+  
+  return Quad;
+});
+
+define('render/instance',['require','glmatrix'],function(require) {
+  var vec3 = require('glmatrix').vec3;
+
+  var Instance = function(model) {
+    this.model = model;
+    this.position = vec3.create([0,0,0]);
+    this.size = vec3.create([0,0,0]);
+  };
+  
+  Instance.prototype = {
+    visible: function(viewport) {
+      return true;
+    },
+    scale: function(x, y, z) {
+      this.size[0] = x || 0;
+      this.size[1] = y || 0;
+      this.size[2] = z || 0;
+    },
+    translate: function(x, y, z) {
+      this.position[0] = x || 0;
+      this.position[1] = y || 0;
+      this.position[2] = z || 0;
+    },
+    render: function(context) {     
+      this.model.upload(context);
+      this.model.render(context, this);
     }
   };
   
-  return InputEmitter;
+  return Instance;
+});
+
+define('static/map',['require','../render/material','../render/quad','../render/instance'],function(require) {
+
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var Instance = require('../render/instance');
+
+  var Map = function(width, height, tilewidth, tileheight) {
+    this.width = width;
+    this.height = height;
+    this.tilewidth = tilewidth;
+    this.tileheight = tileheight;
+    this.tileCountWidth = parseInt(this.width / this.tileheight);
+    this.tileCountHeight = parseInt(this.height / this.tileheight);
+    this.tiles = new Array(this.tileCountWidth * this.tileCountHeight);
+    this.templates = {};
+    this.createEmptyTiles();
+  };
   
+  Map.prototype = {
+    populateGraph: function(graph) {             
+      graph.clear();
+      
+      for(var x = 0; x < this.tileCountWidth; x++) {
+        for(var y = 0; y < this.tileCountHeight ; y++) {
+          var index = this.index(x, y);
+          for(var i = 0; i < this.tiles[index].length ; i++) {
+            graph.add(this.tiles[index][i]);            
+          }          
+        }
+      }
+    },
+    
+    createEmptyTiles: function() {
+      for(var x = 0; x < this.tileCountWidth; x++) {
+        for(var y = 0; y < this.tileCountHeight ; y++) {
+          var index = this.index(x,y);
+          var tilex = x * this.tilewidth;
+          var tiley = y * this.tileheight;
+          this.tiles[index] = [];
+        }
+      }
+    },
+    
+    generateRandom: function(resources) {
+
+      var treeMaterial = new Material();
+      treeMaterial.diffuseTexture = resources.get('/main/tree.png');
+      this.models = {};
+      this.models.tree = new Quad(treeMaterial);
+      
+      for(var x = 0; x < this.tileCountWidth; x++) {
+        for(var y = 0; y < this.tileCountHeight ; y++) {
+          var index = this.index(x,y);
+          var tilex = x * this.tilewidth;
+          var tiley = y * this.tileheight;          
+          var treeCount = Math.random() * 5;
+          
+          for(var i = 0 ; i < treeCount; i++) {
+            var xloc = Math.random() * this.tilewidth;
+            var yloc = Math.random() * this.tileheight;
+            
+            var instance = new Instance(this.models.tree);
+            instance.scale(25,25, 0);
+            instance.translate(xloc + tilex, yloc + tiley, 0);
+            
+ 
+            this.tiles[index].push(instance);
+          }
+        }     
+      }    
+    },
+    index: function(x, y) {
+      return x + y * this.tileCountWidth;
+    }
+  };
   
+  return Map;
 
 });
 
-define('apps/demo/editor',['require','../../render/material','../../render/quad','../../render/instance','../../render/rendergraph','../../render/canvasrender','../../resources/packagedresources','../../scene/camera','../../entities/character','../../scene/scene','../../input/inputemitter','../../entities/controller','../../static/scenery','../../entities/debug','jquery'],function(require) {
+define('static/scenery',['require','underscore','../scene/entity','./map','../render/rendergraph','../render/canvasrender'],function(require) {
 
-  var Material = require('../../render/material');
-  var Quad = require('../../render/quad');
-  var Instance = require('../../render/instance');
-  var RenderGraph = require('../../render/rendergraph');
-  var CanvasRender = require('../../render/canvasrender');
-  var PackagedResources = require('../../resources/packagedresources');
-  var Camera = require('../../scene/camera');
-  var Character = require('../../entities/character');
-  var Scene = require('../../scene/scene');
-  var InputEmitter = require('../../input/inputemitter');
-  var Controller = require('../../entities/controller');
-  var Scenery = require('../../static/scenery');
-  var Debug = require('../../entities/debug');
-  var $ = require('jquery');
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  var Map = require('./map');
+  var RenderGraph = require('../render/rendergraph');
+  var CanvasRender = require('../render/canvasrender');
+
+  var Scenery = function(renderWidth, renderHeight, tileWidth, tileHeight) {
+    Entity.call(this, "scenery");
+    
+    this.tilewidth = tileWidth;
+    this.tileheight = tileHeight;
+    this.scene = null;
+    this.map = null;
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = renderWidth + tileWidth;
+    this.canvas.height = renderHeight + tileHeight;
+    this.context = this.canvas.getContext('2d');
+    this.graph = new RenderGraph();
+    this.renderer = new CanvasRender(this.context);
+    
+    this.tileleft = -1;
+    this.tiletop = -1;
+    this.tilebottom = -1;
+    this.tileright = -1;
+    
+    this.on('AddedToScene', this.onAddedToScene);
+  };
   
- var findRequestAnimationFrame = function() {
+  Scenery.prototype = {
+    loadMap: function(map) {
+      this.map = map;
+    },
+    visible: function() { 
+      return true; 
+    },
+    render: function(context) {   
+      if(!this.map) return;
+      this.evaluateStatus();
+      
+      var rx = this.scene.graph.viewport.left % this.tilewidth;
+      var ry = this.scene.graph.viewport.top % this.tileheight;
+      var dx = 0;
+      var dy = 0;
+      
+      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
+                  
+      context.drawImage(this.context.canvas, 
+        rx, ry, 
+      context.canvas.width, context.canvas.height, 
+        rx + this.tileleft * this.tilewidth, ry + this.tiletop * this.tileheight, 
+      context.canvas.width, context.canvas.height); 
+    },
+    onAddedToScene: function(scene) {
+      this.scene = scene; 
+      this.scene.graph.add(this);   
+    },
+    evaluateStatus: function() {
+      
+      var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
+      var tiletop = parseInt(this.scene.graph.viewport.top / this.tileheight);
+      var tileright = parseInt(this.scene.graph.viewport.right / this.tilewidth) + 1;
+      var tilebottom = parseInt(this.scene.graph.viewport.bottom / this.tileheight) + 1;
+      
+      tileleft = Math.max(tileleft, 0);
+      tiletop = Math.max(tiletop, 0);
+      tileright = Math.min(tileright, this.map.tileCountWidth-1);
+      tilebottom = Math.min(tilebottom, this.map.tileCountHeight-1);
+      
+      if(tileleft !== this.tileleft || 
+         tiletop  !== this.tiletop || 
+         tileright !== this.tileright ||
+         tilebottom !== this.tilebottom) {
+         
+        this.tileleft = tileleft;
+        this.tileright = tileright;
+        this.tiletop = tiletop;
+        this.tilebottom = tilebottom;
+        this.redrawBackground();
+      }
+    },
+    
+    redrawBackground: function() { 
+     
+      this.graph.updateViewport(
+          this.tileleft * this.tilewidth,
+          this.tileright * this.tilewidth,
+          this.tiletop * this.tileheight,
+          this.tilebottom * this.tileheight);         
+        
+      this.map.populateGraph(this.graph);      
+      this.renderer.clear();
+      this.renderer.draw(this.graph);      
+    }
+  };
+  
+  _.extend(Scenery.prototype, Entity.prototype);
+  
+  return Scenery;
+
+});
+
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/scenery'],function(require) {
+
+  var CanvasRender = require('../render/canvasrender');
+  var PackagedResources = require('../resources/packagedresources'); 
+  var Camera = require('../scene/camera');
+  var Scene = require('../scene/scene');
+  var Scenery = require('../static/scenery');
+
+  
+  var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
       window.webkitRequestAnimationFrame  || 
       window.mozRequestAnimationFrame     || 
@@ -13218,13 +12883,187 @@ define('apps/demo/editor',['require','../../render/material','../../render/quad'
       function(callback, element){
         window.setTimeout(callback, 1000 / 30);
       };
-  }; 
+  };  
+
+  var Context = function(element, app) {
+    this.resources = new PackagedResources();
+    this.element = element;    
+    this.context = element.getContext('2d');
+    this.app = app;
+    this.resources.on('loaded', this.onResourcesLoaded, this); 
+    this.resources.loadPackage('game/assets.json');
+  };
   
+  Context.prototype = {
+    onResourcesLoaded: function() { 
+      var self = this;
+      this.scenery = new Scenery(this.element.width, this.element.height, 128, 128);
+      this.renderer = new CanvasRender(this.context);
+      this.camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
+      this.scene = new Scene(this.resources, this.renderer, this.camera);
+
+      this.scene.add(this.scenery);
+      
+      this.app.start(this);
+      
+      setInterval(function() {    
+        self.scene.tick();
+      }, 1000 / 30);
+      
+      var renderAnimFrame = findRequestAnimationFrame();
+      var render = function() {
+        self.scene.render();
+        renderAnimFrame(render);
+      };      
+      render();
+      
+    }  
+  };
+  
+  return Context;
+});
+
+define('editor/selecttool',['require'],function(require) {
+  var SelectTool = function(editor) {
+    this.editor = editor;
+  };
+  
+  SelectTool.prototype = {
+    activate: function() {
+     this.editor.cursor('crosshair');
+      
+    },
+    deactivate: function() {
+       this.editor.cursor('default');
+    }
+  };
+  
+  return SelectTool;
+});
+
+define('editor/movetool',['require'],function(require) {
+
+  var MoveTool = function(editor) {
+    this.editor = editor;
+  };
+  
+  MoveTool.prototype = {
+    activate: function() {
+      this.editor.cursor('pointer');
+    },
+    deactivate: function() {
+     this.editor.cursor('default');
+    }
+  };
+  
+  return MoveTool;
+
+});
+
+define('editor/toolbar',['require','jquery','./selecttool','./movetool'],function(require) {
+
+  var $ = require('jquery');
+  var SelectTool = require('./selecttool');
+  var MoveTool = require('./movetool');
+
+  var Toolbar = function(editor) {
+    this.editor = editor;
+    this.tools = {
+      'select': new SelectTool(editor),
+      'move': new MoveTool(editor)    
+    };
+    this.currentTool = null;
+    this.setupTools();
+    this.activateTool('move');
+  };  
+  
+  Toolbar.prototype = {
+    setupTools: function() {    
+      for(var i in this.tools) {
+        this.hookTool(i);
+      };
+    },
+    hookTool: function(tool) {
+      var self = this;
+      $('#' + tool).click(function() {
+        self.activateTool(tool);
+      });
+    },
+    activateTool: function(tool) {
+      if(this.currentTool)
+        this.currentTool.deactivate();
+      this.currentTool = this.tools[tool];
+      this.currentTool.activate();
+    }
+  };
+  
+  return Toolbar;   
+
+});
+
+define('editor/mapbuilder',['require','underscore','../static/map','../render/instance'],function(require) {
+  
+  var _ = require('underscore');
+  var Map = require('../static/map');
+  var Instance = require('../render/instance');
+
+  var MapBuilder = function(width, height, tilewidth, tileheight) {
+    Map.call(this, width, height, tilewidth, tileheight);
+  };
+  
+  MapBuilder.prototype = {
+    addInstance: function(model, x, y) {
+      
+    },
+    deleteInstance: function(tile, instance) {
+      
+    },
+    getInstanceAt: function(x, y) {
+      // Work out which tile this intersects
+      
+      // Adjust for the tile
+      
+      // Find an instance that intersects with that point
+      
+      // Return it
+    }    
+  };
+  
+  _.extend(MapBuilder.prototype, Map.prototype);
+  
+  return MapBuilder;
+
+});
+
+define('apps/demo/editor',['require','jquery','../../harness/context','../../editor/toolbar','../../editor/mapbuilder'],function(require) {
+  
+  var $ = require('jquery');
+  var Context = require('../../harness/context');
+  var Toolbar = require('../../editor/toolbar');
+  var MapBuilder = require('../../editor/mapbuilder');
+   
   $(document).ready(function() {
-  
-  
+    var canvasElement = document.getElementById('target');
+    var context = new Context(canvasElement, new Editor(canvasElement));  
   }); 
- 
   
+  var Editor = function(element) {
+    this.element = $(element);
+  };
+  
+  Editor.prototype = {
+    start: function(context) {
+      this.context = context;
+      this.toolbar = new Toolbar(this);
+      this.initializeMap();
+    },
+    cursor: function(value) {
+      this.element.css('cursor', value);
+    },
+    initializeMap: function() {
+      this.map = new MapBuilder(2048, 2048, 128, 128);
+      this.context.scenery.loadMap(this.map);
+    }
+  };  
 
 });

@@ -1,5 +1,7 @@
 define(function(require) {
-  var Map = require('./map');
+  
+  var _ = require('underscore');
+  var Map = require('../static/map');
   var Instance = require('../render/instance');
 
   var MapBuilder = function(width, height, tilewidth, tileheight) {
@@ -24,8 +26,8 @@ define(function(require) {
     }    
   };
   
-  _.extend(Map.prototype, MapBuilder.prototype);
+  _.extend(MapBuilder.prototype, Map.prototype);
   
-  
+  return MapBuilder;
 
 });
