@@ -20,14 +20,32 @@ define(function(require) {
 
   var Context = function(element, app) {
     this.resources = new PackagedResources();
-    this.element = element;    
+    this.element = element;
+    this.wrappedElement = $(this.element); 
     this.context = element.getContext('2d');
     this.app = app;
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
   };
   
-  Context.prototype = {
+  Context.prototype = {    
+    pageCoordsToWorldCoords: function(x, y) {
+      var offset = this.wrappedElement.offset();
+      var nx = x - offset.left;
+      var ny = y - offset.top;
+      return this.elementCoordsToWorldCoords(nx, ny);
+    },  
+    elementCoordsToWorldCoords: function(x, y) {
+      var scaleX = parseInt( this.wrappedElement.width() / this.scene.graph.width());
+      var scaleY = parseInt( this.wrappedElement.height() / this.scene.graph.height());
+      
+      console.log(scaleX, scaleY);
+      
+      return {
+        x: (x * scaleX) + this.scene.graph.viewport.left,
+        y: (y * scaleY) + this.scene.graph.viewport.top
+      };
+    },
     onResourcesLoaded: function() { 
       var self = this;
       this.scenery = new Scenery(this.element.width, this.element.height, 128, 128);
@@ -48,8 +66,7 @@ define(function(require) {
         self.scene.render();
         renderAnimFrame(render);
       };      
-      render();
-      
+      render();      
     }  
   };
   

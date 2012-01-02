@@ -2,16 +2,31 @@
   <head>
     <script type="text/javascript" src="libs/require.js" data-main="game/editor.js"></script>
     <link rel="stylesheet" type="text/css" href="css/style.css" />
+    <link rel="stylesheet" type="text/css" href="css/editor.css" />
   </head>
   <body>
     <canvas id="target" width="640" height="480" style="border: 2px solid #555"></canvas>
-    <div id="info">
     
+    <div id="tools">
+      <div id="info">
+      
+      </div>    
+      
+      <div id="controls-container">
+        <h4>Controls</h4>
+        <div id="controls">
+          <span id="select">Select</span>
+          <span id="move">Move</span>
+        </div>
+      </div>
+      
+      <div id="library-container">
+        <h4>Library</h4>
+        <div id="library">
+          
+        </div>
+      </div>   
     </div>
-    
-    <div id="controls">
-      <span id="select">Select</span>
-      <span id="move">Move</span>
-    </div>
+
   </body>
 </html>

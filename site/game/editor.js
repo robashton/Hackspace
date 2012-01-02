@@ -9266,67 +9266,6 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 
 })( window );
 
-define('render/canvasrender',['require'],function(require) {
-
-  var CanvasRender = function(context) {
-    this.context = context;
-  };
-  CanvasRender.prototype = {
-    clear: function() {
-      this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
-    },
-    draw: function(graph) {
-      var self = this;
-      
-      this.context.save();
-      graph.uploadTransforms(this.context);
-      
-//      console.log('hi');
-      graph.pass(function(item) {
-    //    console.log('hey');
-        item.render(self.context);
-      });
-     
-     this.context.restore();    
-    }  
-  };
-  
-  return CanvasRender;
-});
-
-define('resources/package',['require','jquery'],function(require) {
-  var $ = require('jquery');
-  
-
-  var Package = function() {
-    this.data = null;
-  };
-  
-  Package.prototype = {
-    loadFrom: function(uri, callback) {
-      var self = this;
-      $.getJSON(uri, function(data) {
-        self.data = data;
-        callback();
-      });
-    },
-    each: function(callback) {
-      for(var k in this.data) {
-        callback(k);
-      }
-    },
-    has: function(path) {
-      return !!this.data[path];
-    },
-    getData: function(path) {
-      return this.data[path];
-    }
-  };
-  
-  return Package;    
-
-});
-
 //     Underscore.js 1.2.3
 //     (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
 //     Underscore is freely distributable under the MIT license.
@@ -10309,81 +10248,64 @@ define('resources/package',['require','jquery'],function(require) {
 
 }).call(this);
 
-define('shared/eventcontainer',['require','underscore'],function(require) {
-  var _ = require('underscore');
+define('render/canvasrender',['require'],function(require) {
 
-  var EventContainer = function(defaultContext) {
-    this.handlers = [];
-    this.defaultContext = defaultContext;
-  }; 
-  
-  EventContainer.prototype = {
-    raise: function(source, data) {
-     for(var i = 0; i < this.handlers.length; i++) {
-        var handler = this.handlers[i];
-        handler.method.call(handler.context || this.defaultContext, data, source);   
-     }
+  var CanvasRender = function(context) {
+    this.context = context;
+  };
+  CanvasRender.prototype = {
+    clear: function() {
+      this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
     },
-    add: function(method, context) {
-      this.handlers.push({
-        method: method,
-        context: context      
+    draw: function(graph) {
+      var self = this;
+      
+      this.context.save();
+      graph.uploadTransforms(this.context);
+      
+//      console.log('hi');
+      graph.pass(function(item) {
+    //    console.log('hey');
+        item.render(self.context);
       });
-    },
-    remove: function(method, context) {
-      this.handlers = _(this.handlers).filter(function(item) {
-        return item.method !== method || item.context !== context;
-      });
-    }
+     
+     this.context.restore();    
+    }  
   };
   
-  return EventContainer;
+  return CanvasRender;
 });
 
-define('shared/eventable',['require','./eventcontainer'],function(require) {
-  var EventContainer = require('./eventcontainer');
+define('resources/package',['require','jquery'],function(require) {
+  var $ = require('jquery');
   
-  var Eventable = function() {
-    this.eventListeners = {};
-    this.allContainer = new EventContainer(this);
+
+  var Package = function() {
+    this.data = null;
   };
   
-  Eventable.prototype = {
-    on: function(eventName, callback, context) {
-      this.eventContainerFor(eventName).add(callback, context);
-    },
-    
-    off: function(eventName, callback, context) {
-      this.eventContainerFor(eventName).remove(callback, context);
-    },
-
-    onAny: function(callback, context) {
-      this.allContainer.add(callback, context);
-    },
-
-    raise: function(eventName, data) {
-      var container = this.eventListeners[eventName];
-
-      if(container)
-        container.raise(this, data);
-
-      this.allContainer.raise(this, {
-        event: eventName,
-        data: data
+  Package.prototype = {
+    loadFrom: function(uri, callback) {
+      var self = this;
+      $.getJSON(uri, function(data) {
+        self.data = data;
+        callback();
       });
     },
-
-    eventContainerFor: function(eventName) {
-      var container = this.eventListeners[eventName];
-      if(!container) {
-        container =  new EventContainer(this);
-        this.eventListeners[eventName] = container;
+    each: function(callback) {
+      for(var k in this.data) {
+        callback(k);
       }
-      return container;
+    },
+    has: function(path) {
+      return !!this.data[path];
+    },
+    getData: function(path) {
+      return this.data[path];
     }
   };
   
-  return Eventable;
+  return Package;    
 
 });
 
@@ -10410,79 +10332,6 @@ define('resources/texture',['require'],function(require) {
   };
   
   return Texture;
-});
-
-define('resources/packagedresources',['require','./package','../shared/eventable','underscore','./texture'],function(require) {
-  var Package = require('./package');
-  var Eventable = require('../shared/eventable');
-  var _ = require('underscore');
-  var Texture = require('./texture');
-
-  var PackagedResources = function() {  
-    Eventable.call(this);
-    this.loadedTextures = {};
-    this.loadedPackages = [];
-    this.pendingPackageCount = 0;  
-    this.pendingResourceCount = 0;
-  };
-  
-  PackagedResources.prototype = {
-    loadPackage: function(uri) {
-      var self = this
-      ,   pkg = new Package();
-
-      this.loadedPackages.push(pkg);
-      self.notifyPackageLoading();
-      pkg.loadFrom(uri, function() {
-        self.initializePackage(pkg);
-      });
-    },
-    initializePackage: function(pkg) {
-      var self = this;
-      pkg.each(function(k) {
-        self.preload(k);
-      });
-      self.notifyPackageLoaded();
-    },
-    preload: function(k) {
-      var self = this;
-      this.notifyResourceLoading();
-      var texture = new Texture(this, k);
-      this.loadedTextures[k] = texture;
-      texture.preload(function() {
-        self.notifyResourceLoaded();
-      });
-    },
-    notifyResourceLoading: function() {
-      this.pendingResourceCount++;
-    },
-    notifyResourceLoaded: function() {
-      this.pendingResourceCount--;
-      if(this.pendingPackageCount === 0 && this.pendingResourceCount === 0)
-        this.raise('loaded');
-    },
-    notifyPackageLoading: function() {
-      this.raise('loading');
-      this.pendingPackageCount++;
-    },
-    notifyPackageLoaded: function() {
-      this.pendingPackageCount--;
-    },
-    get: function(path) {
-      var loadedTexture = this.loadedTextures[path];
-      if(!loadedTexture) {
-        console.log('Texture requested that does not exist: ' + path);
-      }
-      return loadedTexture;
-    },
-    getData: function(path) {
-      var pkg = _(this.loadedPackages).find(function(pkg) { return pkg.has(path); });
-      return pkg.getData(path);
-    }
-  };
-  _.extend(PackagedResources.prototype, Eventable.prototype);
-
-  return PackagedResources;
 });
 
 define('glmatrix',['require','exports','module'],function(require, exports, module) {
@@ -12347,14 +12196,17 @@ define('scene/camera',['require','glmatrix'],function(require) {
       this.centre[1] = y || 0;
       this.centre[2] = z || 0;
     },
+    move: function(x, y, z) {
+      this.lookAt(this.centre[0] + x, this.centre[1] + y, this.centre[2] + z);
+    },
     updateViewport: function(graph) {
       this.calculateDimensions();
       
       var left = Math.max(this.centre[0] - this.width / 2.0, 0);
       var top = Math.max(this.centre[1] - this.height / 2.0, 0);
       var right = left + this.width;
-      var bottom = top + this.height;      
-      
+      var bottom = top + this.height; 
+            
       graph.updateViewport(left, right, top, bottom);
     
     },
@@ -12370,16 +12222,24 @@ define('scene/camera',['require','glmatrix'],function(require) {
 define('render/rendergraph',['require','underscore'],function(require) {
   var _ = require('underscore');
 
-  var RenderGraph = function() {};
-  
-  RenderGraph.prototype = {
-    items: [],
-    
-    viewport: {
+  var RenderGraph = function() {
+    this.viewport = {
       left: 0,
       right: 0,
       top: 0,
       bottom: 0,
+    };
+  };
+  
+  RenderGraph.prototype = {
+    items: [],
+       
+    width: function() {
+      return this.viewport.right - this.viewport.left;
+    },
+    
+    height: function() {
+      return this.viewport.bottom - this.viewport.top;
     },
     
     updateViewport: function(left, right, top, bottom) {
@@ -12432,151 +12292,6 @@ define('render/rendergraph',['require','underscore'],function(require) {
   };
   
   return RenderGraph;
-});
-
-define('scene/scene',['require','underscore','../render/rendergraph','../shared/eventable'],function(require) {
-
-  var _ = require('underscore');
-  var RenderGraph = require('../render/rendergraph');
-  var Eventable = require('../shared/eventable');
-  
-  var Scene = function(resources, renderer, camera) {
-    Eventable.call(this);
-    this.entities = [];
-    this.entitiesById = {};
-    this.camera = camera;
-    this.renderer = renderer;
-    this.graph = new RenderGraph();
-    this.resources = resources;
-  };
-  
-  Scene.prototype = {
-    tick: function() {
-      _(this.entities).each(function(entity){
-        if(entity.tick) 
-          entity.tick();
-      });
-    },
-    render: function() {
-      this.camera.updateViewport(this.graph);
-      this.renderer.clear();
-      this.renderer.draw(this.graph);
-    },
-    add: function(entity) {
-      this.entities.push(entity);
-      this.entitiesById[entity.id] = entity;
-      entity.setScene(this);
-    },
-    remove: function(entity) {
-      this.entities = _(this.entities).without(entity);
-      delete this.entities[entity.id];
-      entity.setScene(null);
-    },
-    dispatch: function(id, command, data) {
-      var entity = this.entitiesById[id];
-      entity.dispatch(command, data);
-    },
-    broadcast: function(event, data) {
-      this.raise(event, data);
-    }
-  };
-  _.extend(Scene.prototype, Eventable.prototype);
-  
-  return Scene;  
-});
-
-define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
-  var _ = require('underscore');
-  var Eventable = require('../shared/eventable');
-  
-  var ComponentBag = function() {
-    Eventable.call(this);
-   
-    this.components = [];
-    this.eventHandlers = {};
-    this.commandHandlers = {};
-  };
-  
-  ComponentBag.prototype = {
-     
-    attach: function(component) {
-      this.components.push(component);
-      this.registerHandlers(component);
-      component.parent = this;
-    },
-    
-    registerHandlers: function(component) {
-      for(var key in component) {
-        var item = component[key];
-        if(item && item.call)
-          this.tryRegisterHandler(component, key, item);
-      }
-    },
-    
-    tryRegisterHandler: function(component, key, handler) {
-      if(key.indexOf('on') === 0)
-        this.registerEventHandler(component, key, handler);
-      else
-        this.registerCommandHandler(component, key, handler);
-    },
-    
-    registerEventHandler: function(component, key, handler) {
-      this.on(key.substr(2), handler, component);
-    },
-    
-    registerCommandHandler: function(component, key, handler) {      
-      this.commandHandlers[key] = {
-        component: component,
-        method: handler
-      };
-    },
-        
-    dispatch: function(command, data) {
-      var handler = this.findCommandHandler(command);
-      if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
-      handler.method.apply(handler.component, data); 
-    },
-    
-    findCommandHandler: function(key) {
-      return this.commandHandlers[key];
-    }
-  };
-  _.extend(ComponentBag.prototype, Eventable.prototype);
-  return ComponentBag;
-});
-
-define('scene/entity',['require','./componentbag','underscore'],function(require) {
-
-  var ComponentBag = require('./componentbag');
-  var _ = require('underscore');
-
-  var Entity = function(id) {
-    ComponentBag.call(this);    
-    this.id = id;
-    
-    this.onAny(this.propogateEventToScene);
-  };
-  
-  Entity.prototype = {
-    setScene: function(scene) {
-      this.scene = scene;
-      if(scene)
-        this.raise('AddedToScene', scene);
-      else
-        this.raise('RemovedFromScene');
-    },
-    tick: function() {
-      this.raise('Tick');
-    },
-    propogateEventToScene: function(data) {
-      if(this.scene)
-        this.scene.broadcast(data.event, data.data);
-    }
-  };
-  _.extend(Entity.prototype, ComponentBag.prototype);
- 
-  return Entity;
-  
 });
 
 define('render/color',['require'],function(require) {
@@ -12762,6 +12477,415 @@ define('static/map',['require','../render/material','../render/quad','../render/
 
 });
 
+define('editor/selecttool',['require'],function(require) {
+  var SelectTool = function(editor) {
+    this.editor = editor;
+  };
+  
+  SelectTool.prototype = {
+    activate: function() {
+     this.editor.cursor('crosshair');
+      
+    },
+    deactivate: function() {
+       this.editor.cursor('default');
+    }
+  };
+  
+  return SelectTool;
+});
+
+define('editor/movetool',['require'],function(require) {
+
+  var MoveTool = function(editor) {
+    this.editor = editor;
+  };
+  
+  MoveTool.prototype = {
+    activate: function() {
+      this.editor.cursor('pointer');
+      this.editor.input.on('drag', this.onElementDragEvent, this);
+    },
+    deactivate: function() {
+     this.editor.cursor('default');
+     this.editor.input.off('drag', this.onElementDragEvent, this);
+    },
+    onElementDragEvent: function(e) {
+      this.editor.moveViewer(e.dx * -2.0, e.dy * -2.0);
+    }
+  };
+  
+  return MoveTool;
+
+});
+
+define('editor/toolbar',['require','jquery','./selecttool','./movetool'],function(require) {
+
+  var $ = require('jquery');
+  var SelectTool = require('./selecttool');
+  var MoveTool = require('./movetool');
+
+  var Toolbar = function(editor) {
+    this.editor = editor;
+    this.tools = {
+      'select': new SelectTool(editor),
+      'move': new MoveTool(editor)    
+    };
+    this.setupTools();
+    this.activateTool('move');
+  };  
+  
+  Toolbar.prototype = {
+    setupTools: function() {    
+      for(var i in this.tools) {
+        this.hookTool(i);
+      };
+    },
+    hookTool: function(tool) {
+      var self = this;
+      $('#' + tool).click(function() {
+        self.activateTool(tool);
+      });
+    },
+    activateTool: function(tool) {
+      this.editor.setCurrentTool(this.tools[tool]);
+    }
+  };
+  
+  return Toolbar;   
+
+});
+
+define('editor/mapbuilder',['require','underscore','../static/map','../render/instance'],function(require) {
+  
+  var _ = require('underscore');
+  var Map = require('../static/map');
+  var Instance = require('../render/instance');
+
+  var MapBuilder = function(width, height, tilewidth, tileheight) {
+    Map.call(this, width, height, tilewidth, tileheight);
+  };
+  
+  MapBuilder.prototype = {
+    addInstance: function(model, x, y) {
+      
+    },
+    deleteInstance: function(tile, instance) {
+      
+    },
+    getInstanceAt: function(x, y) {
+      // Work out which tile this intersects
+      
+      // Adjust for the tile
+      
+      // Find an instance that intersects with that point
+      
+      // Return it
+    }    
+  };
+  
+  _.extend(MapBuilder.prototype, Map.prototype);
+  
+  return MapBuilder;
+
+});
+
+define('shared/eventcontainer',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var EventContainer = function(defaultContext) {
+    this.handlers = [];
+    this.defaultContext = defaultContext;
+  }; 
+  
+  EventContainer.prototype = {
+    raise: function(source, data) {
+     for(var i = 0; i < this.handlers.length; i++) {
+        var handler = this.handlers[i];
+        handler.method.call(handler.context || this.defaultContext, data, source);   
+     }
+    },
+    add: function(method, context) {
+      this.handlers.push({
+        method: method,
+        context: context      
+      });
+    },
+    remove: function(method, context) {
+      this.handlers = _(this.handlers).filter(function(item) {
+        return item.method !== method || item.context !== context;
+      });
+    }
+  };
+  
+  return EventContainer;
+});
+
+define('shared/eventable',['require','./eventcontainer'],function(require) {
+  var EventContainer = require('./eventcontainer');
+  
+  var Eventable = function() {
+    this.eventListeners = {};
+    this.allContainer = new EventContainer(this);
+  };
+  
+  Eventable.prototype = {
+    on: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).add(callback, context);
+    },
+    
+    off: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).remove(callback, context);
+    },
+
+    onAny: function(callback, context) {
+      this.allContainer.add(callback, context);
+    },
+
+    raise: function(eventName, data) {
+      var container = this.eventListeners[eventName];
+
+      if(container)
+        container.raise(this, data);
+
+      this.allContainer.raise(this, {
+        event: eventName,
+        data: data
+      });
+    },
+
+    eventContainerFor: function(eventName) {
+      var container = this.eventListeners[eventName];
+      if(!container) {
+        container =  new EventContainer(this);
+        this.eventListeners[eventName] = container;
+      }
+      return container;
+    }
+  };
+  
+  return Eventable;
+
+});
+
+define('resources/packagedresources',['require','./package','../shared/eventable','underscore','./texture'],function(require) {
+  var Package = require('./package');
+  var Eventable = require('../shared/eventable');
+  var _ = require('underscore');
+  var Texture = require('./texture');
+
+  var PackagedResources = function() {  
+    Eventable.call(this);
+    this.loadedTextures = {};
+    this.loadedPackages = [];
+    this.pendingPackageCount = 0;  
+    this.pendingResourceCount = 0;
+  };
+  
+  PackagedResources.prototype = {
+    loadPackage: function(uri) {
+      var self = this
+      ,   pkg = new Package();
+
+      this.loadedPackages.push(pkg);
+      self.notifyPackageLoading();
+      pkg.loadFrom(uri, function() {
+        self.initializePackage(pkg);
+      });
+    },
+    initializePackage: function(pkg) {
+      var self = this;
+      pkg.each(function(k) {
+        self.preload(k);
+      });
+      self.notifyPackageLoaded();
+    },
+    preload: function(k) {
+      var self = this;
+      this.notifyResourceLoading();
+      var texture = new Texture(this, k);
+      this.loadedTextures[k] = texture;
+      texture.preload(function() {
+        self.notifyResourceLoaded();
+      });
+    },
+    notifyResourceLoading: function() {
+      this.pendingResourceCount++;
+    },
+    notifyResourceLoaded: function() {
+      this.pendingResourceCount--;
+      if(this.pendingPackageCount === 0 && this.pendingResourceCount === 0)
+        this.raise('loaded');
+    },
+    notifyPackageLoading: function() {
+      this.raise('loading');
+      this.pendingPackageCount++;
+    },
+    notifyPackageLoaded: function() {
+      this.pendingPackageCount--;
+    },
+    get: function(path) {
+      var loadedTexture = this.loadedTextures[path];
+      if(!loadedTexture) {
+        console.log('Texture requested that does not exist: ' + path);
+      }
+      return loadedTexture;
+    },
+    getData: function(path) {
+      var pkg = _(this.loadedPackages).find(function(pkg) { return pkg.has(path); });
+      return pkg.getData(path);
+    }
+  };
+  _.extend(PackagedResources.prototype, Eventable.prototype);
+
+  return PackagedResources;
+});
+
+define('scene/scene',['require','underscore','../render/rendergraph','../shared/eventable'],function(require) {
+
+  var _ = require('underscore');
+  var RenderGraph = require('../render/rendergraph');
+  var Eventable = require('../shared/eventable');
+  
+  var Scene = function(resources, renderer, camera) {
+    Eventable.call(this);
+    this.entities = [];
+    this.entitiesById = {};
+    this.camera = camera;
+    this.renderer = renderer;
+    this.graph = new RenderGraph();
+    this.resources = resources;
+  };
+  
+  Scene.prototype = {
+    tick: function() {
+      _(this.entities).each(function(entity){
+        if(entity.tick) 
+          entity.tick();
+      });
+    },
+    render: function() {
+      this.camera.updateViewport(this.graph);
+      this.renderer.clear();
+      this.renderer.draw(this.graph);
+    },
+    add: function(entity) {
+      this.entities.push(entity);
+      this.entitiesById[entity.id] = entity;
+      entity.setScene(this);
+    },
+    remove: function(entity) {
+      this.entities = _(this.entities).without(entity);
+      delete this.entities[entity.id];
+      entity.setScene(null);
+    },
+    dispatch: function(id, command, data) {
+      var entity = this.entitiesById[id];
+      entity.dispatch(command, data);
+    },
+    broadcast: function(event, data) {
+      this.raise(event, data);
+    }
+  };
+  _.extend(Scene.prototype, Eventable.prototype);
+  
+  return Scene;  
+});
+
+define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
+  var _ = require('underscore');
+  var Eventable = require('../shared/eventable');
+  
+  var ComponentBag = function() {
+    Eventable.call(this);
+   
+    this.components = [];
+    this.eventHandlers = {};
+    this.commandHandlers = {};
+  };
+  
+  ComponentBag.prototype = {
+     
+    attach: function(component) {
+      this.components.push(component);
+      this.registerHandlers(component);
+      component.parent = this;
+    },
+    
+    registerHandlers: function(component) {
+      for(var key in component) {
+        var item = component[key];
+        if(item && item.call)
+          this.tryRegisterHandler(component, key, item);
+      }
+    },
+    
+    tryRegisterHandler: function(component, key, handler) {
+      if(key.indexOf('on') === 0)
+        this.registerEventHandler(component, key, handler);
+      else
+        this.registerCommandHandler(component, key, handler);
+    },
+    
+    registerEventHandler: function(component, key, handler) {
+      this.on(key.substr(2), handler, component);
+    },
+    
+    registerCommandHandler: function(component, key, handler) {      
+      this.commandHandlers[key] = {
+        component: component,
+        method: handler
+      };
+    },
+        
+    dispatch: function(command, data) {
+      var handler = this.findCommandHandler(command);
+      if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
+      handler.method.apply(handler.component, data); 
+    },
+    
+    findCommandHandler: function(key) {
+      return this.commandHandlers[key];
+    }
+  };
+  _.extend(ComponentBag.prototype, Eventable.prototype);
+  return ComponentBag;
+});
+
+define('scene/entity',['require','./componentbag','underscore'],function(require) {
+
+  var ComponentBag = require('./componentbag');
+  var _ = require('underscore');
+
+  var Entity = function(id) {
+    ComponentBag.call(this);    
+    this.id = id;
+    
+    this.onAny(this.propogateEventToScene);
+  };
+  
+  Entity.prototype = {
+    setScene: function(scene) {
+      this.scene = scene;
+      if(scene)
+        this.raise('AddedToScene', scene);
+      else
+        this.raise('RemovedFromScene');
+    },
+    tick: function() {
+      this.raise('Tick');
+    },
+    propogateEventToScene: function(data) {
+      if(this.scene)
+        this.scene.broadcast(data.event, data.data);
+    }
+  };
+  _.extend(Entity.prototype, ComponentBag.prototype);
+ 
+  return Entity;
+  
+});
+
 define('static/scenery',['require','underscore','../scene/entity','./map','../render/rendergraph','../render/canvasrender'],function(require) {
 
   var _ = require('underscore');
@@ -12803,22 +12927,38 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
       if(!this.map) return;
       this.evaluateStatus();
       
-      var rx = this.scene.graph.viewport.left % this.tilewidth;
-      var ry = this.scene.graph.viewport.top % this.tileheight;
+      var offset = this.getCurrentOffset();
       var dx = 0;
       var dy = 0;
       
       this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
                   
       context.drawImage(this.context.canvas, 
-        rx, ry, 
+        offset.x, offset.y, 
       context.canvas.width, context.canvas.height, 
-        rx + this.tileleft * this.tilewidth, ry + this.tiletop * this.tileheight, 
+        offset.x + this.tileleft * this.tilewidth, offset.y + this.tiletop * this.tileheight, 
       context.canvas.width, context.canvas.height); 
     },
     onAddedToScene: function(scene) {
       this.scene = scene; 
       this.scene.graph.add(this);   
+    },
+    getCurrentOffset: function() {
+      return {
+        x: this.scene.graph.viewport.left % this.tilewidth,
+        y: this.scene.graph.viewport.top % this.tileheight
+      };
+    },
+    forEachVisibleTile: function(callback) {
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          var left = i * this.tilewidth;
+          var right = left + this.tilewidth;
+          var top = j * this.tileheight;
+          var bottom = top + this.tileheight;
+          callback(left, top, right, bottom);          
+        }      
+      }
     },
     evaluateStatus: function() {
       
@@ -12887,14 +13027,32 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
 
   var Context = function(element, app) {
     this.resources = new PackagedResources();
-    this.element = element;    
+    this.element = element;
+    this.wrappedElement = $(this.element); 
     this.context = element.getContext('2d');
     this.app = app;
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
   };
   
-  Context.prototype = {
+  Context.prototype = {    
+    pageCoordsToWorldCoords: function(x, y) {
+      var offset = this.wrappedElement.offset();
+      var nx = x - offset.left;
+      var ny = y - offset.top;
+      return this.elementCoordsToWorldCoords(nx, ny);
+    },  
+    elementCoordsToWorldCoords: function(x, y) {
+      var scaleX = parseInt( this.wrappedElement.width() / this.scene.graph.width());
+      var scaleY = parseInt( this.wrappedElement.height() / this.scene.graph.height());
+      
+      console.log(scaleX, scaleY);
+      
+      return {
+        x: (x * scaleX) + this.scene.graph.viewport.left,
+        y: (y * scaleY) + this.scene.graph.viewport.top
+      };
+    },
     onResourcesLoaded: function() { 
       var self = this;
       this.scenery = new Scenery(this.element.width, this.element.height, 128, 128);
@@ -12915,132 +13073,264 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
         self.scene.render();
         renderAnimFrame(render);
       };      
-      render();
-      
+      render();      
     }  
   };
   
   return Context;
 });
 
-define('editor/selecttool',['require'],function(require) {
-  var SelectTool = function(editor) {
-    this.editor = editor;
+define('editor/grid',['require','underscore','../scene/entity'],function(require) {
+  
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+
+  var Grid = function(scenery) {
+    Entity.call(this);
+    
+    this.scenery = scenery;
+    this.on('AddedToScene', this.addGridRenderable);
   };
   
-  SelectTool.prototype = {
-    activate: function() {
-     this.editor.cursor('crosshair');
-      
+  Grid.prototype = {
+    addGridRenderable: function(scene) {
+      this.scene = scene;
+      this.scene.graph.add(this);
     },
-    deactivate: function() {
-       this.editor.cursor('default');
+    visible: function() {
+      return true;
+    },
+    render: function(context) {
+      context.save(); 
+      
+      context.strokeStyle = 'rgba(25, 25, 25, 0.5)';
+      context.lineWidth = 0.25;
+          
+      context.beginPath();
+      this.scenery.forEachVisibleTile(function(left, top, right, bottom) {
+        context.moveTo(left, top);
+        context.lineTo(right, top);
+        context.lineTo(right, bottom);
+        context.lineTo(left, bottom);
+        context.lineTo(left, top);
+      });
+      context.stroke();
+      context.restore();
     }
   };
   
-  return SelectTool;
+  _.extend(Grid.prototype, Entity.prototype);
+  
+  return Grid;
+
 });
 
-define('editor/movetool',['require'],function(require) {
+define('editor/input',['require','../shared/eventable','underscore','jquery'],function(require) {
 
-  var MoveTool = function(editor) {
-    this.editor = editor;
+  var Eventable = require('../shared/eventable');
+  var _ = require('underscore');
+  var $ = require('jquery');
+
+  var Input = function(element) {
+    Eventable.call(this);
+    this.element = $(element);
+    this.hookElementEvents();
+    this.mouseDown = false;
+    this.mouseIn = false;
+    this.lastPageX = 0;
+    this.lastPageY = 0;
   };
   
-  MoveTool.prototype = {
+  Input.prototype = {
+    mouseInBounds: function(x, y) {
+      if(x < this.element.left) return false;
+      if(y < this.element.top) return false;
+      if(x > this.element.left + this.element.width) return false;
+      if(y > this.element.top + this.element.height) return false;
+      return true;
+    },
+    getInputPageCoords: function() {
+      return {
+        x: this.lastPageX,
+        y: this.lastPageY
+      };
+    },
+    hookElementEvents: function() {
+      var self = this;
+      
+      this.element.on({
+        mousemove: function(e) {
+          var deltaX = e.pageX - self.lastPageX;
+          var deltaY = e.pageY - self.lastPageY;  
+          if(self.mouseDown) {      
+            self.raise('drag', {
+              dx: deltaX,
+              dy: deltaY,
+              x: e.pageX,
+              y: e.pageY
+            });  
+          } else {
+            self.raise('move', {
+              dx: deltaX,
+              dy: deltaY,
+              x: e.pageX,
+              y: e.pageY
+            }); 
+          }
+          self.lastPageX = e.pageX;
+          self.lastPageY = e.pageY;
+          return false;  
+        },
+        mouseleave: function(e) {
+          self.mouseDown = false;
+          self.mouseIn = false;
+          self.raise('leave', {});  
+          return false;  
+        },
+        mouseenter: function(e) {
+          self.mouseDown = false;
+          self.mouseIn = true;
+          self.raise('enter', {});  
+          return false;
+        },
+        mousedown: function(e) {
+          self.mouseDown = true;
+          return false;      
+        },
+        mouseup: function(e) {
+          self.mouseDown = false;
+          return false;      
+        } 
+      });
+    }
+  };
+  
+  _.extend(Input.prototype, Eventable.prototype);
+
+  return Input;
+
+});
+
+define('editor/libraryitemtool',['require','../render/material','../render/quad','../render/instance'],function(require) {
+
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var Instance = require('../render/instance');
+
+  var LibraryItemTool = function(editor, element) {
+    this.editor = editor;
+    this.element = element;
+    this.material = new Material();
+    this.material.diffuseTexture = editor.context.resources.get(element.texture);
+    this.quad = new Quad(this.material);
+    this.instance = new Instance(this.quad);
+    this.instance.scale(element.width, element.height);
+    this.instance.translate(30, 30);
+  };
+  
+  LibraryItemTool.prototype = {
     activate: function() {
-      this.editor.cursor('pointer');
+      this.editor.cursor('none');      
+      this.editor.input.on('move', this.oninputmove, this);
+      this.editor.input.on('enter', this.oninputenter, this);
+      this.editor.input.on('leave', this.oninputleave, this);
     },
     deactivate: function() {
      this.editor.cursor('default');
+     this.editor.input.off('move', this.oninputmove, this);
+     this.editor.input.off('enter', this.oninputenter, this);
+     this.editor.input.off('leave', this.oninputleave, this);
+     this.hideModel();
+    },
+    oninputmove: function(e) {
+      this.updateModel();
+    },  
+    oninputenter: function() {
+     this.showModel();
+    },
+    oninputleave: function() {
+     this.hideModel();
+    },
+    showModel: function() {
+      this.updateModel();
+      this.editor.context.scene.graph.add(this.instance);
+    },
+    hideModel: function() {
+      this.editor.context.scene.graph.remove(this.instance);
+    },
+    updateModel: function() {
+      var coords = this.editor.input.getInputPageCoords();
+      coords = this.editor.context.pageCoordsToWorldCoords(coords.x, coords.y);
+      this.instance.translate(coords.x, coords.y, 0);
     }
   };
   
-  return MoveTool;
+  return LibraryItemTool;
 
 });
 
-define('editor/toolbar',['require','jquery','./selecttool','./movetool'],function(require) {
+define('editor/library',['require','./libraryitemtool'],function(require) {
+  var LibraryItemTool = require('./libraryitemtool');
+  
+  var ConstLibraryElements = {
+    tree: {
+      width: 25,
+      height: 25,
+      texture: "/main/tree.png"
+    } 
+  };
 
-  var $ = require('jquery');
-  var SelectTool = require('./selecttool');
-  var MoveTool = require('./movetool');
-
-  var Toolbar = function(editor) {
+  var Library = function(editor) {
     this.editor = editor;
-    this.tools = {
-      'select': new SelectTool(editor),
-      'move': new MoveTool(editor)    
-    };
-    this.currentTool = null;
-    this.setupTools();
-    this.activateTool('move');
-  };  
+    this.element = $('#library');
+    this.populate();
+  };
   
-  Toolbar.prototype = {
-    setupTools: function() {    
-      for(var i in this.tools) {
-        this.hookTool(i);
-      };
-    },
-    hookTool: function(tool) {
+  Library.prototype = {
+    populate: function() {
       var self = this;
-      $('#' + tool).click(function() {
-        self.activateTool(tool);
-      });
+      
+      this.element.html('');
+      
+      for(var i in ConstLibraryElements) {
+        var item = ConstLibraryElements[i];
+        
+        var itemElement = $('<div/>')
+            .addClass('library-element')
+            .append(
+              $('<img />')
+                .attr('src', "data:image/png;base64," + this.editor.context.resources.getData(item.texture))
+            )
+            .data('element', item);
+        this.element.append(itemElement);      
+      }
+      
+      $('.library-element').on('click', function() {
+        var element = $(this).data('element');
+        self.setCurrentElement(element);      
+      });     
     },
-    activateTool: function(tool) {
-      if(this.currentTool)
-        this.currentTool.deactivate();
-      this.currentTool = this.tools[tool];
-      this.currentTool.activate();
+    setCurrentElement: function(element) {
+      var tool = new LibraryItemTool(this.editor, element);
+      this.editor.setCurrentTool(tool);
     }
   };
   
-  return Toolbar;   
-
+  return Library;
+  
 });
 
-define('editor/mapbuilder',['require','underscore','../static/map','../render/instance'],function(require) {
-  
-  var _ = require('underscore');
-  var Map = require('../static/map');
-  var Instance = require('../render/instance');
-
-  var MapBuilder = function(width, height, tilewidth, tileheight) {
-    Map.call(this, width, height, tilewidth, tileheight);
-  };
-  
-  MapBuilder.prototype = {
-    addInstance: function(model, x, y) {
-      
-    },
-    deleteInstance: function(tile, instance) {
-      
-    },
-    getInstanceAt: function(x, y) {
-      // Work out which tile this intersects
-      
-      // Adjust for the tile
-      
-      // Find an instance that intersects with that point
-      
-      // Return it
-    }    
-  };
-  
-  _.extend(MapBuilder.prototype, Map.prototype);
-  
-  return MapBuilder;
-
-});
-
-define('apps/demo/editor',['require','jquery','../../harness/context','../../editor/toolbar','../../editor/mapbuilder'],function(require) {
+define('apps/demo/editor',['require','jquery','underscore','../../harness/context','../../editor/toolbar','../../editor/mapbuilder','../../editor/grid','../../shared/eventable','../../editor/input','../../editor/library'],function(require) {
   
   var $ = require('jquery');
+  var _ = require('underscore');
   var Context = require('../../harness/context');
   var Toolbar = require('../../editor/toolbar');
   var MapBuilder = require('../../editor/mapbuilder');
+  var Grid = require('../../editor/grid');
+  var Eventable = require('../../shared/eventable');
+  var Input = require('../../editor/input');
+  var Library = require('../../editor/library');
    
   $(document).ready(function() {
     var canvasElement = document.getElementById('target');
@@ -13048,22 +13338,39 @@ define('apps/demo/editor',['require','jquery','../../harness/context','../../edi
   }); 
   
   var Editor = function(element) {
+    Eventable.call(this);
+    this.input = new Input(element);
     this.element = $(element);
+    this.currentTool = null;
   };
   
-  Editor.prototype = {
+  Editor.prototype = { 
     start: function(context) {
       this.context = context;
       this.toolbar = new Toolbar(this);
+      this.library = new Library(this);
       this.initializeMap();
-    },
-    cursor: function(value) {
-      this.element.css('cursor', value);
     },
     initializeMap: function() {
       this.map = new MapBuilder(2048, 2048, 128, 128);
       this.context.scenery.loadMap(this.map);
+      this.grid = new Grid(this.context.scenery);
+      this.context.scene.add(this.grid); 
+    },
+    cursor: function(value) {
+      this.element.css('cursor', value);
+    },
+    moveViewer: function(x, y) {
+      this.context.scene.camera.move(x, y);
+    },
+    setCurrentTool: function(tool) {
+      if(this.currentTool)
+        this.currentTool.deactivate();
+      this.currentTool = tool;
+      this.currentTool.activate();
     }
   };  
+  
+  _.extend(Editor.prototype, Eventable.prototype);
 
 });

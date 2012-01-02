@@ -17,14 +17,17 @@ define(function(require) {
       this.centre[1] = y || 0;
       this.centre[2] = z || 0;
     },
+    move: function(x, y, z) {
+      this.lookAt(this.centre[0] + x, this.centre[1] + y, this.centre[2] + z);
+    },
     updateViewport: function(graph) {
       this.calculateDimensions();
       
       var left = Math.max(this.centre[0] - this.width / 2.0, 0);
       var top = Math.max(this.centre[1] - this.height / 2.0, 0);
       var right = left + this.width;
-      var bottom = top + this.height;      
-      
+      var bottom = top + this.height; 
+            
       graph.updateViewport(left, right, top, bottom);
     
     },

@@ -3297,16 +3297,24 @@ define('entities/character',['require','underscore','./components/renderable','.
 define('render/rendergraph',['require','underscore'],function(require) {
   var _ = require('underscore');
 
-  var RenderGraph = function() {};
-  
-  RenderGraph.prototype = {
-    items: [],
-    
-    viewport: {
+  var RenderGraph = function() {
+    this.viewport = {
       left: 0,
       right: 0,
       top: 0,
       bottom: 0,
+    };
+  };
+  
+  RenderGraph.prototype = {
+    items: [],
+       
+    width: function() {
+      return this.viewport.right - this.viewport.left;
+    },
+    
+    height: function() {
+      return this.viewport.bottom - this.viewport.top;
     },
     
     updateViewport: function(left, right, top, bottom) {
@@ -3619,14 +3627,17 @@ define('scene/camera',['require','glmatrix'],function(require) {
       this.centre[1] = y || 0;
       this.centre[2] = z || 0;
     },
+    move: function(x, y, z) {
+      this.lookAt(this.centre[0] + x, this.centre[1] + y, this.centre[2] + z);
+    },
     updateViewport: function(graph) {
       this.calculateDimensions();
       
       var left = Math.max(this.centre[0] - this.width / 2.0, 0);
       var top = Math.max(this.centre[1] - this.height / 2.0, 0);
       var right = left + this.width;
-      var bottom = top + this.height;      
-      
+      var bottom = top + this.height; 
+            
       graph.updateViewport(left, right, top, bottom);
     
     },
@@ -3680,22 +3691,38 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
       if(!this.map) return;
       this.evaluateStatus();
       
-      var rx = this.scene.graph.viewport.left % this.tilewidth;
-      var ry = this.scene.graph.viewport.top % this.tileheight;
+      var offset = this.getCurrentOffset();
       var dx = 0;
       var dy = 0;
       
       this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
                   
       context.drawImage(this.context.canvas, 
-        rx, ry, 
+        offset.x, offset.y, 
       context.canvas.width, context.canvas.height, 
-        rx + this.tileleft * this.tilewidth, ry + this.tiletop * this.tileheight, 
+        offset.x + this.tileleft * this.tilewidth, offset.y + this.tiletop * this.tileheight, 
       context.canvas.width, context.canvas.height); 
     },
     onAddedToScene: function(scene) {
       this.scene = scene; 
       this.scene.graph.add(this);   
+    },
+    getCurrentOffset: function() {
+      return {
+        x: this.scene.graph.viewport.left % this.tilewidth,
+        y: this.scene.graph.viewport.top % this.tileheight
+      };
+    },
+    forEachVisibleTile: function(callback) {
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          var left = i * this.tilewidth;
+          var right = left + this.tilewidth;
+          var top = j * this.tileheight;
+          var bottom = top + this.tileheight;
+          callback(left, top, right, bottom);          
+        }      
+      }
     },
     evaluateStatus: function() {
       
@@ -13224,14 +13251,32 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
 
   var Context = function(element, app) {
     this.resources = new PackagedResources();
-    this.element = element;    
+    this.element = element;
+    this.wrappedElement = $(this.element); 
     this.context = element.getContext('2d');
     this.app = app;
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
   };
   
-  Context.prototype = {
+  Context.prototype = {    
+    pageCoordsToWorldCoords: function(x, y) {
+      var offset = this.wrappedElement.offset();
+      var nx = x - offset.left;
+      var ny = y - offset.top;
+      return this.elementCoordsToWorldCoords(nx, ny);
+    },  
+    elementCoordsToWorldCoords: function(x, y) {
+      var scaleX = parseInt( this.wrappedElement.width() / this.scene.graph.width());
+      var scaleY = parseInt( this.wrappedElement.height() / this.scene.graph.height());
+      
+      console.log(scaleX, scaleY);
+      
+      return {
+        x: (x * scaleX) + this.scene.graph.viewport.left,
+        y: (y * scaleY) + this.scene.graph.viewport.top
+      };
+    },
     onResourcesLoaded: function() { 
       var self = this;
       this.scenery = new Scenery(this.element.width, this.element.height, 128, 128);
@@ -13252,8 +13297,7 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
         self.scene.render();
         renderAnimFrame(render);
       };      
-      render();
-      
+      render();      
     }  
   };
   

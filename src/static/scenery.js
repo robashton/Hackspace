@@ -39,22 +39,38 @@ define(function(require) {
       if(!this.map) return;
       this.evaluateStatus();
       
-      var rx = this.scene.graph.viewport.left % this.tilewidth;
-      var ry = this.scene.graph.viewport.top % this.tileheight;
+      var offset = this.getCurrentOffset();
       var dx = 0;
       var dy = 0;
       
       this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
                   
       context.drawImage(this.context.canvas, 
-        rx, ry, 
+        offset.x, offset.y, 
       context.canvas.width, context.canvas.height, 
-        rx + this.tileleft * this.tilewidth, ry + this.tiletop * this.tileheight, 
+        offset.x + this.tileleft * this.tilewidth, offset.y + this.tiletop * this.tileheight, 
       context.canvas.width, context.canvas.height); 
     },
     onAddedToScene: function(scene) {
       this.scene = scene; 
       this.scene.graph.add(this);   
+    },
+    getCurrentOffset: function() {
+      return {
+        x: this.scene.graph.viewport.left % this.tilewidth,
+        y: this.scene.graph.viewport.top % this.tileheight
+      };
+    },
+    forEachVisibleTile: function(callback) {
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          var left = i * this.tilewidth;
+          var right = left + this.tilewidth;
+          var top = j * this.tileheight;
+          var bottom = top + this.tileheight;
+          callback(left, top, right, bottom);          
+        }      
+      }
     },
     evaluateStatus: function() {
       

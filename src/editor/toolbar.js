@@ -10,7 +10,6 @@ define(function(require) {
       'select': new SelectTool(editor),
       'move': new MoveTool(editor)    
     };
-    this.currentTool = null;
     this.setupTools();
     this.activateTool('move');
   };  
@@ -28,10 +27,7 @@ define(function(require) {
       });
     },
     activateTool: function(tool) {
-      if(this.currentTool)
-        this.currentTool.deactivate();
-      this.currentTool = this.tools[tool];
-      this.currentTool.activate();
+      this.editor.setCurrentTool(this.tools[tool]);
     }
   };
   

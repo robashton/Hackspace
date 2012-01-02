@@ -1,16 +1,24 @@
 define(function(require) {
   var _ = require('underscore');
 
-  var RenderGraph = function() {};
-  
-  RenderGraph.prototype = {
-    items: [],
-    
-    viewport: {
+  var RenderGraph = function() {
+    this.viewport = {
       left: 0,
       right: 0,
       top: 0,
       bottom: 0,
+    };
+  };
+  
+  RenderGraph.prototype = {
+    items: [],
+       
+    width: function() {
+      return this.viewport.right - this.viewport.left;
+    },
+    
+    height: function() {
+      return this.viewport.bottom - this.viewport.top;
     },
     
     updateViewport: function(left, right, top, bottom) {
