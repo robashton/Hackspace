@@ -9,7 +9,7 @@ define(function(require) {
       
     },
     deactivate: function() {
-       this.editor.cursor('default');
+     this.editor.cursor('default');
     }
   };
   

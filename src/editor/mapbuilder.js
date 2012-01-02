@@ -9,10 +9,10 @@ define(function(require) {
   };
   
   MapBuilder.prototype = {
-    addInstance: function(model, x, y) {
+    addStatic: function(image, x, y, width, height) {
       
     },
-    deleteInstance: function(tile, instance) {
+    removeStatic: function(tile, instance) {
       
     },
     getInstanceAt: function(x, y) {

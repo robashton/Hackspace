@@ -39,8 +39,6 @@ define(function(require) {
       var scaleX = parseInt( this.wrappedElement.width() / this.scene.graph.width());
       var scaleY = parseInt( this.wrappedElement.height() / this.scene.graph.height());
       
-      console.log(scaleX, scaleY);
-      
       return {
         x: (x * scaleX) + this.scene.graph.viewport.left,
         y: (y * scaleY) + this.scene.graph.viewport.top
