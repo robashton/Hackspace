@@ -25,6 +25,29 @@
   cursor: pointer;
 }
 
+#topbar
+{
+  margin-bottom: 5px;
+}
+
+#topbar ul
+{
+  margin: 0;
+  padding: 0;
+}
+
+#topbar ul li
+{
+  display: inline;
+  margin: 0;
+}
+
+#topbar ul span
+{
+  cursor: pointer;
+  color: #4444EE;
+}
+
 #library img {
   height: 25px;
   width: 25px;

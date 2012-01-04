@@ -4,7 +4,7 @@ define(function(require) {
   var PackagedResources = require('../resources/packagedresources'); 
   var Camera = require('../scene/camera');
   var Scene = require('../scene/scene');
-  var Scenery = require('../static/scenery');
+  var Map = require('../static/map');
 
   
   var findRequestAnimationFrame = function() {
@@ -46,12 +46,9 @@ define(function(require) {
     },
     onResourcesLoaded: function() { 
       var self = this;
-      this.scenery = new Scenery(this.element.width, this.element.height, 128, 128);
       this.renderer = new CanvasRender(this.context);
       this.camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
       this.scene = new Scene(this.resources, this.renderer, this.camera);
-
-      this.scene.add(this.scenery);
       
       this.app.start(this);
       

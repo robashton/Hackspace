@@ -66,6 +66,9 @@ define(function(require) {
           self.raise('enter', {});  
           return false;
         },
+        click: function() {
+          self.raise('action', {});
+        },
         mousedown: function(e) {
           self.mouseDown = true;
           return false;      

@@ -12397,199 +12397,6 @@ define('render/instance',['require','glmatrix'],function(require) {
   return Instance;
 });
 
-define('static/map',['require','../render/material','../render/quad','../render/instance'],function(require) {
-
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  var Instance = require('../render/instance');
-
-  var Map = function(width, height, tilewidth, tileheight) {
-    this.width = width;
-    this.height = height;
-    this.tilewidth = tilewidth;
-    this.tileheight = tileheight;
-    this.tileCountWidth = parseInt(this.width / this.tileheight);
-    this.tileCountHeight = parseInt(this.height / this.tileheight);
-    this.tiles = new Array(this.tileCountWidth * this.tileCountHeight);
-    this.templates = {};
-    this.createEmptyTiles();
-  };
-  
-  Map.prototype = {
-    populateGraph: function(graph) {             
-      graph.clear();
-      
-      for(var x = 0; x < this.tileCountWidth; x++) {
-        for(var y = 0; y < this.tileCountHeight ; y++) {
-          var index = this.index(x, y);
-          for(var i = 0; i < this.tiles[index].length ; i++) {
-            graph.add(this.tiles[index][i]);            
-          }          
-        }
-      }
-    },
-    
-    createEmptyTiles: function() {
-      for(var x = 0; x < this.tileCountWidth; x++) {
-        for(var y = 0; y < this.tileCountHeight ; y++) {
-          var index = this.index(x,y);
-          var tilex = x * this.tilewidth;
-          var tiley = y * this.tileheight;
-          this.tiles[index] = [];
-        }
-      }
-    },
-    
-    generateRandom: function(resources) {
-
-      var treeMaterial = new Material();
-      treeMaterial.diffuseTexture = resources.get('/main/tree.png');
-      this.models = {};
-      this.models.tree = new Quad(treeMaterial);
-      
-      for(var x = 0; x < this.tileCountWidth; x++) {
-        for(var y = 0; y < this.tileCountHeight ; y++) {
-          var index = this.index(x,y);
-          var tilex = x * this.tilewidth;
-          var tiley = y * this.tileheight;          
-          var treeCount = Math.random() * 5;
-          
-          for(var i = 0 ; i < treeCount; i++) {
-            var xloc = Math.random() * this.tilewidth;
-            var yloc = Math.random() * this.tileheight;
-            
-            var instance = new Instance(this.models.tree);
-            instance.scale(25,25, 0);
-            instance.translate(xloc + tilex, yloc + tiley, 0);
-            
- 
-            this.tiles[index].push(instance);
-          }
-        }     
-      }    
-    },
-    index: function(x, y) {
-      return x + y * this.tileCountWidth;
-    }
-  };
-  
-  return Map;
-
-});
-
-define('editor/selecttool',['require'],function(require) {
-  var SelectTool = function(editor) {
-    this.editor = editor;
-  };
-  
-  SelectTool.prototype = {
-    activate: function() {
-     this.editor.cursor('crosshair');
-      
-    },
-    deactivate: function() {
-       this.editor.cursor('default');
-    }
-  };
-  
-  return SelectTool;
-});
-
-define('editor/movetool',['require'],function(require) {
-
-  var MoveTool = function(editor) {
-    this.editor = editor;
-  };
-  
-  MoveTool.prototype = {
-    activate: function() {
-      this.editor.cursor('pointer');
-      this.editor.input.on('drag', this.onElementDragEvent, this);
-    },
-    deactivate: function() {
-     this.editor.cursor('default');
-     this.editor.input.off('drag', this.onElementDragEvent, this);
-    },
-    onElementDragEvent: function(e) {
-      this.editor.moveViewer(e.dx * -2.0, e.dy * -2.0);
-    }
-  };
-  
-  return MoveTool;
-
-});
-
-define('editor/toolbar',['require','jquery','./selecttool','./movetool'],function(require) {
-
-  var $ = require('jquery');
-  var SelectTool = require('./selecttool');
-  var MoveTool = require('./movetool');
-
-  var Toolbar = function(editor) {
-    this.editor = editor;
-    this.tools = {
-      'select': new SelectTool(editor),
-      'move': new MoveTool(editor)    
-    };
-    this.setupTools();
-    this.activateTool('move');
-  };  
-  
-  Toolbar.prototype = {
-    setupTools: function() {    
-      for(var i in this.tools) {
-        this.hookTool(i);
-      };
-    },
-    hookTool: function(tool) {
-      var self = this;
-      $('#' + tool).click(function() {
-        self.activateTool(tool);
-      });
-    },
-    activateTool: function(tool) {
-      this.editor.setCurrentTool(this.tools[tool]);
-    }
-  };
-  
-  return Toolbar;   
-
-});
-
-define('editor/mapbuilder',['require','underscore','../static/map','../render/instance'],function(require) {
-  
-  var _ = require('underscore');
-  var Map = require('../static/map');
-  var Instance = require('../render/instance');
-
-  var MapBuilder = function(width, height, tilewidth, tileheight) {
-    Map.call(this, width, height, tilewidth, tileheight);
-  };
-  
-  MapBuilder.prototype = {
-    addInstance: function(model, x, y) {
-      
-    },
-    deleteInstance: function(tile, instance) {
-      
-    },
-    getInstanceAt: function(x, y) {
-      // Work out which tile this intersects
-      
-      // Adjust for the tile
-      
-      // Find an instance that intersects with that point
-      
-      // Return it
-    }    
-  };
-  
-  _.extend(MapBuilder.prototype, Map.prototype);
-  
-  return MapBuilder;
-
-});
-
 define('shared/eventcontainer',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -12886,27 +12693,38 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('static/scenery',['require','underscore','../scene/entity','./map','../render/rendergraph','../render/canvasrender'],function(require) {
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender'],function(require) {
 
   var _ = require('underscore');
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var Instance = require('../render/instance');
   var Entity = require('../scene/entity');
-  var Map = require('./map');
   var RenderGraph = require('../render/rendergraph');
   var CanvasRender = require('../render/canvasrender');
 
-  var Scenery = function(renderWidth, renderHeight, tileWidth, tileHeight) {
-    Entity.call(this, "scenery");
+
+  var Map = function(data) {
+    Entity.call(this, 'map');
     
-    this.tilewidth = tileWidth;
-    this.tileheight = tileHeight;
+    this.width = data.width;
+    this.height = data.height;
+    this.tilewidth = data.tilewidth;
+    this.tileheight = data.tileheight;
+    this.templates = data.templates;
+    this.tiles = data.tiles;
+    this.tilecountwidth = data.tilecountwidth;
+    this.tilecountheight = data.tilecountheight;
+    
+    this.models = {};  
     this.scene = null;
-    this.map = null;
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = renderWidth + tileWidth;
-    this.canvas.height = renderHeight + tileHeight;
+    this.instanceTiles = null;
+    this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
+    this.canvas.width = 640 + 128
+    this.canvas.height = 480 + 128;
     this.context = this.canvas.getContext('2d');
     this.graph = new RenderGraph();
-    this.renderer = new CanvasRender(this.context);
+    this.renderer = new CanvasRender(this.context);  
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -12916,39 +12734,48 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
     this.on('AddedToScene', this.onAddedToScene);
   };
   
-  Scenery.prototype = {
-    loadMap: function(map) {
-      this.map = map;
+  Map.prototype = {
+  
+    onAddedToScene: function(scene) {
+      this.scene = scene; 
+      this.createModels(scene.resources);
+      this.createInstances();
+      this.scene.graph.add(this);   
     },
+    
     visible: function() { 
       return true; 
     },
-    render: function(context) {   
-      if(!this.map) return;
-      this.evaluateStatus();
+    
+    render: function(context) {
       
+    if(this.canvas.width !== context.canvas.width + this.tilewidth || this.canvas.height !== context.canvas.height + this.tileheight) {
+        this.canvas.width = context.canvas.width + this.tilewidth;
+        this.canvas.height = context.canvas.height + this.tileheight;
+        this.redrawBackground();
+      } else {
+       this.evaluateStatus();
+      }     
+
       var offset = this.getCurrentOffset();
       var dx = 0;
       var dy = 0;
       
       this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
                   
-      context.drawImage(this.context.canvas, 
-        offset.x, offset.y, 
+      context.drawImage(this.canvas, offset.x, offset.y, 
       context.canvas.width, context.canvas.height, 
         offset.x + this.tileleft * this.tilewidth, offset.y + this.tiletop * this.tileheight, 
       context.canvas.width, context.canvas.height); 
     },
-    onAddedToScene: function(scene) {
-      this.scene = scene; 
-      this.scene.graph.add(this);   
-    },
+    
     getCurrentOffset: function() {
       return {
         x: this.scene.graph.viewport.left % this.tilewidth,
         y: this.scene.graph.viewport.top % this.tileheight
       };
     },
+    
     forEachVisibleTile: function(callback) {
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
@@ -12960,6 +12787,7 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
         }      
       }
     },
+    
     evaluateStatus: function() {
       
       var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
@@ -12969,8 +12797,8 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
       
       tileleft = Math.max(tileleft, 0);
       tiletop = Math.max(tiletop, 0);
-      tileright = Math.min(tileright, this.map.tileCountWidth-1);
-      tilebottom = Math.min(tilebottom, this.map.tileCountHeight-1);
+      tileright = Math.min(tileright, this.tilecountwidth-1);
+      tilebottom = Math.min(tilebottom, this.tilecountheight-1);
       
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 
@@ -12993,25 +12821,88 @@ define('static/scenery',['require','underscore','../scene/entity','./map','../re
           this.tiletop * this.tileheight,
           this.tilebottom * this.tileheight);         
         
-      this.map.populateGraph(this.graph);      
+      this.populateGraph();      
       this.renderer.clear();
       this.renderer.draw(this.graph);      
+    },
+  
+    populateGraph: function() {             
+      this.graph.clear();
+      
+      for(var x = 0; x < this.tilecountwidth; x++) {
+        for(var y = 0; y < this.tilecountheight ; y++) {
+          var index = this.index(x, y);
+          for(var i = 0; i < this.tiles[index].length ; i++) {
+            this.graph.add(this.tiles[index][i].instance);            
+          }
+        }
+      }
+    },
+    
+    createModels: function(resources) {
+      this.models = {};
+      for(var t in this.templates) {
+        var template = this.templates[t];
+        this.createModelForTemplate(template);     
+      }
+    },
+    
+    createInstances: function() {
+      for(var x = 0; x < this.tilecountwidth; x++) {
+        for(var y = 0; y < this.tilecountheight ; y++) {
+          var index = this.index(x, y);
+          var tilex = x * this.tilewidth;
+          var tiley = y * this.tileheight;
+          
+          for(var i = 0; i < this.tiles[index].length ; i++) {
+            var item = this.tiles[index][i];
+            var model = this.models[item.template];
+            var template = this.templates[item.template];
+            var instance = new Instance(model);
+            instance.scale(template.width, template.height);
+            instance.translate(tilex + item.x, tiley + item.y);
+            item.instance = instance;
+          }
+        }
+      }
+    },
+    
+    tileAtCoords: function(x, y) {
+      var tileX = parseInt(x / this.tilewidth);
+      var tileY = parseInt(y / this.tileheight);
+      var index = this.index(tileX, tileY);
+      return this.tiles[index];
+    },
+        
+    modelForTemplate: function(template) {
+      return this.models[template.id] || this.createModelForTemplate(template);
+    },
+    
+    createModelForTemplate: function(template) {
+      var material = new Material();
+      material.diffuseTexture = this.scene.resources.get(template.texture);
+      this.models[template.id] = new Quad(material);
+      return this.models[template.id];
+    },    
+    
+    index: function(x, y) {
+      return x + y * this.tilecountwidth;
     }
   };
   
-  _.extend(Scenery.prototype, Entity.prototype);
+  _.extend(Map.prototype, Entity.prototype);
   
-  return Scenery;
+  return Map;
 
 });
 
-define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/scenery'],function(require) {
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map'],function(require) {
 
   var CanvasRender = require('../render/canvasrender');
   var PackagedResources = require('../resources/packagedresources'); 
   var Camera = require('../scene/camera');
   var Scene = require('../scene/scene');
-  var Scenery = require('../static/scenery');
+  var Map = require('../static/map');
 
   
   var findRequestAnimationFrame = function() {
@@ -13046,8 +12937,6 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
       var scaleX = parseInt( this.wrappedElement.width() / this.scene.graph.width());
       var scaleY = parseInt( this.wrappedElement.height() / this.scene.graph.height());
       
-      console.log(scaleX, scaleY);
-      
       return {
         x: (x * scaleX) + this.scene.graph.viewport.left,
         y: (y * scaleY) + this.scene.graph.viewport.top
@@ -13055,12 +12944,9 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
     },
     onResourcesLoaded: function() { 
       var self = this;
-      this.scenery = new Scenery(this.element.width, this.element.height, 128, 128);
       this.renderer = new CanvasRender(this.context);
       this.camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
       this.scene = new Scene(this.resources, this.renderer, this.camera);
-
-      this.scene.add(this.scenery);
       
       this.app.start(this);
       
@@ -13080,15 +12966,92 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   return Context;
 });
 
+define('editor/mapbuilder',['require','underscore','../static/map','../render/instance'],function(require) {
+  
+  var _ = require('underscore');
+  var Map = require('../static/map');
+  var Instance = require('../render/instance');
+
+  var MapBuilder = function(width, height, tilewidth, tileheight) {
+    Map.call(this, width, height, tilewidth, tileheight);
+  };
+  
+  MapBuilder.prototype = {
+  
+    getMapData: function() {
+      var map = {};  
+      this.populateMapMetadata(map);
+      this.populateMapTemplates(map);
+      this.populateMapTiles(map);
+      return map;
+    },
+    
+    populateMapMetadata: function(map) {
+      map.width = this.width;
+      map.height = this.height;
+      map.tilewidth = this.tilewidth;
+      map.tileheight = this.tileheight;
+    },
+    
+    populateMapTemplates: function(map) {
+      map.templates = null;
+    },
+    
+    populateMapTiles: function(map) {
+      
+    },
+  
+    addStatic: function(template, x, y) {
+      // Find the tile at those coords
+      var tile = this.tileAtCoords(x, y);
+
+      
+      // Find the template for that id
+      var model = this.modelForTemplate(template);
+      
+      // Add an instance at those coords
+      var instance = new Instance(model);
+      instance.scale(template.width, template.height);
+      instance.translate(x, y);
+      tile.push({
+        x: x,  // wrong
+        y: y, // wrong
+        template: template.id,
+        instance: instance
+      });
+      
+      this.redrawBackground();
+             
+    },
+    removeStatic: function(tile, instance) {
+      
+    },
+    getInstanceAt: function(x, y) {
+      // Work out which tile this intersects
+      
+      // Adjust for the tile
+      
+      // Find an instance that intersects with that point
+      
+      // Return it
+    }    
+  };
+  
+  _.extend(MapBuilder.prototype, Map.prototype);
+  
+  return MapBuilder;
+
+});
+
 define('editor/grid',['require','underscore','../scene/entity'],function(require) {
   
   var _ = require('underscore');
   var Entity = require('../scene/entity');
 
-  var Grid = function(scenery) {
+  var Grid = function(map) {
     Entity.call(this);
     
-    this.scenery = scenery;
+    this.map = map;
     this.on('AddedToScene', this.addGridRenderable);
   };
   
@@ -13107,7 +13070,7 @@ define('editor/grid',['require','underscore','../scene/entity'],function(require
       context.lineWidth = 0.25;
           
       context.beginPath();
-      this.scenery.forEachVisibleTile(function(left, top, right, bottom) {
+      this.map.forEachVisibleTile(function(left, top, right, bottom) {
         context.moveTo(left, top);
         context.lineTo(right, top);
         context.lineTo(right, bottom);
@@ -13193,6 +13156,9 @@ define('editor/input',['require','../shared/eventable','underscore','jquery'],fu
           self.raise('enter', {});  
           return false;
         },
+        click: function() {
+          self.raise('action', {});
+        },
         mousedown: function(e) {
           self.mouseDown = true;
           return false;      
@@ -13211,11 +13177,30 @@ define('editor/input',['require','../shared/eventable','underscore','jquery'],fu
 
 });
 
-define('editor/libraryitemtool',['require','../render/material','../render/quad','../render/instance'],function(require) {
+define('editor/commands/addinstancetomap',['require'],function(require) {
+
+  var AddInstanceToMap = function(x, y, template) {
+    this.x = x;
+    this.y = y;
+    this.template = template;  
+  };
+  
+  AddInstanceToMap.prototype = {
+    execute: function(editor) {
+      editor.map.addStatic(this.template, this.x, this.y);
+    }
+  };
+  
+  return AddInstanceToMap;
+
+});
+
+define('editor/libraryitemtool',['require','../render/material','../render/quad','../render/instance','./commands/addinstancetomap'],function(require) {
 
   var Material = require('../render/material');
   var Quad = require('../render/quad');
   var Instance = require('../render/instance');
+  var AddInstanceToMap = require('./commands/addinstancetomap');
 
   var LibraryItemTool = function(editor, element) {
     this.editor = editor;
@@ -13225,7 +13210,6 @@ define('editor/libraryitemtool',['require','../render/material','../render/quad'
     this.quad = new Quad(this.material);
     this.instance = new Instance(this.quad);
     this.instance.scale(element.width, element.height);
-    this.instance.translate(30, 30);
   };
   
   LibraryItemTool.prototype = {
@@ -13234,12 +13218,14 @@ define('editor/libraryitemtool',['require','../render/material','../render/quad'
       this.editor.input.on('move', this.oninputmove, this);
       this.editor.input.on('enter', this.oninputenter, this);
       this.editor.input.on('leave', this.oninputleave, this);
+      this.editor.input.on('action', this.oninputaction, this);
     },
     deactivate: function() {
      this.editor.cursor('default');
      this.editor.input.off('move', this.oninputmove, this);
      this.editor.input.off('enter', this.oninputenter, this);
      this.editor.input.off('leave', this.oninputleave, this);
+     this.editor.input.off('action', this.oninputaction, this);
      this.hideModel();
     },
     oninputmove: function(e) {
@@ -13250,6 +13236,14 @@ define('editor/libraryitemtool',['require','../render/material','../render/quad'
     },
     oninputleave: function() {
      this.hideModel();
+    },
+    oninputaction: function() {
+      var coords = this.editor.input.getInputPageCoords();
+      coords = this.editor.context.pageCoordsToWorldCoords(coords.x, coords.y);
+      this.addInstanceToMapAt(coords.x, coords.y);
+    },
+    addInstanceToMapAt: function(x, y) {      
+      this.editor.executeCommand(new AddInstanceToMap(x, y, this.element));
     },
     showModel: function() {
       this.updateModel();
@@ -13273,7 +13267,8 @@ define('editor/library',['require','./libraryitemtool'],function(require) {
   var LibraryItemTool = require('./libraryitemtool');
   
   var ConstLibraryElements = {
-    tree: {
+   tree: {
+      id: "tree",
       width: 25,
       height: 25,
       texture: "/main/tree.png"
@@ -13287,6 +13282,9 @@ define('editor/library',['require','./libraryitemtool'],function(require) {
   };
   
   Library.prototype = {
+    getLibraryElement: function(id) {
+      return ConstLibraryElements[id];
+    },
     populate: function() {
       var self = this;
       
@@ -13320,18 +13318,123 @@ define('editor/library',['require','./libraryitemtool'],function(require) {
   
 });
 
-define('apps/demo/editor',['require','jquery','underscore','../../harness/context','../../editor/toolbar','../../editor/mapbuilder','../../editor/grid','../../shared/eventable','../../editor/input','../../editor/library'],function(require) {
+define('editor/selecttool',['require'],function(require) {
+  var SelectTool = function(editor) {
+    this.editor = editor;
+  };
+  
+  SelectTool.prototype = {
+    activate: function() {
+     this.editor.cursor('crosshair');
+      
+    },
+    deactivate: function() {
+     this.editor.cursor('default');
+    }
+  };
+  
+  return SelectTool;
+});
+
+define('editor/movetool',['require'],function(require) {
+
+  var MoveTool = function(editor) {
+    this.editor = editor;
+  };
+  
+  MoveTool.prototype = {
+    activate: function() {
+      this.editor.cursor('pointer');
+      this.editor.input.on('drag', this.onElementDragEvent, this);
+    },
+    deactivate: function() {
+     this.editor.cursor('default');
+     this.editor.input.off('drag', this.onElementDragEvent, this);
+    },
+    onElementDragEvent: function(e) {
+      this.editor.moveViewer(e.dx * -2.0, e.dy * -2.0);
+    }
+  };
+  
+  return MoveTool;
+
+});
+
+define('editor/toolbar',['require','jquery','./selecttool','./movetool'],function(require) {
+
+  var $ = require('jquery');
+  var SelectTool = require('./selecttool');
+  var MoveTool = require('./movetool');
+
+  var Toolbar = function(editor) {
+    this.editor = editor;
+    this.tools = {
+      'select': new SelectTool(editor),
+      'move': new MoveTool(editor)    
+    };
+    this.setupTools();
+    this.activateTool('move');
+  };  
+  
+  Toolbar.prototype = {
+    setupTools: function() {    
+      for(var i in this.tools) {
+        this.hookTool(i);
+      };
+    },
+    hookTool: function(tool) {
+      var self = this;
+      $('#' + tool).click(function() {
+        self.activateTool(tool);
+      });
+    },
+    activateTool: function(tool) {
+      this.editor.setCurrentTool(this.tools[tool]);
+    }
+  };
+  
+  return Toolbar;   
+
+});
+
+define('editor/topbar',['require','jquery'],function(require) {
+
+  var $ = require('jquery');
+  var TopBar = function(editor) {
+    this.editor = editor;
+    this.setupTools();
+  };  
+  
+  TopBar.prototype = {
+    setupTools: function() {   
+      var self = this; 
+      $('#save-map').click(function() {
+        self.saveMap();
+      });
+    },
+    saveMap: function() {
+      var data = this.editor.map.getMapData();
+      
+    }
+  };
+  
+  return TopBar;   
+
+});
+
+define('apps/demo/editor',['require','jquery','underscore','../../harness/context','../../editor/mapbuilder','../../editor/grid','../../shared/eventable','../../editor/input','../../editor/library','../../editor/toolbar','../../editor/topbar'],function(require) {
   
   var $ = require('jquery');
   var _ = require('underscore');
   var Context = require('../../harness/context');
-  var Toolbar = require('../../editor/toolbar');
   var MapBuilder = require('../../editor/mapbuilder');
   var Grid = require('../../editor/grid');
   var Eventable = require('../../shared/eventable');
   var Input = require('../../editor/input');
   var Library = require('../../editor/library');
-   
+  var Toolbar = require('../../editor/toolbar');
+  var TopBar = require('../../editor/topbar');
+  
   $(document).ready(function() {
     var canvasElement = document.getElementById('target');
     var context = new Context(canvasElement, new Editor(canvasElement));  
@@ -13349,12 +13452,37 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
       this.context = context;
       this.toolbar = new Toolbar(this);
       this.library = new Library(this);
+      this.topbar = new TopBar(this);
       this.initializeMap();
     },
     initializeMap: function() {
-      this.map = new MapBuilder(2048, 2048, 128, 128);
-      this.context.scenery.loadMap(this.map);
-      this.grid = new Grid(this.context.scenery);
+      var tileCountWidth = 2048 / 128;
+      var tileCountHeight = 2048 / 128;
+      
+      var mapData = {
+        width: 2048,
+        height: 2048,
+        tilewidth: 128,
+        tileheight: 128,
+        tilecountwidth: tileCountWidth,
+        tilecountheight: tileCountHeight,
+        templates: {
+          tree: {
+            id: "tree",
+            width: 25,
+            height: 25,
+            texture: "/main/tree.png"  
+          }
+        },
+        tiles: new Array(tileCountWidth * tileCountHeight)
+      };
+      for(var i = 0 ; i < mapData.tiles.length; i++) {
+        mapData.tiles[i] = [];
+      }
+      
+      this.map = new MapBuilder(mapData);
+      this.context.scene.add(this.map);
+      this.grid = new Grid(this.map);
       this.context.scene.add(this.grid); 
     },
     cursor: function(value) {
@@ -13368,6 +13496,9 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
         this.currentTool.deactivate();
       this.currentTool = tool;
       this.currentTool.activate();
+    },
+    executeCommand: function(command) {
+      command.execute(this);
     }
   };  
   

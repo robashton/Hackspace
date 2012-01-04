@@ -3,6 +3,7 @@ define(function(require) {
   var Material = require('../render/material');
   var Quad = require('../render/quad');
   var Instance = require('../render/instance');
+  var AddInstanceToMap = require('./commands/addinstancetomap');
 
   var LibraryItemTool = function(editor, element) {
     this.editor = editor;
@@ -44,8 +45,8 @@ define(function(require) {
       coords = this.editor.context.pageCoordsToWorldCoords(coords.x, coords.y);
       this.addInstanceToMapAt(coords.x, coords.y);
     },
-    addInstanceToMapAt: function(x, y) {
-      this.editor.executeCommand(new AddInstanceToMap(x, y, this.element.texture));
+    addInstanceToMapAt: function(x, y) {      
+      this.editor.executeCommand(new AddInstanceToMap(x, y, this.element));
     },
     showModel: function() {
       this.updateModel();

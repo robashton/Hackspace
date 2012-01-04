@@ -3475,86 +3475,6 @@ define('entities/debug',['require','underscore','../scene/entity'],function(requ
   return Debug;
 });
 
-define('static/map',['require','../render/material','../render/quad','../render/instance'],function(require) {
-
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  var Instance = require('../render/instance');
-
-  var Map = function(width, height, tilewidth, tileheight) {
-    this.width = width;
-    this.height = height;
-    this.tilewidth = tilewidth;
-    this.tileheight = tileheight;
-    this.tileCountWidth = parseInt(this.width / this.tileheight);
-    this.tileCountHeight = parseInt(this.height / this.tileheight);
-    this.tiles = new Array(this.tileCountWidth * this.tileCountHeight);
-    this.templates = {};
-    this.createEmptyTiles();
-  };
-  
-  Map.prototype = {
-    populateGraph: function(graph) {             
-      graph.clear();
-      
-      for(var x = 0; x < this.tileCountWidth; x++) {
-        for(var y = 0; y < this.tileCountHeight ; y++) {
-          var index = this.index(x, y);
-          for(var i = 0; i < this.tiles[index].length ; i++) {
-            graph.add(this.tiles[index][i]);            
-          }          
-        }
-      }
-    },
-    
-    createEmptyTiles: function() {
-      for(var x = 0; x < this.tileCountWidth; x++) {
-        for(var y = 0; y < this.tileCountHeight ; y++) {
-          var index = this.index(x,y);
-          var tilex = x * this.tilewidth;
-          var tiley = y * this.tileheight;
-          this.tiles[index] = [];
-        }
-      }
-    },
-    
-    generateRandom: function(resources) {
-
-      var treeMaterial = new Material();
-      treeMaterial.diffuseTexture = resources.get('/main/tree.png');
-      this.models = {};
-      this.models.tree = new Quad(treeMaterial);
-      
-      for(var x = 0; x < this.tileCountWidth; x++) {
-        for(var y = 0; y < this.tileCountHeight ; y++) {
-          var index = this.index(x,y);
-          var tilex = x * this.tilewidth;
-          var tiley = y * this.tileheight;          
-          var treeCount = Math.random() * 5;
-          
-          for(var i = 0 ; i < treeCount; i++) {
-            var xloc = Math.random() * this.tilewidth;
-            var yloc = Math.random() * this.tileheight;
-            
-            var instance = new Instance(this.models.tree);
-            instance.scale(25,25, 0);
-            instance.translate(xloc + tilex, yloc + tiley, 0);
-            
- 
-            this.tiles[index].push(instance);
-          }
-        }     
-      }    
-    },
-    index: function(x, y) {
-      return x + y * this.tileCountWidth;
-    }
-  };
-  
-  return Map;
-
-});
-
 define('render/canvasrender',['require'],function(require) {
 
   var CanvasRender = function(context) {
@@ -3581,6 +3501,209 @@ define('render/canvasrender',['require'],function(require) {
   };
   
   return CanvasRender;
+});
+
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender'],function(require) {
+
+  var _ = require('underscore');
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var Instance = require('../render/instance');
+  var Entity = require('../scene/entity');
+  var RenderGraph = require('../render/rendergraph');
+  var CanvasRender = require('../render/canvasrender');
+
+
+  var Map = function(data) {
+    Entity.call(this, 'map');
+    
+    this.width = data.width;
+    this.height = data.height;
+    this.tilewidth = data.tilewidth;
+    this.tileheight = data.tileheight;
+    this.templates = data.templates;
+    this.tiles = data.tiles;
+    this.tilecountwidth = data.tilecountwidth;
+    this.tilecountheight = data.tilecountheight;
+    
+    this.models = {};  
+    this.scene = null;
+    this.instanceTiles = null;
+    this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
+    this.canvas.width = 640 + 128
+    this.canvas.height = 480 + 128;
+    this.context = this.canvas.getContext('2d');
+    this.graph = new RenderGraph();
+    this.renderer = new CanvasRender(this.context);  
+    
+    this.tileleft = -1;
+    this.tiletop = -1;
+    this.tilebottom = -1;
+    this.tileright = -1;
+    
+    this.on('AddedToScene', this.onAddedToScene);
+  };
+  
+  Map.prototype = {
+  
+    onAddedToScene: function(scene) {
+      this.scene = scene; 
+      this.createModels(scene.resources);
+      this.createInstances();
+      this.scene.graph.add(this);   
+    },
+    
+    visible: function() { 
+      return true; 
+    },
+    
+    render: function(context) {
+      
+    if(this.canvas.width !== context.canvas.width + this.tilewidth || this.canvas.height !== context.canvas.height + this.tileheight) {
+        this.canvas.width = context.canvas.width + this.tilewidth;
+        this.canvas.height = context.canvas.height + this.tileheight;
+        this.redrawBackground();
+      } else {
+       this.evaluateStatus();
+      }     
+
+      var offset = this.getCurrentOffset();
+      var dx = 0;
+      var dy = 0;
+      
+      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
+                  
+      context.drawImage(this.canvas, offset.x, offset.y, 
+      context.canvas.width, context.canvas.height, 
+        offset.x + this.tileleft * this.tilewidth, offset.y + this.tiletop * this.tileheight, 
+      context.canvas.width, context.canvas.height); 
+    },
+    
+    getCurrentOffset: function() {
+      return {
+        x: this.scene.graph.viewport.left % this.tilewidth,
+        y: this.scene.graph.viewport.top % this.tileheight
+      };
+    },
+    
+    forEachVisibleTile: function(callback) {
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          var left = i * this.tilewidth;
+          var right = left + this.tilewidth;
+          var top = j * this.tileheight;
+          var bottom = top + this.tileheight;
+          callback(left, top, right, bottom);          
+        }      
+      }
+    },
+    
+    evaluateStatus: function() {
+      
+      var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
+      var tiletop = parseInt(this.scene.graph.viewport.top / this.tileheight);
+      var tileright = parseInt(this.scene.graph.viewport.right / this.tilewidth) + 1;
+      var tilebottom = parseInt(this.scene.graph.viewport.bottom / this.tileheight) + 1;
+      
+      tileleft = Math.max(tileleft, 0);
+      tiletop = Math.max(tiletop, 0);
+      tileright = Math.min(tileright, this.tilecountwidth-1);
+      tilebottom = Math.min(tilebottom, this.tilecountheight-1);
+      
+      if(tileleft !== this.tileleft || 
+         tiletop  !== this.tiletop || 
+         tileright !== this.tileright ||
+         tilebottom !== this.tilebottom) {
+         
+        this.tileleft = tileleft;
+        this.tileright = tileright;
+        this.tiletop = tiletop;
+        this.tilebottom = tilebottom;
+        this.redrawBackground();
+      }
+    },
+    
+    redrawBackground: function() { 
+     
+      this.graph.updateViewport(
+          this.tileleft * this.tilewidth,
+          this.tileright * this.tilewidth,
+          this.tiletop * this.tileheight,
+          this.tilebottom * this.tileheight);         
+        
+      this.populateGraph();      
+      this.renderer.clear();
+      this.renderer.draw(this.graph);      
+    },
+  
+    populateGraph: function() {             
+      this.graph.clear();
+      
+      for(var x = 0; x < this.tilecountwidth; x++) {
+        for(var y = 0; y < this.tilecountheight ; y++) {
+          var index = this.index(x, y);
+          for(var i = 0; i < this.tiles[index].length ; i++) {
+            this.graph.add(this.tiles[index][i].instance);            
+          }
+        }
+      }
+    },
+    
+    createModels: function(resources) {
+      this.models = {};
+      for(var t in this.templates) {
+        var template = this.templates[t];
+        this.createModelForTemplate(template);     
+      }
+    },
+    
+    createInstances: function() {
+      for(var x = 0; x < this.tilecountwidth; x++) {
+        for(var y = 0; y < this.tilecountheight ; y++) {
+          var index = this.index(x, y);
+          var tilex = x * this.tilewidth;
+          var tiley = y * this.tileheight;
+          
+          for(var i = 0; i < this.tiles[index].length ; i++) {
+            var item = this.tiles[index][i];
+            var model = this.models[item.template];
+            var template = this.templates[item.template];
+            var instance = new Instance(model);
+            instance.scale(template.width, template.height);
+            instance.translate(tilex + item.x, tiley + item.y);
+            item.instance = instance;
+          }
+        }
+      }
+    },
+    
+    tileAtCoords: function(x, y) {
+      var tileX = parseInt(x / this.tilewidth);
+      var tileY = parseInt(y / this.tileheight);
+      var index = this.index(tileX, tileY);
+      return this.tiles[index];
+    },
+        
+    modelForTemplate: function(template) {
+      return this.models[template.id] || this.createModelForTemplate(template);
+    },
+    
+    createModelForTemplate: function(template) {
+      var material = new Material();
+      material.diffuseTexture = this.scene.resources.get(template.texture);
+      this.models[template.id] = new Quad(material);
+      return this.models[template.id];
+    },    
+    
+    index: function(x, y) {
+      return x + y * this.tilecountwidth;
+    }
+  };
+  
+  _.extend(Map.prototype, Entity.prototype);
+  
+  return Map;
+
 });
 
 define('resources/texture',['require'],function(require) {
@@ -3648,125 +3771,6 @@ define('scene/camera',['require','glmatrix'],function(require) {
   };
   
   return Camera; 
-});
-
-define('static/scenery',['require','underscore','../scene/entity','./map','../render/rendergraph','../render/canvasrender'],function(require) {
-
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-  var Map = require('./map');
-  var RenderGraph = require('../render/rendergraph');
-  var CanvasRender = require('../render/canvasrender');
-
-  var Scenery = function(renderWidth, renderHeight, tileWidth, tileHeight) {
-    Entity.call(this, "scenery");
-    
-    this.tilewidth = tileWidth;
-    this.tileheight = tileHeight;
-    this.scene = null;
-    this.map = null;
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = renderWidth + tileWidth;
-    this.canvas.height = renderHeight + tileHeight;
-    this.context = this.canvas.getContext('2d');
-    this.graph = new RenderGraph();
-    this.renderer = new CanvasRender(this.context);
-    
-    this.tileleft = -1;
-    this.tiletop = -1;
-    this.tilebottom = -1;
-    this.tileright = -1;
-    
-    this.on('AddedToScene', this.onAddedToScene);
-  };
-  
-  Scenery.prototype = {
-    loadMap: function(map) {
-      this.map = map;
-    },
-    visible: function() { 
-      return true; 
-    },
-    render: function(context) {   
-      if(!this.map) return;
-      this.evaluateStatus();
-      
-      var offset = this.getCurrentOffset();
-      var dx = 0;
-      var dy = 0;
-      
-      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
-                  
-      context.drawImage(this.context.canvas, 
-        offset.x, offset.y, 
-      context.canvas.width, context.canvas.height, 
-        offset.x + this.tileleft * this.tilewidth, offset.y + this.tiletop * this.tileheight, 
-      context.canvas.width, context.canvas.height); 
-    },
-    onAddedToScene: function(scene) {
-      this.scene = scene; 
-      this.scene.graph.add(this);   
-    },
-    getCurrentOffset: function() {
-      return {
-        x: this.scene.graph.viewport.left % this.tilewidth,
-        y: this.scene.graph.viewport.top % this.tileheight
-      };
-    },
-    forEachVisibleTile: function(callback) {
-      for(var i = this.tileleft ; i <= this.tileright; i++) {
-        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-          var left = i * this.tilewidth;
-          var right = left + this.tilewidth;
-          var top = j * this.tileheight;
-          var bottom = top + this.tileheight;
-          callback(left, top, right, bottom);          
-        }      
-      }
-    },
-    evaluateStatus: function() {
-      
-      var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
-      var tiletop = parseInt(this.scene.graph.viewport.top / this.tileheight);
-      var tileright = parseInt(this.scene.graph.viewport.right / this.tilewidth) + 1;
-      var tilebottom = parseInt(this.scene.graph.viewport.bottom / this.tileheight) + 1;
-      
-      tileleft = Math.max(tileleft, 0);
-      tiletop = Math.max(tiletop, 0);
-      tileright = Math.min(tileright, this.map.tileCountWidth-1);
-      tilebottom = Math.min(tilebottom, this.map.tileCountHeight-1);
-      
-      if(tileleft !== this.tileleft || 
-         tiletop  !== this.tiletop || 
-         tileright !== this.tileright ||
-         tilebottom !== this.tilebottom) {
-         
-        this.tileleft = tileleft;
-        this.tileright = tileright;
-        this.tiletop = tiletop;
-        this.tilebottom = tilebottom;
-        this.redrawBackground();
-      }
-    },
-    
-    redrawBackground: function() { 
-     
-      this.graph.updateViewport(
-          this.tileleft * this.tilewidth,
-          this.tileright * this.tilewidth,
-          this.tiletop * this.tileheight,
-          this.tilebottom * this.tileheight);         
-        
-      this.map.populateGraph(this.graph);      
-      this.renderer.clear();
-      this.renderer.draw(this.graph);      
-    }
-  };
-  
-  _.extend(Scenery.prototype, Entity.prototype);
-  
-  return Scenery;
-
 });
 
 /*!
@@ -13229,13 +13233,13 @@ define('resources/packagedresources',['require','./package','../shared/eventable
   return PackagedResources;
 });
 
-define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/scenery'],function(require) {
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map'],function(require) {
 
   var CanvasRender = require('../render/canvasrender');
   var PackagedResources = require('../resources/packagedresources'); 
   var Camera = require('../scene/camera');
   var Scene = require('../scene/scene');
-  var Scenery = require('../static/scenery');
+  var Map = require('../static/map');
 
   
   var findRequestAnimationFrame = function() {
@@ -13270,8 +13274,6 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
       var scaleX = parseInt( this.wrappedElement.width() / this.scene.graph.width());
       var scaleY = parseInt( this.wrappedElement.height() / this.scene.graph.height());
       
-      console.log(scaleX, scaleY);
-      
       return {
         x: (x * scaleX) + this.scene.graph.viewport.left,
         y: (y * scaleY) + this.scene.graph.viewport.top
@@ -13279,12 +13281,9 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
     },
     onResourcesLoaded: function() { 
       var self = this;
-      this.scenery = new Scenery(this.element.width, this.element.height, 128, 128);
       this.renderer = new CanvasRender(this.context);
       this.camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
       this.scene = new Scene(this.resources, this.renderer, this.camera);
-
-      this.scene.add(this.scenery);
       
       this.app.start(this);
       
@@ -13321,6 +13320,50 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     this.element = element;
   };
   
+  
+  var tileCountWidth = 2048 / 128;
+  var tileCountHeight = 2048 / 128;
+  
+  var mapData = {
+    width: 2048,
+    height: 2048,
+    tilewidth: 128,
+    tileheight: 128,
+    tilecountwidth: tileCountWidth,
+    tilecountheight: tileCountHeight,
+    templates: {
+      tree: {
+        id: "tree",
+        width: 25,
+        height: 25,
+        texture: "/main/tree.png"  
+      }
+    },
+    tiles: new Array(tileCountWidth * tileCountHeight)
+  };
+  
+  for(var x = 0; x < tileCountWidth; x++) {
+    for(var y = 0; y < tileCountHeight ; y++) {
+      var index = x + y * mapData.tilecountwidth;
+      mapData.tiles[index] = [];
+      
+      var tilex = x * mapData.tilewidth;
+      var tiley = y * mapData.tileheight;          
+      var treeCount = Math.random() * 5;
+      
+      for(var i = 0 ; i < treeCount; i++) {
+        var xloc = Math.random() * mapData.tilewidth;
+        var yloc = Math.random() * mapData.tileheight;
+           
+        mapData.tiles[index].push({
+          x: xloc,
+          y: yloc,
+          template: "tree"
+        });
+      }
+    }     
+  }    
+
   Demo.prototype = {
     start: function(context) {          
       this.context = context;
@@ -13331,16 +13374,15 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
       var character = new Character("player", 0, 0, 25, 25, quad);
       var controller = new Controller();
       var debug = new Debug();
+      var map = new Map(mapData);
       
       context.scene.add(debug);
       context.scene.add(character);
       context.scene.add(controller);
-              
+      context.scene.add(map);
+            
       var input = new InputEmitter(context.scene, this.element);
-      
-      var map = new Map(2048, 2048, 128, 128);
-      map.generateRandom(context.resources);
-      context.scenery.loadMap(map);
+
     }
   }
 

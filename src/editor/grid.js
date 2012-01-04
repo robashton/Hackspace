@@ -3,10 +3,10 @@ define(function(require) {
   var _ = require('underscore');
   var Entity = require('../scene/entity');
 
-  var Grid = function(scenery) {
+  var Grid = function(map) {
     Entity.call(this);
     
-    this.scenery = scenery;
+    this.map = map;
     this.on('AddedToScene', this.addGridRenderable);
   };
   
@@ -25,7 +25,7 @@ define(function(require) {
       context.lineWidth = 0.25;
           
       context.beginPath();
-      this.scenery.forEachVisibleTile(function(left, top, right, bottom) {
+      this.map.forEachVisibleTile(function(left, top, right, bottom) {
         context.moveTo(left, top);
         context.lineTo(right, top);
         context.lineTo(right, bottom);

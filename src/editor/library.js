@@ -2,7 +2,8 @@ define(function(require) {
   var LibraryItemTool = require('./libraryitemtool');
   
   var ConstLibraryElements = {
-    tree: {
+   tree: {
+      id: "tree",
       width: 25,
       height: 25,
       texture: "/main/tree.png"
@@ -16,6 +17,9 @@ define(function(require) {
   };
   
   Library.prototype = {
+    getLibraryElement: function(id) {
+      return ConstLibraryElements[id];
+    },
     populate: function() {
       var self = this;
       
