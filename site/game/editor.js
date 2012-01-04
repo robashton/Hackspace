@@ -12397,6 +12397,52 @@ define('render/instance',['require','glmatrix'],function(require) {
   return Instance;
 });
 
+define('static/tile',['require','../render/instance'],function(require) {
+
+  var Instance = require('../render/instance');
+  
+  var Tile = function(map, items, x, y) {
+    this.map = map;
+    this.items = items;
+    this.instances = [];
+    this.x = x;
+    this.y = y;
+  };
+  
+  Tile.prototype = {
+    addInstancesToGraph: function(graph) {
+      for(var i in this.instances) {
+        graph.add(this.instances[i]);
+      }
+    },
+    createInstances: function() {    
+      for(var i = 0; i < this.items.length ; i++) {
+        this.createInstanceForItem(i);
+      }
+    },
+    createInstanceForItem: function(i) {
+      var item = this.items[i];        
+      var model = this.map.models[item.template];
+      var template = this.map.templates[item.template];
+      var instance = new Instance(model);
+      instance.scale(template.width, template.height);
+      instance.translate(this.x + item.x, this.y + item.y);
+      this.instances[i] = instance;
+    },
+    addItem: function(x, y, template) {
+      var i = this.items.length;
+      this.items.push({
+        x: x,
+        y: y,
+        template: template
+      });
+      this.createInstanceForItem(i);      
+    }
+  };
+  
+  return Tile;  
+});
+
 define('shared/eventcontainer',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -12693,7 +12739,7 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender'],function(require) {
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -12702,6 +12748,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var Entity = require('../scene/entity');
   var RenderGraph = require('../render/rendergraph');
   var CanvasRender = require('../render/canvasrender');
+  var Tile = require('./tile');
 
 
   var Map = function(data) {
@@ -12712,10 +12759,11 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.tilewidth = data.tilewidth;
     this.tileheight = data.tileheight;
     this.templates = data.templates;
-    this.tiles = data.tiles;
+    this.tiledata = data.tiledata;
     this.tilecountwidth = data.tilecountwidth;
     this.tilecountheight = data.tilecountheight;
     
+    this.tiles = new Array(this.tilecountwidth * this.tilecountheight);
     this.models = {};  
     this.scene = null;
     this.instanceTiles = null;
@@ -12832,9 +12880,8 @@ define('static/map',['require','underscore','../render/material','../render/quad
       for(var x = 0; x < this.tilecountwidth; x++) {
         for(var y = 0; y < this.tilecountheight ; y++) {
           var index = this.index(x, y);
-          for(var i = 0; i < this.tiles[index].length ; i++) {
-            this.graph.add(this.tiles[index][i].instance);            
-          }
+          var tile = this.tiles[index];
+          tile.addInstancesToGraph(this.graph);
         }
       }
     },
@@ -12847,22 +12894,13 @@ define('static/map',['require','underscore','../render/material','../render/quad
       }
     },
     
-    createInstances: function() {
+    createInstances: function() {    
       for(var x = 0; x < this.tilecountwidth; x++) {
         for(var y = 0; y < this.tilecountheight ; y++) {
           var index = this.index(x, y);
-          var tilex = x * this.tilewidth;
-          var tiley = y * this.tileheight;
-          
-          for(var i = 0; i < this.tiles[index].length ; i++) {
-            var item = this.tiles[index][i];
-            var model = this.models[item.template];
-            var template = this.templates[item.template];
-            var instance = new Instance(model);
-            instance.scale(template.width, template.height);
-            instance.translate(tilex + item.x, tiley + item.y);
-            item.instance = instance;
-          }
+          var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
+          this.tiles[index] = tile;
+          tile.createInstances();
         }
       }
     },
@@ -12873,11 +12911,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       var index = this.index(tileX, tileY);
       return this.tiles[index];
     },
-        
-    modelForTemplate: function(template) {
-      return this.models[template.id] || this.createModelForTemplate(template);
-    },
-    
+          
     createModelForTemplate: function(template) {
       var material = new Material();
       material.diffuseTexture = this.scene.resources.get(template.texture);
@@ -13002,26 +13036,27 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
     },
   
     addStatic: function(template, x, y) {
-      // Find the tile at those coords
       var tile = this.tileAtCoords(x, y);
-
+      var local = this.globalCoordsToTileCoords(x, y);
       
-      // Find the template for that id
-      var model = this.modelForTemplate(template);
+      console.log(local);
       
-      // Add an instance at those coords
-      var instance = new Instance(model);
-      instance.scale(template.width, template.height);
-      instance.translate(x, y);
-      tile.push({
-        x: x,  // wrong
-        y: y, // wrong
-        template: template.id,
-        instance: instance
-      });
+      if(!this.templates[template.id])
+        this.addTemplate(template);
+     
+      tile.addItem(local.x, local.y, template.id);
       
-      this.redrawBackground();
-             
+      this.redrawBackground();             
+    },
+    addTemplate: function(template) {
+      this.templates[template.id] = template;
+      this.createModelForTemplate(template);
+    },
+    globalCoordsToTileCoords: function(x, y) {
+      return {
+        x: x - (parseInt(x / this.tilewidth) * this.tilewidth),
+        y: y - (parseInt(y / this.tileheight) * this.tileheight)
+      };
     },
     removeStatic: function(tile, instance) {
       
@@ -13474,10 +13509,10 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
             texture: "/main/tree.png"  
           }
         },
-        tiles: new Array(tileCountWidth * tileCountHeight)
+        tiledata: new Array(tileCountWidth * tileCountHeight)
       };
-      for(var i = 0 ; i < mapData.tiles.length; i++) {
-        mapData.tiles[i] = [];
+      for(var i = 0 ; i < mapData.tiledata.length; i++) {
+        mapData.tiledata[i] = [];
       }
       
       this.map = new MapBuilder(mapData);

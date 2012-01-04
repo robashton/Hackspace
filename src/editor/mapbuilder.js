@@ -34,26 +34,27 @@ define(function(require) {
     },
   
     addStatic: function(template, x, y) {
-      // Find the tile at those coords
       var tile = this.tileAtCoords(x, y);
-
+      var local = this.globalCoordsToTileCoords(x, y);
       
-      // Find the template for that id
-      var model = this.modelForTemplate(template);
+      console.log(local);
       
-      // Add an instance at those coords
-      var instance = new Instance(model);
-      instance.scale(template.width, template.height);
-      instance.translate(x, y);
-      tile.push({
-        x: x,  // wrong
-        y: y, // wrong
-        template: template.id,
-        instance: instance
-      });
+      if(!this.templates[template.id])
+        this.addTemplate(template);
+     
+      tile.addItem(local.x, local.y, template.id);
       
-      this.redrawBackground();
-             
+      this.redrawBackground();             
+    },
+    addTemplate: function(template) {
+      this.templates[template.id] = template;
+      this.createModelForTemplate(template);
+    },
+    globalCoordsToTileCoords: function(x, y) {
+      return {
+        x: x - (parseInt(x / this.tilewidth) * this.tilewidth),
+        y: y - (parseInt(y / this.tileheight) * this.tileheight)
+      };
     },
     removeStatic: function(tile, instance) {
       

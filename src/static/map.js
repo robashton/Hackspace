@@ -7,6 +7,7 @@ define(function(require) {
   var Entity = require('../scene/entity');
   var RenderGraph = require('../render/rendergraph');
   var CanvasRender = require('../render/canvasrender');
+  var Tile = require('./tile');
 
 
   var Map = function(data) {
@@ -17,10 +18,11 @@ define(function(require) {
     this.tilewidth = data.tilewidth;
     this.tileheight = data.tileheight;
     this.templates = data.templates;
-    this.tiles = data.tiles;
+    this.tiledata = data.tiledata;
     this.tilecountwidth = data.tilecountwidth;
     this.tilecountheight = data.tilecountheight;
     
+    this.tiles = new Array(this.tilecountwidth * this.tilecountheight);
     this.models = {};  
     this.scene = null;
     this.instanceTiles = null;
@@ -137,9 +139,8 @@ define(function(require) {
       for(var x = 0; x < this.tilecountwidth; x++) {
         for(var y = 0; y < this.tilecountheight ; y++) {
           var index = this.index(x, y);
-          for(var i = 0; i < this.tiles[index].length ; i++) {
-            this.graph.add(this.tiles[index][i].instance);            
-          }
+          var tile = this.tiles[index];
+          tile.addInstancesToGraph(this.graph);
         }
       }
     },
@@ -152,22 +153,13 @@ define(function(require) {
       }
     },
     
-    createInstances: function() {
+    createInstances: function() {    
       for(var x = 0; x < this.tilecountwidth; x++) {
         for(var y = 0; y < this.tilecountheight ; y++) {
           var index = this.index(x, y);
-          var tilex = x * this.tilewidth;
-          var tiley = y * this.tileheight;
-          
-          for(var i = 0; i < this.tiles[index].length ; i++) {
-            var item = this.tiles[index][i];
-            var model = this.models[item.template];
-            var template = this.templates[item.template];
-            var instance = new Instance(model);
-            instance.scale(template.width, template.height);
-            instance.translate(tilex + item.x, tiley + item.y);
-            item.instance = instance;
-          }
+          var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
+          this.tiles[index] = tile;
+          tile.createInstances();
         }
       }
     },
@@ -178,11 +170,7 @@ define(function(require) {
       var index = this.index(tileX, tileY);
       return this.tiles[index];
     },
-        
-    modelForTemplate: function(template) {
-      return this.models[template.id] || this.createModelForTemplate(template);
-    },
-    
+          
     createModelForTemplate: function(template) {
       var material = new Material();
       material.diffuseTexture = this.scene.resources.get(template.texture);

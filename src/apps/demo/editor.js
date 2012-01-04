@@ -50,10 +50,10 @@ define(function(require) {
             texture: "/main/tree.png"  
           }
         },
-        tiles: new Array(tileCountWidth * tileCountHeight)
+        tiledata: new Array(tileCountWidth * tileCountHeight)
       };
-      for(var i = 0 ; i < mapData.tiles.length; i++) {
-        mapData.tiles[i] = [];
+      for(var i = 0 ; i < mapData.tiledata.length; i++) {
+        mapData.tiledata[i] = [];
       }
       
       this.map = new MapBuilder(mapData);

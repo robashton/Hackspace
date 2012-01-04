@@ -34,13 +34,13 @@ define(function(require) {
         texture: "/main/tree.png"  
       }
     },
-    tiles: new Array(tileCountWidth * tileCountHeight)
+    tiledata: new Array(tileCountWidth * tileCountHeight)
   };
   
   for(var x = 0; x < tileCountWidth; x++) {
     for(var y = 0; y < tileCountHeight ; y++) {
       var index = x + y * mapData.tilecountwidth;
-      mapData.tiles[index] = [];
+      mapData.tiledata[index] = [];
       
       var tilex = x * mapData.tilewidth;
       var tiley = y * mapData.tileheight;          
@@ -50,7 +50,7 @@ define(function(require) {
         var xloc = Math.random() * mapData.tilewidth;
         var yloc = Math.random() * mapData.tileheight;
            
-        mapData.tiles[index].push({
+        mapData.tiledata[index].push({
           x: xloc,
           y: yloc,
           template: "tree"
