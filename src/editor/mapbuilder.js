@@ -23,22 +23,26 @@ define(function(require) {
       map.height = this.height;
       map.tilewidth = this.tilewidth;
       map.tileheight = this.tileheight;
+
+      map.tilecountwidth = this.tilecountwidth;
+      map.tilecountheight = this.tilecountheight;
     },
     
     populateMapTemplates: function(map) {
-      map.templates = null;
+      map.templates = this.templates;
     },
     
     populateMapTiles: function(map) {
-      
+      map.tiledata = new Array(this.tilecountwidth * this.tilecountheight);
+      for(var i = 0; i < this.tiles.length; i++) {
+        map.tiledata[i] = this.tiles[i].items;
+      }      
     },
   
     addStatic: function(template, x, y) {
       var tile = this.tileAtCoords(x, y);
       var local = this.globalCoordsToTileCoords(x, y);
-      
-      console.log(local);
-      
+
       if(!this.templates[template.id])
         this.addTemplate(template);
      

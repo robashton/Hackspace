@@ -13025,22 +13025,26 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
       map.height = this.height;
       map.tilewidth = this.tilewidth;
       map.tileheight = this.tileheight;
+
+      map.tilecountwidth = this.tilecountwidth;
+      map.tilecountheight = this.tilecountheight;
     },
     
     populateMapTemplates: function(map) {
-      map.templates = null;
+      map.templates = this.templates;
     },
     
     populateMapTiles: function(map) {
-      
+      map.tiledata = new Array(this.tilecountwidth * this.tilecountheight);
+      for(var i = 0; i < this.tiles.length; i++) {
+        map.tiledata[i] = this.tiles[i].items;
+      }      
     },
   
     addStatic: function(template, x, y) {
       var tile = this.tileAtCoords(x, y);
       var local = this.globalCoordsToTileCoords(x, y);
-      
-      console.log(local);
-      
+
       if(!this.templates[template.id])
         this.addTemplate(template);
      
@@ -13435,6 +13439,7 @@ define('editor/toolbar',['require','jquery','./selecttool','./movetool'],functio
 define('editor/topbar',['require','jquery'],function(require) {
 
   var $ = require('jquery');
+  
   var TopBar = function(editor) {
     this.editor = editor;
     this.setupTools();
@@ -13449,7 +13454,15 @@ define('editor/topbar',['require','jquery'],function(require) {
     },
     saveMap: function() {
       var data = this.editor.map.getMapData();
-      
+      $.ajax({
+        type: 'POST',
+        url: 'services/savemap',
+        data: { map: JSON.stringify(data) },
+        success: function() {
+          alert('saved');
+        },
+        dataType: "json"
+      });
     }
   };
   
