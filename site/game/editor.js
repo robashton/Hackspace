@@ -9266,8 +9266,8 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 
 })( window );
 
-//     Underscore.js 1.2.3
-//     (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
+//     Underscore.js 1.2.4
+//     (c) 2009-2012 Jeremy Ashkenas, DocumentCloud Inc.
 //     Underscore is freely distributable under the MIT license.
 //     Portions of Underscore are inspired or borrowed from Prototype,
 //     Oliver Steele's Functional, and John Resig's Micro-Templating.
@@ -9293,7 +9293,6 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 
   // Create quick reference variables for speed access to core prototypes.
   var slice            = ArrayProto.slice,
-      concat           = ArrayProto.concat,
       unshift          = ArrayProto.unshift,
       toString         = ObjProto.toString,
       hasOwnProperty   = ObjProto.hasOwnProperty;
@@ -9336,7 +9335,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
   }
 
   // Current version.
-  _.VERSION = '1.2.3';
+  _.VERSION = '1.2.4';
 
   // Collection Functions
   // --------------------
@@ -9370,6 +9369,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
     each(obj, function(value, index, list) {
       results[results.length] = iterator.call(context, value, index, list);
     });
+    if (obj.length === +obj.length) results.length = obj.length;
     return results;
   };
 
@@ -9486,7 +9486,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
   _.invoke = function(obj, method) {
     var args = slice.call(arguments, 2);
     return _.map(obj, function(value) {
-      return (method.call ? method || value : value[method]).apply(value, args);
+      return (_.isFunction(method) ? method || value : value[method]).apply(value, args);
     });
   };
 
@@ -9851,7 +9851,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
   // conditionally execute the original function.
   _.wrap = function(func, wrapper) {
     return function() {
-      var args = concat.apply([func], arguments);
+      var args = [func].concat(slice.call(arguments, 0));
       return wrapper.apply(this, args);
     };
   };
@@ -10160,6 +10160,11 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
     escape      : /<%-([\s\S]+?)%>/g
   };
 
+  // When customizing `templateSettings`, if you don't want to define an
+  // interpolation, evaluation or escaping regex, we need one that is
+  // guaranteed not to match.
+  var noMatch = /.^/;
+
   // JavaScript micro-templating, similar to John Resig's implementation.
   // Underscore templating handles arbitrary delimiters, preserves whitespace,
   // and correctly escapes quotes within interpolated code.
@@ -10169,15 +10174,16 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
       'with(obj||{}){__p.push(\'' +
       str.replace(/\\/g, '\\\\')
          .replace(/'/g, "\\'")
-         .replace(c.escape, function(match, code) {
+         .replace(c.escape || noMatch, function(match, code) {
            return "',_.escape(" + code.replace(/\\'/g, "'") + "),'";
          })
-         .replace(c.interpolate, function(match, code) {
+         .replace(c.interpolate || noMatch, function(match, code) {
            return "'," + code.replace(/\\'/g, "'") + ",'";
          })
-         .replace(c.evaluate || null, function(match, code) {
+         .replace(c.evaluate || noMatch, function(match, code) {
            return "');" + code.replace(/\\'/g, "'")
-                              .replace(/[\r\n\t]/g, ' ') + ";__p.push('";
+                              .replace(/[\r\n\t]/g, ' ')
+                              .replace(/\\\\/g, '\\') + ";__p.push('";
          })
          .replace(/\r/g, '\\r')
          .replace(/\n/g, '\\n')
@@ -10188,6 +10194,11 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
     return function(data) {
       return func.call(this, data, _);
     };
+  };
+
+  // Add a "chain" function, which will delegate to the wrapper.
+  _.chain = function(obj) {
+    return _(obj).chain();
   };
 
   // The OOP Wrapper
@@ -10222,8 +10233,11 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
   each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
     var method = ArrayProto[name];
     wrapper.prototype[name] = function() {
-      method.apply(this._wrapped, arguments);
-      return result(this._wrapped, this._chain);
+      var wrapped = this._wrapped;
+      method.apply(wrapped, arguments);
+      var length = wrapped.length;
+      if ((name == 'shift' || name == 'splice') && length === 0) delete wrapped[0];
+      return result(wrapped, this._chain);
     };
   });
 
@@ -10332,6 +10346,27 @@ define('resources/texture',['require'],function(require) {
   };
   
   return Texture;
+});
+
+define('resources/jsondata',['require'],function(require) {
+  var JsonData = function(factory, path) {
+    this.path = path;
+    this.factory = factory;
+    this.data = null;
+  };
+  
+  JsonData.prototype = {
+    get: function() {
+      return this.data;
+    },
+    
+    preload: function(callback) {
+     this.data = this.factory.getData(this.path);
+     callback();
+    },
+  };
+  
+  return JsonData;
 });
 
 define('glmatrix',['require','exports','module'],function(require, exports, module) {
@@ -12521,15 +12556,16 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
 
 });
 
-define('resources/packagedresources',['require','./package','../shared/eventable','underscore','./texture'],function(require) {
+define('resources/packagedresources',['require','./package','../shared/eventable','underscore','./texture','./jsondata'],function(require) {
   var Package = require('./package');
   var Eventable = require('../shared/eventable');
   var _ = require('underscore');
   var Texture = require('./texture');
+  var JsonData = require('./jsondata');
 
   var PackagedResources = function() {  
     Eventable.call(this);
-    this.loadedTextures = {};
+    this.loadedResources = {};
     this.loadedPackages = [];
     this.pendingPackageCount = 0;  
     this.pendingResourceCount = 0;
@@ -12556,11 +12592,18 @@ define('resources/packagedresources',['require','./package','../shared/eventable
     preload: function(k) {
       var self = this;
       this.notifyResourceLoading();
-      var texture = new Texture(this, k);
-      this.loadedTextures[k] = texture;
-      texture.preload(function() {
+      var resource = this.createResource(k);
+      this.loadedResources[k] = resource;
+      resource.preload(function() {
         self.notifyResourceLoaded();
       });
+    },
+    createResource: function(path) {
+      if(path.indexOf('.json') > 0) {
+        return new JsonData(this, path);
+      } else if(path.indexOf('.png') > 0) {
+        return new Texture(this, path);
+      }
     },
     notifyResourceLoading: function() {
       this.pendingResourceCount++;
@@ -12578,11 +12621,11 @@ define('resources/packagedresources',['require','./package','../shared/eventable
       this.pendingPackageCount--;
     },
     get: function(path) {
-      var loadedTexture = this.loadedTextures[path];
-      if(!loadedTexture) {
-        console.log('Texture requested that does not exist: ' + path);
+      var loadedResource = this.loadedResources[path];
+      if(!loadedResource) {
+        console.log('Resource requested that does not exist: ' + path);
       }
-      return loadedTexture;
+      return loadedResource;
     },
     getData: function(path) {
       var pkg = _(this.loadedPackages).find(function(pkg) { return pkg.has(path); });

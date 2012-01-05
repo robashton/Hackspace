@@ -3,10 +3,11 @@ define(function(require) {
   var Eventable = require('../shared/eventable');
   var _ = require('underscore');
   var Texture = require('./texture');
+  var JsonData = require('./jsondata');
 
   var PackagedResources = function() {  
     Eventable.call(this);
-    this.loadedTextures = {};
+    this.loadedResources = {};
     this.loadedPackages = [];
     this.pendingPackageCount = 0;  
     this.pendingResourceCount = 0;
@@ -33,11 +34,18 @@ define(function(require) {
     preload: function(k) {
       var self = this;
       this.notifyResourceLoading();
-      var texture = new Texture(this, k);
-      this.loadedTextures[k] = texture;
-      texture.preload(function() {
+      var resource = this.createResource(k);
+      this.loadedResources[k] = resource;
+      resource.preload(function() {
         self.notifyResourceLoaded();
       });
+    },
+    createResource: function(path) {
+      if(path.indexOf('.json') > 0) {
+        return new JsonData(this, path);
+      } else if(path.indexOf('.png') > 0) {
+        return new Texture(this, path);
+      }
     },
     notifyResourceLoading: function() {
       this.pendingResourceCount++;
@@ -55,11 +63,11 @@ define(function(require) {
       this.pendingPackageCount--;
     },
     get: function(path) {
-      var loadedTexture = this.loadedTextures[path];
-      if(!loadedTexture) {
-        console.log('Texture requested that does not exist: ' + path);
+      var loadedResource = this.loadedResources[path];
+      if(!loadedResource) {
+        console.log('Resource requested that does not exist: ' + path);
       }
-      return loadedTexture;
+      return loadedResource;
     },
     getData: function(path) {
       var pkg = _(this.loadedPackages).find(function(pkg) { return pkg.has(path); });
