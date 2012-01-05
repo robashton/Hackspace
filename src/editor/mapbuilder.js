@@ -3,6 +3,7 @@ define(function(require) {
   var _ = require('underscore');
   var Map = require('../static/map');
   var Instance = require('../render/instance');
+  var BitField = require('../shared/bitfield');
 
   var MapBuilder = function(width, height, tilewidth, tileheight) {
     Map.call(this, width, height, tilewidth, tileheight);
@@ -15,6 +16,7 @@ define(function(require) {
       this.populateMapMetadata(map);
       this.populateMapTemplates(map);
       this.populateMapTiles(map);
+      this.populateMapCollision(map);
       return map;
     },
     
@@ -37,6 +39,38 @@ define(function(require) {
       for(var i = 0; i < this.tiles.length; i++) {
         map.tiledata[i] = this.tiles[i].items;
       }      
+    },
+    
+    populateMapCollision: function(map) {
+      var field = new BitField(this.width * this.height);
+      field.zero();
+      
+      for(var i = 0; i < this.tilecountwidth; i++) {
+        for(var j = 0; j < this.tilecountheight; j++) {
+          var index = this.index(i, j);
+          var startx = i * this.tilewidth;
+          var starty = j * this.tileheight;          
+          var tile = map.tiledata[index];
+          
+          for(var x = 0 ; x < tile.length; x++) {
+            var item = tile[x];
+            var template = map.templates[item.template];
+            var realx = parseInt(item.x + startx);
+            var realy = parseInt(item.y + starty);
+            var width = parseInt(template.width);
+            var height = parseInt(template.height);
+            
+            for(var a = realx ; a < realx + width ; a++) {
+              for(var b = realy ; b < realy + height; b++) {
+                var index = a + b * this.width;
+                field.set(index, 1);
+              }
+            }
+          }          
+        }
+      };
+      
+      map.collision = field.values;     
     },
   
     addStatic: function(template, x, y) {

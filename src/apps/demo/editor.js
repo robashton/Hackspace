@@ -32,31 +32,9 @@ define(function(require) {
       this.initializeMap();
     },
     initializeMap: function() {
-      var tileCountWidth = 2048 / 128;
-      var tileCountHeight = 2048 / 128;
-      
-      var mapData = {
-        width: 2048,
-        height: 2048,
-        tilewidth: 128,
-        tileheight: 128,
-        tilecountwidth: tileCountWidth,
-        tilecountheight: tileCountHeight,
-        templates: {
-          tree: {
-            id: "tree",
-            width: 25,
-            height: 25,
-            texture: "/main/tree.png"  
-          }
-        },
-        tiledata: new Array(tileCountWidth * tileCountHeight)
-      };
-      for(var i = 0 ; i < mapData.tiledata.length; i++) {
-        mapData.tiledata[i] = [];
-      }
-      
-      this.map = new MapBuilder(mapData);
+
+      var mapResource = this.context.resources.get('/main/world.json');      
+      this.map = new MapBuilder(mapResource.get());
       this.context.scene.add(this.map);
       this.grid = new Grid(this.map);
       this.context.scene.add(this.grid); 

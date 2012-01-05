@@ -6,7 +6,8 @@ define(function(require) {
       id: "tree",
       width: 25,
       height: 25,
-      texture: "/main/tree.png"
+      texture: "/main/tree.png",
+      solid: true
     } 
   };
 

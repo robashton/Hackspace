@@ -12477,6 +12477,38 @@ define('static/tile',['require','../render/instance'],function(require) {
   return Tile;  
 });
 
+define('shared/bitfield',['require'],function(require) {
+
+  var BitField = function(size) {
+    this.values = new Array((size / 32) | 0);
+  };
+
+  BitField.prototype = {
+    get: function(i) {
+      var index = (i / 32) | 0;
+      var bit = i % 32;
+      return (this.values[index] & (1 << bit)) !== 0;
+    },
+
+    set: function(i) {
+      var index = (i / 32) | 0;
+      var bit = i % 32;
+      this.values[index] |= 1 << bit;
+    },
+    unset: function(i) {
+      var index = (i / 32) | 0;
+      var bit = i % 32;
+      this.values[index] &= ~(1 << bit);
+    },
+    zero: function() {
+      for(var i = 0; i < this.values.length; i++)
+        this.values[i] = 0;
+    }
+  };
+  
+  return BitField;
+});
+
 define('shared/eventcontainer',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -13042,11 +13074,12 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   return Context;
 });
 
-define('editor/mapbuilder',['require','underscore','../static/map','../render/instance'],function(require) {
+define('editor/mapbuilder',['require','underscore','../static/map','../render/instance','../shared/bitfield'],function(require) {
   
   var _ = require('underscore');
   var Map = require('../static/map');
   var Instance = require('../render/instance');
+  var BitField = require('../shared/bitfield');
 
   var MapBuilder = function(width, height, tilewidth, tileheight) {
     Map.call(this, width, height, tilewidth, tileheight);
@@ -13059,6 +13092,7 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
       this.populateMapMetadata(map);
       this.populateMapTemplates(map);
       this.populateMapTiles(map);
+      this.populateMapCollision(map);
       return map;
     },
     
@@ -13081,6 +13115,38 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
       for(var i = 0; i < this.tiles.length; i++) {
         map.tiledata[i] = this.tiles[i].items;
       }      
+    },
+    
+    populateMapCollision: function(map) {
+      var field = new BitField(this.width * this.height);
+      field.zero();
+      
+      for(var i = 0; i < this.tilecountwidth; i++) {
+        for(var j = 0; j < this.tilecountheight; j++) {
+          var index = this.index(i, j);
+          var startx = i * this.tilewidth;
+          var starty = j * this.tileheight;          
+          var tile = map.tiledata[index];
+          
+          for(var x = 0 ; x < tile.length; x++) {
+            var item = tile[x];
+            var template = map.templates[item.template];
+            var realx = parseInt(item.x + startx);
+            var realy = parseInt(item.y + starty);
+            var width = parseInt(template.width);
+            var height = parseInt(template.height);
+            
+            for(var a = realx ; a < realx + width ; a++) {
+              for(var b = realy ; b < realy + height; b++) {
+                var index = a + b * this.width;
+                field.set(index, 1);
+              }
+            }
+          }          
+        }
+      };
+      
+      map.collision = field.values;     
     },
   
     addStatic: function(template, x, y) {
@@ -13352,7 +13418,8 @@ define('editor/library',['require','./libraryitemtool'],function(require) {
       id: "tree",
       width: 25,
       height: 25,
-      texture: "/main/tree.png"
+      texture: "/main/tree.png",
+      solid: true
     } 
   };
 
@@ -13546,31 +13613,9 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
       this.initializeMap();
     },
     initializeMap: function() {
-      var tileCountWidth = 2048 / 128;
-      var tileCountHeight = 2048 / 128;
-      
-      var mapData = {
-        width: 2048,
-        height: 2048,
-        tilewidth: 128,
-        tileheight: 128,
-        tilecountwidth: tileCountWidth,
-        tilecountheight: tileCountHeight,
-        templates: {
-          tree: {
-            id: "tree",
-            width: 25,
-            height: 25,
-            texture: "/main/tree.png"  
-          }
-        },
-        tiledata: new Array(tileCountWidth * tileCountHeight)
-      };
-      for(var i = 0 ; i < mapData.tiledata.length; i++) {
-        mapData.tiledata[i] = [];
-      }
-      
-      this.map = new MapBuilder(mapData);
+
+      var mapResource = this.context.resources.get('/main/world.json');      
+      this.map = new MapBuilder(mapResource.get());
       this.context.scene.add(this.map);
       this.grid = new Grid(this.map);
       this.context.scene.add(this.grid); 
