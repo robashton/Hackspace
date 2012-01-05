@@ -5,6 +5,7 @@ define(function(require) {
     this.model = model;
     this.position = vec3.create([0,0,0]);
     this.size = vec3.create([0,0,0]);
+    this.rotation = 0;
   };
   
   Instance.prototype = {
@@ -20,6 +21,9 @@ define(function(require) {
       this.position[0] = x || 0;
       this.position[1] = y || 0;
       this.position[2] = z || 0;
+    },
+    rotate: function(x) {
+      this.rotation = x;
     },
     render: function(context) {     
       this.model.upload(context);

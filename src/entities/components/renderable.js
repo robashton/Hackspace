@@ -16,6 +16,9 @@ define(function(require) {
     onPositionChanged: function(data) {
       this.instance.translate(data.x, data.y, data.z);
     },
+    onRotationChanged: function(data) {
+      this.instance.rotate(data.x);
+    },
        
     onAddedToScene: function(scene) {
       this.scene = scene;

@@ -48,12 +48,21 @@ define('render/quad',['require'],function(require) {
         this.drawPlainQuad(canvas, instance);      
     },
     drawTexturedQuad: function(canvas, instance) {
+      var middlex = instance.position[0] + (instance.size[0] / 2.0);
+      var middley = instance.position[1] + (instance.size[1] / 2.0);
+
+      canvas.save();
+      canvas.translate(middlex, middley);
+      canvas.rotate(instance.rotation);
+    
       canvas.drawImage(
         this.image('diffuseTexture'),
-        parseInt(instance.position[0]),
-        parseInt(instance.position[1]),
-        parseInt(instance.size[0]),
-        parseInt(instance.size[1]));
+        0 - (instance.size[0] / 2.0),
+        0 - (instance.size[1] / 2.0),
+        instance.size[0],
+        instance.size[1]);
+        
+      canvas.restore();
     },
     drawPlainQuad: function(canvas, instance) {
       canvas.fillRect(
@@ -70,8 +79,8 @@ define('render/quad',['require'],function(require) {
   return Quad;
 });
 
-//     Underscore.js 1.2.4
-//     (c) 2009-2012 Jeremy Ashkenas, DocumentCloud Inc.
+//     Underscore.js 1.2.3
+//     (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
 //     Underscore is freely distributable under the MIT license.
 //     Portions of Underscore are inspired or borrowed from Prototype,
 //     Oliver Steele's Functional, and John Resig's Micro-Templating.
@@ -97,6 +106,7 @@ define('render/quad',['require'],function(require) {
 
   // Create quick reference variables for speed access to core prototypes.
   var slice            = ArrayProto.slice,
+      concat           = ArrayProto.concat,
       unshift          = ArrayProto.unshift,
       toString         = ObjProto.toString,
       hasOwnProperty   = ObjProto.hasOwnProperty;
@@ -139,7 +149,7 @@ define('render/quad',['require'],function(require) {
   }
 
   // Current version.
-  _.VERSION = '1.2.4';
+  _.VERSION = '1.2.3';
 
   // Collection Functions
   // --------------------
@@ -173,7 +183,6 @@ define('render/quad',['require'],function(require) {
     each(obj, function(value, index, list) {
       results[results.length] = iterator.call(context, value, index, list);
     });
-    if (obj.length === +obj.length) results.length = obj.length;
     return results;
   };
 
@@ -290,7 +299,7 @@ define('render/quad',['require'],function(require) {
   _.invoke = function(obj, method) {
     var args = slice.call(arguments, 2);
     return _.map(obj, function(value) {
-      return (_.isFunction(method) ? method || value : value[method]).apply(value, args);
+      return (method.call ? method || value : value[method]).apply(value, args);
     });
   };
 
@@ -655,7 +664,7 @@ define('render/quad',['require'],function(require) {
   // conditionally execute the original function.
   _.wrap = function(func, wrapper) {
     return function() {
-      var args = [func].concat(slice.call(arguments, 0));
+      var args = concat.apply([func], arguments);
       return wrapper.apply(this, args);
     };
   };
@@ -964,11 +973,6 @@ define('render/quad',['require'],function(require) {
     escape      : /<%-([\s\S]+?)%>/g
   };
 
-  // When customizing `templateSettings`, if you don't want to define an
-  // interpolation, evaluation or escaping regex, we need one that is
-  // guaranteed not to match.
-  var noMatch = /.^/;
-
   // JavaScript micro-templating, similar to John Resig's implementation.
   // Underscore templating handles arbitrary delimiters, preserves whitespace,
   // and correctly escapes quotes within interpolated code.
@@ -978,16 +982,15 @@ define('render/quad',['require'],function(require) {
       'with(obj||{}){__p.push(\'' +
       str.replace(/\\/g, '\\\\')
          .replace(/'/g, "\\'")
-         .replace(c.escape || noMatch, function(match, code) {
+         .replace(c.escape, function(match, code) {
            return "',_.escape(" + code.replace(/\\'/g, "'") + "),'";
          })
-         .replace(c.interpolate || noMatch, function(match, code) {
+         .replace(c.interpolate, function(match, code) {
            return "'," + code.replace(/\\'/g, "'") + ",'";
          })
-         .replace(c.evaluate || noMatch, function(match, code) {
+         .replace(c.evaluate || null, function(match, code) {
            return "');" + code.replace(/\\'/g, "'")
-                              .replace(/[\r\n\t]/g, ' ')
-                              .replace(/\\\\/g, '\\') + ";__p.push('";
+                              .replace(/[\r\n\t]/g, ' ') + ";__p.push('";
          })
          .replace(/\r/g, '\\r')
          .replace(/\n/g, '\\n')
@@ -998,11 +1001,6 @@ define('render/quad',['require'],function(require) {
     return function(data) {
       return func.call(this, data, _);
     };
-  };
-
-  // Add a "chain" function, which will delegate to the wrapper.
-  _.chain = function(obj) {
-    return _(obj).chain();
   };
 
   // The OOP Wrapper
@@ -1037,11 +1035,8 @@ define('render/quad',['require'],function(require) {
   each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
     var method = ArrayProto[name];
     wrapper.prototype[name] = function() {
-      var wrapped = this._wrapped;
-      method.apply(wrapped, arguments);
-      var length = wrapped.length;
-      if ((name == 'shift' || name == 'splice') && length === 0) delete wrapped[0];
-      return result(wrapped, this._chain);
+      method.apply(this._wrapped, arguments);
+      return result(this._wrapped, this._chain);
     };
   });
 
@@ -2916,6 +2911,7 @@ define('render/instance',['require','glmatrix'],function(require) {
     this.model = model;
     this.position = vec3.create([0,0,0]);
     this.size = vec3.create([0,0,0]);
+    this.rotation = 0;
   };
   
   Instance.prototype = {
@@ -2931,6 +2927,9 @@ define('render/instance',['require','glmatrix'],function(require) {
       this.position[0] = x || 0;
       this.position[1] = y || 0;
       this.position[2] = z || 0;
+    },
+    rotate: function(x) {
+      this.rotation = x;
     },
     render: function(context) {     
       this.model.upload(context);
@@ -2959,6 +2958,9 @@ define('entities/components/renderable',['require','../../render/instance'],func
     onPositionChanged: function(data) {
       this.instance.translate(data.x, data.y, data.z);
     },
+    onRotationChanged: function(data) {
+      this.instance.rotate(data.x);
+    },
        
     onAddedToScene: function(scene) {
       this.scene = scene;
@@ -2982,6 +2984,7 @@ define('entities/components/tangible',['require','glmatrix'],function(require) {
   var Tangible = function(x, y, width, height) {
     this.position = vec3.create([x,y,0]);
     this.size = vec3.create([width, height,0]);
+    this.rotation = 0;
   };
   
   Tangible.prototype = {
@@ -3002,10 +3005,16 @@ define('entities/components/tangible',['require','glmatrix'],function(require) {
         });
     },
     
+    rotateTo: function(x) {
+      this.parent.raise('RotationChanged', {
+        x: x
+      });
+    },
+    
     onAddedToScene: function(scene) {
       this.scene = scene;
       this.moveTo(this.position[0], this.position[1], this.position[2]);
-      this.scaleTo(this.size[0], this.size[1], this.size[2]);
+      this.scaleTo(this.size[0], this.size[1], this.size[2]);      
     },   
     
     onPositionChanged: function(data) {
@@ -3018,6 +3027,10 @@ define('entities/components/tangible',['require','glmatrix'],function(require) {
       this.size[0] = data.x;
       this.size[1] = data.y;
       this.size[2] = data.z;
+    },
+    
+    onRotationChanged: function(data) {
+      this.rotation = data.x;
     }
   };
   
@@ -3081,6 +3094,7 @@ define('entities/components/directable',['require','glmatrix'],function(require)
         this.position[1] + this.direction[1] * this.speed,
         this.position[2] + this.direction[2] * this.speed
       ]);
+      this.parent.dispatch('rotateTo', [Math.atan2(this.direction[0], -this.direction[1])]);
     }
   };  
   
@@ -13401,7 +13415,7 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
     start: function(context) {          
       this.context = context;
       var material = new Material();
-      material.diffuseTexture =  context.resources.get('/main/testtile.png');
+      material.diffuseTexture =  context.resources.get('/main/character-up.png');
       var quad = new Quad(material);
       
       var character = new Character("player", 0, 0, 25, 25, quad);

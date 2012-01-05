@@ -15,12 +15,21 @@ define(function(require) {
         this.drawPlainQuad(canvas, instance);      
     },
     drawTexturedQuad: function(canvas, instance) {
+      var middlex = instance.position[0] + (instance.size[0] / 2.0);
+      var middley = instance.position[1] + (instance.size[1] / 2.0);
+
+      canvas.save();
+      canvas.translate(middlex, middley);
+      canvas.rotate(instance.rotation);
+    
       canvas.drawImage(
         this.image('diffuseTexture'),
-        parseInt(instance.position[0]),
-        parseInt(instance.position[1]),
-        parseInt(instance.size[0]),
-        parseInt(instance.size[1]));
+        0 - (instance.size[0] / 2.0),
+        0 - (instance.size[1] / 2.0),
+        instance.size[0],
+        instance.size[1]);
+        
+      canvas.restore();
     },
     drawPlainQuad: function(canvas, instance) {
       canvas.fillRect(

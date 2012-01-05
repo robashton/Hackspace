@@ -9266,8 +9266,8 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 
 })( window );
 
-//     Underscore.js 1.2.4
-//     (c) 2009-2012 Jeremy Ashkenas, DocumentCloud Inc.
+//     Underscore.js 1.2.3
+//     (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
 //     Underscore is freely distributable under the MIT license.
 //     Portions of Underscore are inspired or borrowed from Prototype,
 //     Oliver Steele's Functional, and John Resig's Micro-Templating.
@@ -9293,6 +9293,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 
   // Create quick reference variables for speed access to core prototypes.
   var slice            = ArrayProto.slice,
+      concat           = ArrayProto.concat,
       unshift          = ArrayProto.unshift,
       toString         = ObjProto.toString,
       hasOwnProperty   = ObjProto.hasOwnProperty;
@@ -9335,7 +9336,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
   }
 
   // Current version.
-  _.VERSION = '1.2.4';
+  _.VERSION = '1.2.3';
 
   // Collection Functions
   // --------------------
@@ -9369,7 +9370,6 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
     each(obj, function(value, index, list) {
       results[results.length] = iterator.call(context, value, index, list);
     });
-    if (obj.length === +obj.length) results.length = obj.length;
     return results;
   };
 
@@ -9486,7 +9486,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
   _.invoke = function(obj, method) {
     var args = slice.call(arguments, 2);
     return _.map(obj, function(value) {
-      return (_.isFunction(method) ? method || value : value[method]).apply(value, args);
+      return (method.call ? method || value : value[method]).apply(value, args);
     });
   };
 
@@ -9851,7 +9851,7 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
   // conditionally execute the original function.
   _.wrap = function(func, wrapper) {
     return function() {
-      var args = [func].concat(slice.call(arguments, 0));
+      var args = concat.apply([func], arguments);
       return wrapper.apply(this, args);
     };
   };
@@ -10160,11 +10160,6 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
     escape      : /<%-([\s\S]+?)%>/g
   };
 
-  // When customizing `templateSettings`, if you don't want to define an
-  // interpolation, evaluation or escaping regex, we need one that is
-  // guaranteed not to match.
-  var noMatch = /.^/;
-
   // JavaScript micro-templating, similar to John Resig's implementation.
   // Underscore templating handles arbitrary delimiters, preserves whitespace,
   // and correctly escapes quotes within interpolated code.
@@ -10174,16 +10169,15 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
       'with(obj||{}){__p.push(\'' +
       str.replace(/\\/g, '\\\\')
          .replace(/'/g, "\\'")
-         .replace(c.escape || noMatch, function(match, code) {
+         .replace(c.escape, function(match, code) {
            return "',_.escape(" + code.replace(/\\'/g, "'") + "),'";
          })
-         .replace(c.interpolate || noMatch, function(match, code) {
+         .replace(c.interpolate, function(match, code) {
            return "'," + code.replace(/\\'/g, "'") + ",'";
          })
-         .replace(c.evaluate || noMatch, function(match, code) {
+         .replace(c.evaluate || null, function(match, code) {
            return "');" + code.replace(/\\'/g, "'")
-                              .replace(/[\r\n\t]/g, ' ')
-                              .replace(/\\\\/g, '\\') + ";__p.push('";
+                              .replace(/[\r\n\t]/g, ' ') + ";__p.push('";
          })
          .replace(/\r/g, '\\r')
          .replace(/\n/g, '\\n')
@@ -10194,11 +10188,6 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
     return function(data) {
       return func.call(this, data, _);
     };
-  };
-
-  // Add a "chain" function, which will delegate to the wrapper.
-  _.chain = function(obj) {
-    return _(obj).chain();
   };
 
   // The OOP Wrapper
@@ -10233,11 +10222,8 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
   each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
     var method = ArrayProto[name];
     wrapper.prototype[name] = function() {
-      var wrapped = this._wrapped;
-      method.apply(wrapped, arguments);
-      var length = wrapped.length;
-      if ((name == 'shift' || name == 'splice') && length === 0) delete wrapped[0];
-      return result(wrapped, this._chain);
+      method.apply(this._wrapped, arguments);
+      return result(this._wrapped, this._chain);
     };
   });
 
@@ -12378,12 +12364,21 @@ define('render/quad',['require'],function(require) {
         this.drawPlainQuad(canvas, instance);      
     },
     drawTexturedQuad: function(canvas, instance) {
+      var middlex = instance.position[0] + (instance.size[0] / 2.0);
+      var middley = instance.position[1] + (instance.size[1] / 2.0);
+
+      canvas.save();
+      canvas.translate(middlex, middley);
+      canvas.rotate(instance.rotation);
+    
       canvas.drawImage(
         this.image('diffuseTexture'),
-        parseInt(instance.position[0]),
-        parseInt(instance.position[1]),
-        parseInt(instance.size[0]),
-        parseInt(instance.size[1]));
+        0 - (instance.size[0] / 2.0),
+        0 - (instance.size[1] / 2.0),
+        instance.size[0],
+        instance.size[1]);
+        
+      canvas.restore();
     },
     drawPlainQuad: function(canvas, instance) {
       canvas.fillRect(
@@ -12407,6 +12402,7 @@ define('render/instance',['require','glmatrix'],function(require) {
     this.model = model;
     this.position = vec3.create([0,0,0]);
     this.size = vec3.create([0,0,0]);
+    this.rotation = 0;
   };
   
   Instance.prototype = {
@@ -12422,6 +12418,9 @@ define('render/instance',['require','glmatrix'],function(require) {
       this.position[0] = x || 0;
       this.position[1] = y || 0;
       this.position[2] = z || 0;
+    },
+    rotate: function(x) {
+      this.rotation = x;
     },
     render: function(context) {     
       this.model.upload(context);

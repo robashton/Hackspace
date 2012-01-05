@@ -55,6 +55,7 @@ define(function(require) {
         this.position[1] + this.direction[1] * this.speed,
         this.position[2] + this.direction[2] * this.speed
       ]);
+      this.parent.dispatch('rotateTo', [Math.atan2(this.direction[0], -this.direction[1])]);
     }
   };  
   

@@ -19,7 +19,7 @@ define(function(require) {
     start: function(context) {          
       this.context = context;
       var material = new Material();
-      material.diffuseTexture =  context.resources.get('/main/testtile.png');
+      material.diffuseTexture =  context.resources.get('/main/character-up.png');
       var quad = new Quad(material);
       
       var character = new Character("player", 0, 0, 25, 25, quad);
