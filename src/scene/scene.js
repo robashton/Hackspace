@@ -21,6 +21,10 @@ define(function(require) {
           entity.tick();
       });
     },
+    withEntity: function(id, callback) {
+      var entity = this.entitiesById[id];
+      if(entity) callback(entity);
+    },
     render: function() {
       this.camera.updateViewport(this.graph);
       this.renderer.clear();

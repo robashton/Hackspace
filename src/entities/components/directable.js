@@ -31,6 +31,9 @@ define(function(require) {
       this.calculateNewDirection();
       this.moving = true;
     },
+    onClippedTerrain: function(data) {
+      this.moving = false;
+    },
     calculateNewDirection: function() {
       vec3.subtract(this.destination, this.position, this.direction);
       vec3.normalize(this.direction);

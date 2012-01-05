@@ -8,6 +8,7 @@ define(function(require) {
   var RenderGraph = require('../render/rendergraph');
   var CanvasRender = require('../render/canvasrender');
   var Tile = require('./tile');
+  var CollisionMap = require('./collisionmap');
 
 
   var Map = function(data) {
@@ -37,6 +38,7 @@ define(function(require) {
     this.tiletop = -1;
     this.tilebottom = -1;
     this.tileright = -1;
+    this.collision = new CollisionMap(data);
     
     this.on('AddedToScene', this.onAddedToScene);
   };
@@ -180,6 +182,10 @@ define(function(require) {
     
     index: function(x, y) {
       return x + y * this.tilecountwidth;
+    },
+    
+    solidAt: function(x, y) {
+      return this.collision.solidAt(parseInt(x), parseInt(y));
     }
   };
   

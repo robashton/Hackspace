@@ -2904,6 +2904,111 @@ return {
 };
 });
 
+define('entities/components/physical',['require','glmatrix'],function(require) {
+
+  var vec3 = require('glmatrix').vec3;
+
+  var Physical = function() {
+    this.position = vec3.create([0,0,0]);
+    this.size = vec3.create([0,0,0]);
+    this.scene = null;
+  };
+  
+  Physical.prototype = {    
+    onSizeChanged: function(data) {
+      this.size[0] = data.x;
+      this.size[1] = data.y;
+      this.size[2] = data.z;
+    },  
+    onPositionChanged: function(data) {
+      this.position[0] = data.x;
+      this.position[1] = data.y;
+      this.position[2] = data.z;
+      this.checkLandscapeBounds();
+    },  
+           
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },  
+    
+    onClippedTerrain: function(data) {
+      this.parent.dispatch('moveTo', [
+        this.position[0] + data.x,
+        this.position[1] + data.y,
+        this.position[2]
+      ]); 
+    },
+    
+    checkLandscapeBounds: function() {
+      if(!this.scene) return;
+      var self = this;
+      this.scene.withEntity('map', function(map) {
+        self.collideWithMap(map);
+      });      
+    },
+    collideWithMap: function(map) {     
+      var result = {
+        x: 0,
+        y: 0,
+        collided: false
+      };
+      this.collideWithTop(map, result);
+      this.collideWithRight(map, result);
+      this.collideWithBottom(map, result);
+      this.collideWithLeft(map, result);   
+      
+      if(result.collided) {
+        this.parent.raise('ClippedTerrain', result);   
+      }    
+    },
+    collideWithTop: function(map, result) {
+      var x = result.x + this.position[0] + (this.size[0] / 2.0);
+      var y = result.y + this.position[1];
+      var d = 0;
+      while(map.solidAt(x, y + d)) {
+        d++;
+        result.collided = true;
+      }
+      result.y += d;
+    },
+    collideWithRight: function(map, result) {
+      var x = result.x +  this.position[0] + this.size[0];
+      var y = result.y + this.position[1] + (this.size[1] / 2.0);
+      var d = 0;
+      while(map.solidAt(x + d, y)) {
+        d--;
+        result.collided = true;
+      }
+            
+
+      result.x += d;
+    },
+    collideWithBottom: function(map, result) {
+      var x = result.x + this.position[0] + (this.size[0] / 2.0);
+      var y = result.y + this.position[1] + this.size[1];
+      var d = 0;
+      while(map.solidAt(x, y + d)) {
+        d--;
+        result.collided = true;
+      }
+      result.y += d;
+    },
+    collideWithLeft: function(map, result) {
+      var x = result.x + this.position[0];
+      var y = result.y + this.position[1] + (this.size[1] / 2.0);
+      var d = 0;
+      while(map.solidAt(x + d, y)) {
+        d++;
+        result.collided = true;
+      }
+      result.x += x;
+    }    
+  };  
+  
+  return Physical;
+  
+});
+
 define('render/instance',['require','glmatrix'],function(require) {
   var vec3 = require('glmatrix').vec3;
 
@@ -3069,6 +3174,9 @@ define('entities/components/directable',['require','glmatrix'],function(require)
       this.destination[2] = data.z;
       this.calculateNewDirection();
       this.moving = true;
+    },
+    onClippedTerrain: function(data) {
+      this.moving = false;
     },
     calculateNewDirection: function() {
       vec3.subtract(this.destination, this.position, this.direction);
@@ -3298,23 +3406,26 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('entities/character',['require','underscore','./components/renderable','./components/tangible','./components/directable','./components/trackable','../scene/entity'],function(require) {
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','../scene/entity'],function(require) {
 
   var _ = require('underscore');
   
+  var Physical = require('./components/physical');
   var Renderable = require('./components/renderable');
   var Tangible = require('./components/tangible');
   var Directable = require('./components/directable');
   var Trackable = require('./components/trackable');
   var Entity = require('../scene/entity');
 
-  var Character = function(id,  x ,y, width, height, model) {
+  var Character = function(id, x ,y, width, height, model) {
     Entity.call(this, id);
     
+    this.attach(new Physical());
     this.attach(new Renderable(model));
     this.attach(new Tangible(x, y, width, height));
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
+
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);
@@ -3419,6 +3530,10 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
         if(entity.tick) 
           entity.tick();
       });
+    },
+    withEntity: function(id, callback) {
+      var entity = this.entitiesById[id];
+      if(entity) callback(entity);
     },
     render: function() {
       this.camera.updateViewport(this.graph);
@@ -3577,7 +3692,60 @@ define('static/tile',['require','../render/instance'],function(require) {
   return Tile;  
 });
 
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile'],function(require) {
+define('shared/bitfield',['require'],function(require) {
+
+  var BitField = function(size) {
+    this.values = new Array((size / 32) | 0);
+  };
+
+  BitField.prototype = {
+    get: function(i) {
+      var index = (i / 32) | 0;
+      var bit = i % 32;
+      return (this.values[index] & (1 << bit)) !== 0;
+    },
+
+    set: function(i) {
+      var index = (i / 32) | 0;
+      var bit = i % 32;
+      this.values[index] |= 1 << bit;
+    },
+    unset: function(i) {
+      var index = (i / 32) | 0;
+      var bit = i % 32;
+      this.values[index] &= ~(1 << bit);
+    },
+    zero: function() {
+      for(var i = 0; i < this.values.length; i++)
+        this.values[i] = 0;
+    }
+  };
+  
+  return BitField;
+});
+
+define('static/collisionmap',['require','../shared/bitfield'],function(require) {
+
+  var BitField = require('../shared/bitfield');
+
+  var CollisionMap = function(data) {
+    this.bitfield = new BitField();
+    this.width = data.width;
+    this.height = data.height;
+    this.bitfield.values = data.collision;  
+  };
+  
+  CollisionMap.prototype = {
+    solidAt: function(x, y) {
+      var index = x + y * this.width;
+      return this.bitfield.get(index);
+    }
+  };
+  
+  return CollisionMap;
+});
+
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -3587,6 +3755,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var RenderGraph = require('../render/rendergraph');
   var CanvasRender = require('../render/canvasrender');
   var Tile = require('./tile');
+  var CollisionMap = require('./collisionmap');
 
 
   var Map = function(data) {
@@ -3616,6 +3785,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.tiletop = -1;
     this.tilebottom = -1;
     this.tileright = -1;
+    this.collision = new CollisionMap(data);
     
     this.on('AddedToScene', this.onAddedToScene);
   };
@@ -3759,6 +3929,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
     
     index: function(x, y) {
       return x + y * this.tilecountwidth;
+    },
+    
+    solidAt: function(x, y) {
+      return this.collision.solidAt(parseInt(x), parseInt(y));
     }
   };
   

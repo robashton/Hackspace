@@ -12509,6 +12509,27 @@ define('shared/bitfield',['require'],function(require) {
   return BitField;
 });
 
+define('static/collisionmap',['require','../shared/bitfield'],function(require) {
+
+  var BitField = require('../shared/bitfield');
+
+  var CollisionMap = function(data) {
+    this.bitfield = new BitField();
+    this.width = data.width;
+    this.height = data.height;
+    this.bitfield.values = data.collision;  
+  };
+  
+  CollisionMap.prototype = {
+    solidAt: function(x, y) {
+      var index = x + y * this.width;
+      return this.bitfield.get(index);
+    }
+  };
+  
+  return CollisionMap;
+});
+
 define('shared/eventcontainer',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -12691,6 +12712,10 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
           entity.tick();
       });
     },
+    withEntity: function(id, callback) {
+      var entity = this.entitiesById[id];
+      if(entity) callback(entity);
+    },
     render: function() {
       this.camera.updateViewport(this.graph);
       this.renderer.clear();
@@ -12813,7 +12838,7 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile'],function(require) {
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -12823,6 +12848,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var RenderGraph = require('../render/rendergraph');
   var CanvasRender = require('../render/canvasrender');
   var Tile = require('./tile');
+  var CollisionMap = require('./collisionmap');
 
 
   var Map = function(data) {
@@ -12852,6 +12878,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.tiletop = -1;
     this.tilebottom = -1;
     this.tileright = -1;
+    this.collision = new CollisionMap(data);
     
     this.on('AddedToScene', this.onAddedToScene);
   };
@@ -12995,6 +13022,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
     
     index: function(x, y) {
       return x + y * this.tilecountwidth;
+    },
+    
+    solidAt: function(x, y) {
+      return this.collision.solidAt(parseInt(x), parseInt(y));
     }
   };
   
