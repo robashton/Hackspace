@@ -9,6 +9,7 @@ define(function(require) {
   var CanvasRender = require('../render/canvasrender');
   var Tile = require('./tile');
   var CollisionMap = require('./collisionmap');
+  var Coords = require('../shared/coords');
 
 
   var Map = function(data) {
@@ -28,8 +29,6 @@ define(function(require) {
     this.scene = null;
     this.instanceTiles = null;
     this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
-    this.canvas.width = 640 + 128
-    this.canvas.height = 480 + 128;
     this.context = this.canvas.getContext('2d');
     this.graph = new RenderGraph();
     this.renderer = new CanvasRender(this.context);  
@@ -98,11 +97,16 @@ define(function(require) {
     },
     
     evaluateStatus: function() {
+    
+      var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
+      var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
+      var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
+      var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
       
-      var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
-      var tiletop = parseInt(this.scene.graph.viewport.top / this.tileheight);
-      var tileright = parseInt(this.scene.graph.viewport.right / this.tilewidth) + 1;
-      var tilebottom = parseInt(this.scene.graph.viewport.bottom / this.tileheight) + 1;
+      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
+      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
+      var tileright = parseInt( Math.min(bottomright.x, topright.x) / this.tilewidth) + 1;
+      var tilebottom = parseInt( Math.min(bottomleft.y, bottomright.y) / this.tileheight) + 1;
       
       tileleft = Math.max(tileleft, 0);
       tiletop = Math.max(tiletop, 0);

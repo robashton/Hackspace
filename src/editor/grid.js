@@ -2,6 +2,7 @@ define(function(require) {
   
   var _ = require('underscore');
   var Entity = require('../scene/entity');
+  var Coords = require('../shared/coords');
 
   var Grid = function(map) {
     Entity.call(this);
@@ -26,11 +27,16 @@ define(function(require) {
           
       context.beginPath();
       this.map.forEachVisibleTile(function(left, top, right, bottom) {
-        context.moveTo(left, top);
-        context.lineTo(right, top);
-        context.lineTo(right, bottom);
-        context.lineTo(left, bottom);
-        context.lineTo(left, top);
+        var topleft = Coords.worldToIsometric(left, top);
+        var topright = Coords.worldToIsometric(right, top);        
+        var bottomright = Coords.worldToIsometric(right, bottom);
+        var bottomleft = Coords.worldToIsometric(left, bottom);
+      
+        context.moveTo(topleft.x, topleft.y);
+        context.lineTo(topright.x, topright.y);
+        context.lineTo(bottomright.x, bottomright.y);
+        context.lineTo(bottomleft.x, bottomleft.y);
+        context.lineTo(topleft.x, topleft.y);
       });
       context.stroke();
       context.restore();

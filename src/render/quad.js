@@ -1,5 +1,7 @@
 define(function(require) {
 
+  var Coords = require('../shared/coords');
+
   var Quad = function(material) {
     this.material = material;
   };
@@ -15,26 +17,21 @@ define(function(require) {
         this.drawPlainQuad(canvas, instance);      
     },
     drawTexturedQuad: function(canvas, instance) {
-      var middlex = instance.position[0] + (instance.size[0] / 2.0);
-      var middley = instance.position[1] + (instance.size[1] / 2.0);
-
-      canvas.save();
-      canvas.translate(middlex, middley);
-      canvas.rotate(instance.rotation);
+      var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
     
       canvas.drawImage(
         this.image('diffuseTexture'),
-        0 - (instance.size[0] / 2.0),
-        0 - (instance.size[1] / 2.0),
+        transform.x,
+        transform.y,
         instance.size[0],
         instance.size[1]);
-        
-      canvas.restore();
     },
     drawPlainQuad: function(canvas, instance) {
+       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+          
       canvas.fillRect(
-        instance.position[0],
-        instance.position[1],
+        transform.x,
+        transform.y,
         instance.size[0],
         instance.size[1]);
     },

@@ -1,5 +1,6 @@
 define(function(require) {
   var vec3 = require('glmatrix').vec3;
+  var Coords = require('../shared/coords');
 
   var Camera = function(aspectRatio, fieldOfView) {
     this.aspectRatio = aspectRatio;
@@ -22,11 +23,15 @@ define(function(require) {
     },
     updateViewport: function(graph) {
       this.calculateDimensions();
+            
+      var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
       
-      var left = Math.max(this.centre[0] - this.width / 2.0, 0);
-      var top = Math.max(this.centre[1] - this.height / 2.0, 0);
+      var left = Math.max(isometric.x - this.width / 2.0, 0);
+      var top = Math.max(isometric.y - this.height / 2.0, 0);
+      
+      
       var right = left + this.width;
-      var bottom = top + this.height; 
+      var bottom = top + this.height;
             
       graph.updateViewport(left, right, top, bottom);
     

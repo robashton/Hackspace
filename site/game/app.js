@@ -31,7 +31,35 @@ define('render/material',['require','./color'],function(require) {
   
 });
 
-define('render/quad',['require'],function(require) {
+define('shared/coords',['require'],function(require) {
+
+  var Coords = {
+  
+    worldToIsometric: function(x, y) {
+      return {
+        x: x - y,
+        y: (x + y) / 2.0
+      };
+    },
+    
+    isometricToWorld: function(x, y) {
+      var ty = ((2.0 * y - x) / 2.0);
+      var tx = x + ty;
+
+      return {
+        x: tx,
+        y: ty
+      }
+    }
+  };
+  
+  return Coords;
+
+});
+
+define('render/quad',['require','../shared/coords'],function(require) {
+
+  var Coords = require('../shared/coords');
 
   var Quad = function(material) {
     this.material = material;
@@ -48,26 +76,21 @@ define('render/quad',['require'],function(require) {
         this.drawPlainQuad(canvas, instance);      
     },
     drawTexturedQuad: function(canvas, instance) {
-      var middlex = instance.position[0] + (instance.size[0] / 2.0);
-      var middley = instance.position[1] + (instance.size[1] / 2.0);
-
-      canvas.save();
-      canvas.translate(middlex, middley);
-      canvas.rotate(instance.rotation);
+      var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
     
       canvas.drawImage(
         this.image('diffuseTexture'),
-        0 - (instance.size[0] / 2.0),
-        0 - (instance.size[1] / 2.0),
+        transform.x,
+        transform.y,
         instance.size[0],
         instance.size[1]);
-        
-      canvas.restore();
     },
     drawPlainQuad: function(canvas, instance) {
+       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+          
       canvas.fillRect(
-        instance.position[0],
-        instance.position[1],
+        transform.x,
+        transform.y,
         instance.size[0],
         instance.size[1]);
     },
@@ -3745,7 +3768,7 @@ define('static/collisionmap',['require','../shared/bitfield'],function(require) 
   return CollisionMap;
 });
 
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap'],function(require) {
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -3756,6 +3779,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var CanvasRender = require('../render/canvasrender');
   var Tile = require('./tile');
   var CollisionMap = require('./collisionmap');
+  var Coords = require('../shared/coords');
 
 
   var Map = function(data) {
@@ -3775,8 +3799,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.scene = null;
     this.instanceTiles = null;
     this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
-    this.canvas.width = 640 + 128
-    this.canvas.height = 480 + 128;
     this.context = this.canvas.getContext('2d');
     this.graph = new RenderGraph();
     this.renderer = new CanvasRender(this.context);  
@@ -3845,11 +3867,16 @@ define('static/map',['require','underscore','../render/material','../render/quad
     },
     
     evaluateStatus: function() {
+    
+      var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
+      var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
+      var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
+      var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
       
-      var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
-      var tiletop = parseInt(this.scene.graph.viewport.top / this.tileheight);
-      var tileright = parseInt(this.scene.graph.viewport.right / this.tilewidth) + 1;
-      var tilebottom = parseInt(this.scene.graph.viewport.bottom / this.tileheight) + 1;
+      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
+      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
+      var tileright = parseInt( Math.min(bottomright.x, topright.x) / this.tilewidth) + 1;
+      var tilebottom = parseInt( Math.min(bottomleft.y, bottomright.y) / this.tileheight) + 1;
       
       tileleft = Math.max(tileleft, 0);
       tiletop = Math.max(tiletop, 0);
@@ -3988,8 +4015,9 @@ define('resources/jsondata',['require'],function(require) {
   return JsonData;
 });
 
-define('scene/camera',['require','glmatrix'],function(require) {
+define('scene/camera',['require','glmatrix','../shared/coords'],function(require) {
   var vec3 = require('glmatrix').vec3;
+  var Coords = require('../shared/coords');
 
   var Camera = function(aspectRatio, fieldOfView) {
     this.aspectRatio = aspectRatio;
@@ -4012,11 +4040,15 @@ define('scene/camera',['require','glmatrix'],function(require) {
     },
     updateViewport: function(graph) {
       this.calculateDimensions();
+            
+      var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
       
-      var left = Math.max(this.centre[0] - this.width / 2.0, 0);
-      var top = Math.max(this.centre[1] - this.height / 2.0, 0);
+      var left = Math.max(isometric.x - this.width / 2.0, 0);
+      var top = Math.max(isometric.y - this.height / 2.0, 0);
+      
+      
       var right = left + this.width;
-      var bottom = top + this.height; 
+      var bottom = top + this.height;
             
       graph.updateViewport(left, right, top, bottom);
     
@@ -13331,8 +13363,9 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
   return InputTranslator;
 });
 
-define('input/inputemitter',['require','./inputtranslator'],function(require) {
+define('input/inputemitter',['require','../shared/coords','./inputtranslator'],function(require) {
 
+  var Coords = require('../shared/coords');
   var InputTranslator = require('./inputtranslator');
   
   var InputEmitter = function(scene, canvasElement) {
@@ -13371,10 +13404,8 @@ define('input/inputemitter',['require','./inputtranslator'],function(require) {
       x += viewport.left;
       y += viewport.top;
       
-      return {
-        x: x,
-        y: y
-      };      
+      return Coords.isometricToWorld(x, y);
+     
     }
   };
   

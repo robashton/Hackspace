@@ -1,5 +1,6 @@
 define(function(require) {
 
+  var Coords = require('../shared/coords');
   var InputTranslator = require('./inputtranslator');
   
   var InputEmitter = function(scene, canvasElement) {
@@ -38,10 +39,8 @@ define(function(require) {
       x += viewport.left;
       y += viewport.top;
       
-      return {
-        x: x,
-        y: y
-      };      
+      return Coords.isometricToWorld(x, y);
+     
     }
   };
   

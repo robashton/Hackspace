@@ -12198,8 +12198,35 @@ return {
 };
 });
 
-define('scene/camera',['require','glmatrix'],function(require) {
+define('shared/coords',['require'],function(require) {
+
+  var Coords = {
+  
+    worldToIsometric: function(x, y) {
+      return {
+        x: x - y,
+        y: (x + y) / 2.0
+      };
+    },
+    
+    isometricToWorld: function(x, y) {
+      var ty = ((2.0 * y - x) / 2.0);
+      var tx = x + ty;
+
+      return {
+        x: tx,
+        y: ty
+      }
+    }
+  };
+  
+  return Coords;
+
+});
+
+define('scene/camera',['require','glmatrix','../shared/coords'],function(require) {
   var vec3 = require('glmatrix').vec3;
+  var Coords = require('../shared/coords');
 
   var Camera = function(aspectRatio, fieldOfView) {
     this.aspectRatio = aspectRatio;
@@ -12222,11 +12249,15 @@ define('scene/camera',['require','glmatrix'],function(require) {
     },
     updateViewport: function(graph) {
       this.calculateDimensions();
+            
+      var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
       
-      var left = Math.max(this.centre[0] - this.width / 2.0, 0);
-      var top = Math.max(this.centre[1] - this.height / 2.0, 0);
+      var left = Math.max(isometric.x - this.width / 2.0, 0);
+      var top = Math.max(isometric.y - this.height / 2.0, 0);
+      
+      
       var right = left + this.width;
-      var bottom = top + this.height; 
+      var bottom = top + this.height;
             
       graph.updateViewport(left, right, top, bottom);
     
@@ -12347,7 +12378,9 @@ define('render/material',['require','./color'],function(require) {
   
 });
 
-define('render/quad',['require'],function(require) {
+define('render/quad',['require','../shared/coords'],function(require) {
+
+  var Coords = require('../shared/coords');
 
   var Quad = function(material) {
     this.material = material;
@@ -12364,26 +12397,21 @@ define('render/quad',['require'],function(require) {
         this.drawPlainQuad(canvas, instance);      
     },
     drawTexturedQuad: function(canvas, instance) {
-      var middlex = instance.position[0] + (instance.size[0] / 2.0);
-      var middley = instance.position[1] + (instance.size[1] / 2.0);
-
-      canvas.save();
-      canvas.translate(middlex, middley);
-      canvas.rotate(instance.rotation);
+      var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
     
       canvas.drawImage(
         this.image('diffuseTexture'),
-        0 - (instance.size[0] / 2.0),
-        0 - (instance.size[1] / 2.0),
+        transform.x,
+        transform.y,
         instance.size[0],
         instance.size[1]);
-        
-      canvas.restore();
     },
     drawPlainQuad: function(canvas, instance) {
+       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+          
       canvas.fillRect(
-        instance.position[0],
-        instance.position[1],
+        transform.x,
+        transform.y,
         instance.size[0],
         instance.size[1]);
     },
@@ -12838,7 +12866,7 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap'],function(require) {
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -12849,6 +12877,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var CanvasRender = require('../render/canvasrender');
   var Tile = require('./tile');
   var CollisionMap = require('./collisionmap');
+  var Coords = require('../shared/coords');
 
 
   var Map = function(data) {
@@ -12868,8 +12897,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.scene = null;
     this.instanceTiles = null;
     this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
-    this.canvas.width = 640 + 128
-    this.canvas.height = 480 + 128;
     this.context = this.canvas.getContext('2d');
     this.graph = new RenderGraph();
     this.renderer = new CanvasRender(this.context);  
@@ -12938,11 +12965,16 @@ define('static/map',['require','underscore','../render/material','../render/quad
     },
     
     evaluateStatus: function() {
+    
+      var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
+      var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
+      var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
+      var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
       
-      var tileleft = parseInt(this.scene.graph.viewport.left / this.tilewidth);
-      var tiletop = parseInt(this.scene.graph.viewport.top / this.tileheight);
-      var tileright = parseInt(this.scene.graph.viewport.right / this.tilewidth) + 1;
-      var tilebottom = parseInt(this.scene.graph.viewport.bottom / this.tileheight) + 1;
+      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
+      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
+      var tileright = parseInt( Math.min(bottomright.x, topright.x) / this.tilewidth) + 1;
+      var tilebottom = parseInt( Math.min(bottomleft.y, bottomright.y) / this.tileheight) + 1;
       
       tileleft = Math.max(tileleft, 0);
       tiletop = Math.max(tiletop, 0);
@@ -13221,10 +13253,11 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
 
 });
 
-define('editor/grid',['require','underscore','../scene/entity'],function(require) {
+define('editor/grid',['require','underscore','../scene/entity','../shared/coords'],function(require) {
   
   var _ = require('underscore');
   var Entity = require('../scene/entity');
+  var Coords = require('../shared/coords');
 
   var Grid = function(map) {
     Entity.call(this);
@@ -13249,11 +13282,16 @@ define('editor/grid',['require','underscore','../scene/entity'],function(require
           
       context.beginPath();
       this.map.forEachVisibleTile(function(left, top, right, bottom) {
-        context.moveTo(left, top);
-        context.lineTo(right, top);
-        context.lineTo(right, bottom);
-        context.lineTo(left, bottom);
-        context.lineTo(left, top);
+        var topleft = Coords.worldToIsometric(left, top);
+        var topright = Coords.worldToIsometric(right, top);        
+        var bottomright = Coords.worldToIsometric(right, bottom);
+        var bottomleft = Coords.worldToIsometric(left, bottom);
+      
+        context.moveTo(topleft.x, topleft.y);
+        context.lineTo(topright.x, topright.y);
+        context.lineTo(bottomright.x, bottomright.y);
+        context.lineTo(bottomleft.x, bottomleft.y);
+        context.lineTo(topleft.x, topleft.y);
       });
       context.stroke();
       context.restore();
