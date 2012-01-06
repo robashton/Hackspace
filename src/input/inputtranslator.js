@@ -17,7 +17,8 @@ define(function(require) {
   
   InputTranslator.prototype = {
     onMouseClick: function(e) {
-      this.raisePrimaryAction(e.clientX, e.clientY);
+      var offset = this.element.offset();     
+      this.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
     },
     
     raisePrimaryAction: function(x, y) {

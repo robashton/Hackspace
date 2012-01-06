@@ -2824,9 +2824,43 @@ return {
 };
 });
 
-define('entities/components/physical',['require','glmatrix'],function(require) {
+define('shared/coords',['require'],function(require) {
+
+  var Coords = {
+  
+    worldToIsometric: function(x, y) {
+   /*   return {
+        x: x,
+        y: y
+      };*/
+      return {
+        x: x - y,
+        y: (x + y) / 2.0
+      };
+    },
+    
+    isometricToWorld: function(x, y) {
+      var ty = (((2.0 * y) - x) / 2.0);
+      var tx = x + ty;
+ /*     return {
+        x: x,
+        y: y
+      };*/
+      return {
+        x: tx,
+        y: ty
+      }
+    }
+  };
+  
+  return Coords;
+
+});
+
+define('entities/components/physical',['require','glmatrix','../../shared/coords'],function(require) {
 
   var vec3 = require('glmatrix').vec3;
+  var Coords = require('../../shared/coords');
 
   var Physical = function() {
     this.position = vec3.create([0,0,0]);
@@ -2865,6 +2899,18 @@ define('entities/components/physical',['require','glmatrix'],function(require) {
       this.scene.withEntity('map', function(map) {
         self.collideWithMap(map);
       });      
+    },
+    intersectWithMouse: function(x, y) {
+      if(this.parent.id === 'quest-giver') {
+        console.log(x,y, this.position[0], this.position[1]);
+      
+      }
+    
+      if(x < this.position[0]) return false;
+      if(x > this.position[0] + this.size[0]) return false;
+      if(y < this.position[1]) return false;
+      if(y > this.position[1] + this.size[1]) return false;
+      return true;
     },
     collideWithMap: function(map) {     
       var result = {
@@ -2997,32 +3043,6 @@ define('render/material',['require','./color'],function(require) {
   
 });
 
-define('shared/coords',['require'],function(require) {
-
-  var Coords = {
-  
-    worldToIsometric: function(x, y) {
-      return {
-        x: x - y,
-        y: (x + y) / 2.0
-      };
-    },
-    
-    isometricToWorld: function(x, y) {
-      var ty = ((2.0 * y - x) / 2.0);
-      var tx = x + ty;
-
-      return {
-        x: tx,
-        y: ty
-      }
-    }
-  };
-  
-  return Coords;
-
-});
-
 define('render/quad',['require','../shared/coords'],function(require) {
 
   var Coords = require('../shared/coords');
@@ -3043,7 +3063,6 @@ define('render/quad',['require','../shared/coords'],function(require) {
     },
     drawTexturedQuad: function(canvas, instance) {
       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
-    
       canvas.drawImage(
         this.image('diffuseTexture'),
         transform.x,
@@ -3274,6 +3293,7 @@ define('entities/components/directable',['require','glmatrix'],function(require)
       var length = vec3.length(this.buffer);
       if(length < 5) {
         this.moving = false;
+        this.parent.raise('DestinationReached');
       }
     },
     moveTowardsDestination: function() {
@@ -3312,6 +3332,51 @@ define('entities/components/trackable',['require'],function(require) {
   
   return Trackable;
   
+});
+
+define('entities/components/actionable',['require'],function(require) {
+
+  var Actionable = function() {
+    this.scene = null;
+  };
+  
+  Actionable.prototype = {
+    
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+      this.seekingTarget = false;
+      this.targetId = null;
+    },   
+    
+    primaryAction: function(targetId) {
+      var self = this;
+      this.scene.withEntity(targetId, function(target) {
+        console.log('gagh');
+        var position = target.get('position');
+        self.parent.dispatch('updateDestination', position);
+        self.seekingTarget = true;
+        self.targetId = targetId;
+      });
+    },
+    
+    onDestinationReached: function() {
+      if(this.seekingTarget) {
+        this.actionOnTarget(this.targetId);
+        this.seekingTarget = false;
+        this.targetId = null; 
+      }
+    },
+    
+    actionOnTarget: function(targetId) {
+      console.log('Actioned');      
+    },
+    
+    onDestinationChanged: function() {
+      this.seekingTarget = false;
+    }
+  };
+  
+  return Actionable;
 });
 
 define('shared/eventcontainer',['require','underscore'],function(require) {
@@ -3444,6 +3509,15 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
       handler.method.apply(handler.component, data); 
     },
     
+    get: function(query, data, defaultValue) {
+      var handler = this.findCommandHandler(query);
+      if(!handler) {
+         console.warn("Could not find handler for query '" + query + "' on entity " + this.id);
+         return defaultValue;
+      }
+      return handler.method.apply(handler.component, data); 
+    },
+    
     findCommandHandler: function(key) {
       return this.commandHandlers[key];
     }
@@ -3478,7 +3552,7 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
     propogateEventToScene: function(data) {
       if(this.scene)
         this.scene.broadcast(data.event, data.data);
-    }
+    },
   };
   _.extend(Entity.prototype, ComponentBag.prototype);
  
@@ -3486,7 +3560,7 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','../scene/entity'],function(require) {
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity'],function(require) {
 
   var _ = require('underscore');
   
@@ -3495,6 +3569,7 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Tangible = require('./components/tangible');
   var Directable = require('./components/directable');
   var Trackable = require('./components/trackable');
+  var Actionable = require('./components/actionable');
   var Entity = require('../scene/entity');
 
   var Character = function(id, x ,y) {
@@ -3505,12 +3580,39 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
+    this.attach(new Actionable());
 
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);
   
   return Character;
+});
+
+define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','../scene/entity'],function(require) {
+
+  var _ = require('underscore');
+  
+  var Physical = require('./components/physical');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Directable = require('./components/directable');
+  var Trackable = require('./components/trackable');
+  var Entity = require('../scene/entity');
+
+  var Npc = function(id, x ,y) {
+    Entity.call(this, id);
+    
+    this.attach(new Physical());
+    this.attach(new Renderable('character'));
+    this.attach(new Tangible(x, y, 25, 25));
+    this.attach(new Directable(3.0));
+
+  };  
+  Npc.prototype = {};  
+  _.extend(Npc.prototype, Entity.prototype);
+  
+  return Npc;
 });
 
 define('render/rendergraph',['require','underscore'],function(require) {
@@ -3560,10 +3662,11 @@ define('render/rendergraph',['require','underscore'],function(require) {
     uploadTransforms: function(context) {
       this.applyScale(context);
       this.applyTranslate(context);
+
     },
     
     applyTranslate: function(context) {
-      context.translate(-parseInt(this.viewport.left), - parseInt(this.viewport.top));
+      context.translate(-this.viewport.left, - this.viewport.top);
     },
     
     applyScale: function(context) {
@@ -3574,7 +3677,7 @@ define('render/rendergraph',['require','underscore'],function(require) {
       var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
       var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
       
-      context.scale(parseInt(scalex), parseInt(scaley));
+      context.scale(scalex, scaley);
     },
     
     pass: function(callback) {
@@ -3615,6 +3718,11 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       var entity = this.entitiesById[id];
       if(entity) callback(entity);
     },
+    entityAtMouse: function(x, y) {
+      return _(this.entities).find(function(entity){
+        return entity.get('intersectWithMouse', [x, y], false);
+      });
+    },
     render: function() {
       this.camera.updateViewport(this.graph);
       this.renderer.clear();
@@ -3643,10 +3751,11 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
   return Scene;  
 });
 
-define('entities/controller',['require','underscore','../scene/entity'],function(require) {
+define('entities/controller',['require','underscore','../scene/entity','../shared/coords'],function(require) {
 
   var _ = require('underscore');
   var Entity = require('../scene/entity');
+  var Coords = require('../shared/coords');
 
   var Controller = function() {
     Entity.call(this, "controller");   
@@ -3656,11 +3765,27 @@ define('entities/controller',['require','underscore','../scene/entity'],function
   };  
   Controller.prototype = {
     hookSceneEvents: function(scene) {
-      scene.on('PrimaryAction', this.issueMovementCommandToPlayer, this);
+      scene.on('PrimaryAction', this.determineWherePrimaryActionRequested, this);
     },
     
-    issueMovementCommandToPlayer: function(data) {
-      this.scene.dispatch('player', 'updateDestination', [data.x, data.y]);
+    determineWherePrimaryActionRequested: function(data) {
+      var x = data.x,
+          y = data.y;
+      
+      var selectedEntity = this.scene.entityAtMouse(x, y);
+      if(selectedEntity)
+        this.determineWhatToDoWithSelectedEntity(selectedEntity, x, y);
+      else
+        this.issueMovementCommandToPlayer(x,y);
+      
+    },
+    
+    determineWhatToDoWithSelectedEntity: function(entity, x, y) {
+      this.scene.dispatch('player', "primaryAction", [entity.id]);
+    },
+    
+    issueMovementCommandToPlayer: function(x,y) {
+      this.scene.dispatch('player', 'updateDestination', [x, y]);
     }
   };  
   _.extend(Controller.prototype, Entity.prototype);
@@ -3713,9 +3838,7 @@ define('render/canvasrender',['require'],function(require) {
       this.context.save();
       graph.uploadTransforms(this.context);
       
-//      console.log('hi');
       graph.pass(function(item) {
-    //    console.log('hey');
         item.render(self.context);
       });
      
@@ -4090,11 +4213,10 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
       this.calculateDimensions();
             
       var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
-      
-      var left = isometric.x - this.width / 2.0;
-      var top = isometric.y - this.height / 2.0;
-      
-      
+           
+      var left = isometric.x - (this.width / 2.0);
+      var top = isometric.y - (this.height / 2.0);
+            
       var right = left + this.width;
       var bottom = top + this.height;
             
@@ -13396,7 +13518,8 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
   
   InputTranslator.prototype = {
     onMouseClick: function(e) {
-      this.raisePrimaryAction(e.clientX, e.clientY);
+      var offset = this.element.offset();     
+      this.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
     },
     
     raisePrimaryAction: function(x, y) {
@@ -13442,18 +13565,20 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
       
       var canvasWidth = this.canvasElement.width;
       var canvasHeight = this.canvasElement.height;
+
            
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
+            x /= scalex;
+      y /= scaley;    
+      x += (viewport.left);
+      y += (viewport.top); 
       
-      x /= scalex;
-      y /= scaley;
-           
-      x += viewport.left;
-      y += viewport.top;
+
       
-      return Coords.isometricToWorld(x, y);
-     
+     return  Coords.isometricToWorld(x,y); 
+   
+      
     }
   };
   
@@ -13676,11 +13801,12 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
           
       context.beginPath();
       this.map.forEachVisibleTile(function(left, top, right, bottom) {
+      
         var topleft = Coords.worldToIsometric(left, top);
         var topright = Coords.worldToIsometric(right, top);        
         var bottomright = Coords.worldToIsometric(right, bottom);
         var bottomleft = Coords.worldToIsometric(left, bottom);
-      
+         
         context.moveTo(topleft.x, topleft.y);
         context.lineTo(topright.x, topright.y);
         context.lineTo(bottomright.x, bottomright.y);
@@ -13698,9 +13824,10 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
 
 });
 
-define('apps/demo/app',['require','../../entities/character','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid'],function(require) {
+define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid'],function(require) {
 
   var Character = require('../../entities/character');
+  var Npc = require('../../entities/npc');
   var Scene = require('../../scene/scene');
   var InputEmitter = require('../../input/inputemitter');
   var Controller = require('../../entities/controller');
@@ -13719,6 +13846,7 @@ define('apps/demo/app',['require','../../entities/character','../../scene/scene'
       this.context = context;
             
       var character = new Character("player", 0, 0);
+      var questGiver = new Npc("quest-giver", 150, 100);
       var controller = new Controller();
       
       var mapResource = context.resources.get('/main/world.json');
@@ -13727,6 +13855,7 @@ define('apps/demo/app',['require','../../entities/character','../../scene/scene'
       context.scene.add(character);
       context.scene.add(controller);
       context.scene.add(map);
+      context.scene.add(questGiver);
       
       // Until I have textures
       this.grid = new Grid(map);

@@ -45,10 +45,11 @@ define(function(require) {
     uploadTransforms: function(context) {
       this.applyScale(context);
       this.applyTranslate(context);
+
     },
     
     applyTranslate: function(context) {
-      context.translate(-parseInt(this.viewport.left), - parseInt(this.viewport.top));
+      context.translate(-this.viewport.left, - this.viewport.top);
     },
     
     applyScale: function(context) {
@@ -59,7 +60,7 @@ define(function(require) {
       var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
       var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
       
-      context.scale(parseInt(scalex), parseInt(scaley));
+      context.scale(scalex, scaley);
     },
     
     pass: function(callback) {

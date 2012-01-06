@@ -25,11 +25,10 @@ define(function(require) {
       this.calculateDimensions();
             
       var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
-      
-      var left = isometric.x - this.width / 2.0;
-      var top = isometric.y - this.height / 2.0;
-      
-      
+           
+      var left = isometric.x - (this.width / 2.0);
+      var top = isometric.y - (this.height / 2.0);
+            
       var right = left + this.width;
       var bottom = top + this.height;
             

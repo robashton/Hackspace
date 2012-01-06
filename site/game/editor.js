@@ -10263,9 +10263,7 @@ define('render/canvasrender',['require'],function(require) {
       this.context.save();
       graph.uploadTransforms(this.context);
       
-//      console.log('hi');
       graph.pass(function(item) {
-    //    console.log('hey');
         item.render(self.context);
       });
      
@@ -12203,6 +12201,10 @@ define('shared/coords',['require'],function(require) {
   var Coords = {
   
     worldToIsometric: function(x, y) {
+   /*   return {
+        x: x,
+        y: y
+      };*/
       return {
         x: x - y,
         y: (x + y) / 2.0
@@ -12210,9 +12212,12 @@ define('shared/coords',['require'],function(require) {
     },
     
     isometricToWorld: function(x, y) {
-      var ty = ((2.0 * y - x) / 2.0);
+      var ty = (((2.0 * y) - x) / 2.0);
       var tx = x + ty;
-
+ /*     return {
+        x: x,
+        y: y
+      };*/
       return {
         x: tx,
         y: ty
@@ -12251,11 +12256,10 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
       this.calculateDimensions();
             
       var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
-      
-      var left = isometric.x - this.width / 2.0;
-      var top = isometric.y - this.height / 2.0;
-      
-      
+           
+      var left = isometric.x - (this.width / 2.0);
+      var top = isometric.y - (this.height / 2.0);
+            
       var right = left + this.width;
       var bottom = top + this.height;
             
@@ -12318,10 +12322,11 @@ define('render/rendergraph',['require','underscore'],function(require) {
     uploadTransforms: function(context) {
       this.applyScale(context);
       this.applyTranslate(context);
+
     },
     
     applyTranslate: function(context) {
-      context.translate(-parseInt(this.viewport.left), - parseInt(this.viewport.top));
+      context.translate(-this.viewport.left, - this.viewport.top);
     },
     
     applyScale: function(context) {
@@ -12332,7 +12337,7 @@ define('render/rendergraph',['require','underscore'],function(require) {
       var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
       var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
       
-      context.scale(parseInt(scalex), parseInt(scaley));
+      context.scale(scalex, scaley);
     },
     
     pass: function(callback) {
@@ -12398,7 +12403,6 @@ define('render/quad',['require','../shared/coords'],function(require) {
     },
     drawTexturedQuad: function(canvas, instance) {
       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
-    
       canvas.drawImage(
         this.image('diffuseTexture'),
         transform.x,
@@ -12744,6 +12748,11 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       var entity = this.entitiesById[id];
       if(entity) callback(entity);
     },
+    entityAtMouse: function(x, y) {
+      return _(this.entities).find(function(entity){
+        return entity.get('intersectWithMouse', [x, y], false);
+      });
+    },
     render: function() {
       this.camera.updateViewport(this.graph);
       this.renderer.clear();
@@ -12824,6 +12833,15 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
       handler.method.apply(handler.component, data); 
     },
     
+    get: function(query, data, defaultValue) {
+      var handler = this.findCommandHandler(query);
+      if(!handler) {
+         console.warn("Could not find handler for query '" + query + "' on entity " + this.id);
+         return defaultValue;
+      }
+      return handler.method.apply(handler.component, data); 
+    },
+    
     findCommandHandler: function(key) {
       return this.commandHandlers[key];
     }
@@ -12858,7 +12876,7 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
     propogateEventToScene: function(data) {
       if(this.scene)
         this.scene.broadcast(data.event, data.data);
-    }
+    },
   };
   _.extend(Entity.prototype, ComponentBag.prototype);
  
@@ -13278,11 +13296,12 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
           
       context.beginPath();
       this.map.forEachVisibleTile(function(left, top, right, bottom) {
+      
         var topleft = Coords.worldToIsometric(left, top);
         var topright = Coords.worldToIsometric(right, top);        
         var bottomright = Coords.worldToIsometric(right, bottom);
         var bottomleft = Coords.worldToIsometric(left, bottom);
-      
+         
         context.moveTo(topleft.x, topleft.y);
         context.lineTo(topright.x, topright.y);
         context.lineTo(bottomright.x, bottomright.y);

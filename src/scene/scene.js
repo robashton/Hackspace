@@ -25,6 +25,11 @@ define(function(require) {
       var entity = this.entitiesById[id];
       if(entity) callback(entity);
     },
+    entityAtMouse: function(x, y) {
+      return _(this.entities).find(function(entity){
+        return entity.get('intersectWithMouse', [x, y], false);
+      });
+    },
     render: function() {
       this.camera.updateViewport(this.graph);
       this.renderer.clear();

@@ -1,6 +1,7 @@
 define(function(require) {
 
   var Character = require('../../entities/character');
+  var Npc = require('../../entities/npc');
   var Scene = require('../../scene/scene');
   var InputEmitter = require('../../input/inputemitter');
   var Controller = require('../../entities/controller');
@@ -19,6 +20,7 @@ define(function(require) {
       this.context = context;
             
       var character = new Character("player", 0, 0);
+      var questGiver = new Npc("quest-giver", 150, 100);
       var controller = new Controller();
       
       var mapResource = context.resources.get('/main/world.json');
@@ -27,6 +29,7 @@ define(function(require) {
       context.scene.add(character);
       context.scene.add(controller);
       context.scene.add(map);
+      context.scene.add(questGiver);
       
       // Until I have textures
       this.grid = new Grid(map);

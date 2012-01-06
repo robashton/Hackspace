@@ -1,6 +1,7 @@
 define(function(require) {
 
   var vec3 = require('glmatrix').vec3;
+  var Coords = require('../../shared/coords');
 
   var Physical = function() {
     this.position = vec3.create([0,0,0]);
@@ -39,6 +40,18 @@ define(function(require) {
       this.scene.withEntity('map', function(map) {
         self.collideWithMap(map);
       });      
+    },
+    intersectWithMouse: function(x, y) {
+      if(this.parent.id === 'quest-giver') {
+        console.log(x,y, this.position[0], this.position[1]);
+      
+      }
+    
+      if(x < this.position[0]) return false;
+      if(x > this.position[0] + this.size[0]) return false;
+      if(y < this.position[1]) return false;
+      if(y > this.position[1] + this.size[1]) return false;
+      return true;
     },
     collideWithMap: function(map) {     
       var result = {

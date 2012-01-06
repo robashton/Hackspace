@@ -50,6 +50,15 @@ define(function(require) {
       handler.method.apply(handler.component, data); 
     },
     
+    get: function(query, data, defaultValue) {
+      var handler = this.findCommandHandler(query);
+      if(!handler) {
+         console.warn("Could not find handler for query '" + query + "' on entity " + this.id);
+         return defaultValue;
+      }
+      return handler.method.apply(handler.component, data); 
+    },
+    
     findCommandHandler: function(key) {
       return this.commandHandlers[key];
     }

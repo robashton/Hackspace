@@ -18,7 +18,6 @@ define(function(require) {
     },
     drawTexturedQuad: function(canvas, instance) {
       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
-    
       canvas.drawImage(
         this.image('diffuseTexture'),
         transform.x,

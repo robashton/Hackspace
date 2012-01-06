@@ -29,18 +29,22 @@ define(function(require) {
       
       var canvasWidth = this.canvasElement.width;
       var canvasHeight = this.canvasElement.height;
+
            
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
-      
-      x /= scalex;
-      y /= scaley;
-           
-      x += viewport.left;
-      y += viewport.top;
-      
-      return Coords.isometricToWorld(x, y);
      
+      x /= scalex;
+      y /= scaley;    
+      
+      x += (viewport.left);
+      y += (viewport.top); 
+      
+
+      
+     return  Coords.isometricToWorld(x,y); 
+   
+      
     }
   };
   

@@ -50,6 +50,7 @@ define(function(require) {
       var length = vec3.length(this.buffer);
       if(length < 5) {
         this.moving = false;
+        this.parent.raise('DestinationReached');
       }
     },
     moveTowardsDestination: function() {

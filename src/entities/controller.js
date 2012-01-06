@@ -2,6 +2,7 @@ define(function(require) {
 
   var _ = require('underscore');
   var Entity = require('../scene/entity');
+  var Coords = require('../shared/coords');
 
   var Controller = function() {
     Entity.call(this, "controller");   
@@ -11,11 +12,27 @@ define(function(require) {
   };  
   Controller.prototype = {
     hookSceneEvents: function(scene) {
-      scene.on('PrimaryAction', this.issueMovementCommandToPlayer, this);
+      scene.on('PrimaryAction', this.determineWherePrimaryActionRequested, this);
     },
     
-    issueMovementCommandToPlayer: function(data) {
-      this.scene.dispatch('player', 'updateDestination', [data.x, data.y]);
+    determineWherePrimaryActionRequested: function(data) {
+      var x = data.x,
+          y = data.y;
+      
+      var selectedEntity = this.scene.entityAtMouse(x, y);
+      if(selectedEntity)
+        this.determineWhatToDoWithSelectedEntity(selectedEntity, x, y);
+      else
+        this.issueMovementCommandToPlayer(x,y);
+      
+    },
+    
+    determineWhatToDoWithSelectedEntity: function(entity, x, y) {
+      this.scene.dispatch('player', "primaryAction", [entity.id]);
+    },
+    
+    issueMovementCommandToPlayer: function(x,y) {
+      this.scene.dispatch('player', 'updateDestination', [x, y]);
     }
   };  
   _.extend(Controller.prototype, Entity.prototype);

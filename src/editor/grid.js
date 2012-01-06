@@ -27,11 +27,12 @@ define(function(require) {
           
       context.beginPath();
       this.map.forEachVisibleTile(function(left, top, right, bottom) {
+      
         var topleft = Coords.worldToIsometric(left, top);
         var topright = Coords.worldToIsometric(right, top);        
         var bottomright = Coords.worldToIsometric(right, bottom);
         var bottomleft = Coords.worldToIsometric(left, bottom);
-      
+         
         context.moveTo(topleft.x, topleft.y);
         context.lineTo(topright.x, topright.y);
         context.lineTo(bottomright.x, bottomright.y);
