@@ -13720,12 +13720,10 @@ define('apps/demo/app',['require','../../entities/character','../../scene/scene'
             
       var character = new Character("player", 0, 0);
       var controller = new Controller();
-      var debug = new Debug();
       
       var mapResource = context.resources.get('/main/world.json');
       var map = new Map(mapResource.get());
       
-      context.scene.add(debug);
       context.scene.add(character);
       context.scene.add(controller);
       context.scene.add(map);
