@@ -9,12 +9,12 @@ define(function(require) {
   var Trackable = require('./components/trackable');
   var Entity = require('../scene/entity');
 
-  var Character = function(id, x ,y, width, height, model) {
+  var Character = function(id, x ,y) {
     Entity.call(this, id);
     
     this.attach(new Physical());
-    this.attach(new Renderable(model));
-    this.attach(new Tangible(x, y, width, height));
+    this.attach(new Renderable('character'));
+    this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
 

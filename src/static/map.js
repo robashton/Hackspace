@@ -57,33 +57,23 @@ define(function(require) {
     
     render: function(context) {
       
-    if(this.canvas.width !== context.canvas.width + this.tilewidth || this.canvas.height !== context.canvas.height + this.tileheight) {
-        this.canvas.width = context.canvas.width + this.tilewidth;
-        this.canvas.height = context.canvas.height + this.tileheight;
-        this.redrawBackground();
-      } else {
-       this.evaluateStatus();
-      }     
-
-      var offset = this.getCurrentOffset();
-      var dx = 0;
-      var dy = 0;
-      
-      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
-                  
-      context.drawImage(this.canvas, offset.x, offset.y, 
-      context.canvas.width, context.canvas.height, 
-        offset.x + this.tileleft * this.tilewidth, offset.y + this.tiletop * this.tileheight, 
-      context.canvas.width, context.canvas.height); 
-    },
-    
-    getCurrentOffset: function() {
-      return {
-        x: this.scene.graph.viewport.left % this.tilewidth,
-        y: this.scene.graph.viewport.top % this.tileheight
+      if(this.canvas.width !== context.canvas.width || this.canvas.height !== context.canvas.height) {
+          this.canvas.width = context.canvas.width;
+          this.canvas.height = context.canvas.height;
       };
+
+      this.evaluateStatus();
+
+      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
+      
+      context.save();
+      context.setTransform(1,0,0,1,0,0);          
+                
+      context.drawImage(this.canvas, 0, 0, context.canvas.width, context.canvas.height);
+      
+      context.restore();
     },
-    
+        
     forEachVisibleTile: function(callback) {
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
@@ -105,8 +95,8 @@ define(function(require) {
       
       var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
       var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
-      var tileright = parseInt( Math.min(bottomright.x, topright.x) / this.tilewidth) + 1;
-      var tilebottom = parseInt( Math.min(bottomleft.y, bottomright.y) / this.tileheight) + 1;
+      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) + 1;
+      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) + 1;
       
       tileleft = Math.max(tileleft, 0);
       tiletop = Math.max(tiletop, 0);
@@ -122,17 +112,18 @@ define(function(require) {
         this.tileright = tileright;
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
-        this.redrawBackground();
       }
+      this.redrawBackground();
     },
     
     redrawBackground: function() { 
      
       this.graph.updateViewport(
-          this.tileleft * this.tilewidth,
-          this.tileright * this.tilewidth,
-          this.tiletop * this.tileheight,
-          this.tilebottom * this.tileheight);         
+        this.scene.graph.viewport.left,
+        this.scene.graph.viewport.right,
+        this.scene.graph.viewport.top,
+        this.scene.graph.viewport.bottom      
+      );
         
       this.populateGraph();      
       this.renderer.clear();

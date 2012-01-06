@@ -1,107 +1,4 @@
 
-define('render/color',['require'],function(require) {
-  var Color = function(a, r, g, b) {
-    this.a = a;
-    this.r = r;
-    this.g = g;
-    this.b = b;
-  };
-
-  Color.prototype = {
-    str: function() {
-      
-    }
-  };
-  return Color;
-});
-
-
-define('render/material',['require','./color'],function(require) {
-  var Color = require('./color');
-
-  var Material = function() {
-   
-  };
-  
-  Material.prototype = {
-    diffuse: new Color(255,255,255, 255),  
-    diffuseTexture: null
-  };
-  return Material;
-  
-});
-
-define('shared/coords',['require'],function(require) {
-
-  var Coords = {
-  
-    worldToIsometric: function(x, y) {
-      return {
-        x: x - y,
-        y: (x + y) / 2.0
-      };
-    },
-    
-    isometricToWorld: function(x, y) {
-      var ty = ((2.0 * y - x) / 2.0);
-      var tx = x + ty;
-
-      return {
-        x: tx,
-        y: ty
-      }
-    }
-  };
-  
-  return Coords;
-
-});
-
-define('render/quad',['require','../shared/coords'],function(require) {
-
-  var Coords = require('../shared/coords');
-
-  var Quad = function(material) {
-    this.material = material;
-  };
-  
-  Quad.prototype = {
-    upload: function(context) {
-    //  this.material.upload(context);
-    },
-    render: function(canvas, instance) {
-      if(this.material.diffuseTexture)
-        this.drawTexturedQuad(canvas, instance);
-      else
-        this.drawPlainQuad(canvas, instance);      
-    },
-    drawTexturedQuad: function(canvas, instance) {
-      var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
-    
-      canvas.drawImage(
-        this.image('diffuseTexture'),
-        transform.x,
-        transform.y,
-        instance.size[0],
-        instance.size[1]);
-    },
-    drawPlainQuad: function(canvas, instance) {
-       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
-          
-      canvas.fillRect(
-        transform.x,
-        transform.y,
-        instance.size[0],
-        instance.size[1]);
-    },
-    image: function(name) {
-       return this.material[name].get()
-    }
-  }; 
-  
-  return Quad;
-});
-
 //     Underscore.js 1.2.3
 //     (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
 //     Underscore is freely distributable under the MIT license.
@@ -3068,14 +2965,140 @@ define('render/instance',['require','glmatrix'],function(require) {
   return Instance;
 });
 
-define('entities/components/renderable',['require','../../render/instance'],function(require) {
+define('render/color',['require'],function(require) {
+  var Color = function(a, r, g, b) {
+    this.a = a;
+    this.r = r;
+    this.g = g;
+    this.b = b;
+  };
+
+  Color.prototype = {
+    str: function() {
+      
+    }
+  };
+  return Color;
+});
+
+
+define('render/material',['require','./color'],function(require) {
+  var Color = require('./color');
+
+  var Material = function() {
+   
+  };
+  
+  Material.prototype = {
+    diffuse: new Color(255,255,255, 255),  
+    diffuseTexture: null
+  };
+  return Material;
+  
+});
+
+define('shared/coords',['require'],function(require) {
+
+  var Coords = {
+  
+    worldToIsometric: function(x, y) {
+      return {
+        x: x - y,
+        y: (x + y) / 2.0
+      };
+    },
+    
+    isometricToWorld: function(x, y) {
+      var ty = ((2.0 * y - x) / 2.0);
+      var tx = x + ty;
+
+      return {
+        x: tx,
+        y: ty
+      }
+    }
+  };
+  
+  return Coords;
+
+});
+
+define('render/quad',['require','../shared/coords'],function(require) {
+
+  var Coords = require('../shared/coords');
+
+  var Quad = function(material) {
+    this.material = material;
+  };
+  
+  Quad.prototype = {
+    upload: function(context) {
+    //  this.material.upload(context);
+    },
+    render: function(canvas, instance) {
+      if(this.material.diffuseTexture)
+        this.drawTexturedQuad(canvas, instance);
+      else
+        this.drawPlainQuad(canvas, instance);      
+    },
+    drawTexturedQuad: function(canvas, instance) {
+      var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+    
+      canvas.drawImage(
+        this.image('diffuseTexture'),
+        transform.x,
+        transform.y,
+        instance.size[0],
+        instance.size[1]);
+    },
+    drawPlainQuad: function(canvas, instance) {
+       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+          
+      canvas.fillRect(
+        transform.x,
+        transform.y,
+        instance.size[0],
+        instance.size[1]);
+    },
+    image: function(name) {
+       return this.material[name].get()
+    }
+  }; 
+  
+  return Quad;
+});
+
+define('shared/extramath',['require'],function(require) {
+
+  var FullRotation = Math.PI * 2.0;
+  
+  var ExtraMath = {
+    clampRotation: function(rotation) {
+      while(rotation < 0)
+        rotation += FullRotation;
+      while(rotation > FullRotation)
+        rotation -= FullRotation;
+      return rotation;
+    }   
+  };
+  
+  return ExtraMath;
+
+});
+
+define('entities/components/renderable',['require','../../render/instance','../../render/material','../../render/quad','../../shared/extramath'],function(require) {
 
   var Instance = require('../../render/instance');
-
-  var Renderable = function(model) {
+  var Material = require('../../render/material');
+  var Quad = require('../../render/quad');
+  var ExtraMath = require('../../shared/extramath');
+  
+  var Renderable = function(textureName) {
     this.scene = null;
     this.instance = null;
-    this.model = model;
+    this.textureName = textureName;
+    this.material = null;
+    this.model = null;
   };
   
   Renderable.prototype = {    
@@ -3087,14 +3110,48 @@ define('entities/components/renderable',['require','../../render/instance'],func
       this.instance.translate(data.x, data.y, data.z);
     },
     onRotationChanged: function(data) {
-      this.instance.rotate(data.x);
+      this.determineTextureFromRotation(data.x);
     },
        
     onAddedToScene: function(scene) {
       this.scene = scene;
+      this.createModel();
+    },    
+    
+    createModel: function() {
+      this.material = new Material();     
+      this.model = new Quad(this.material);
       this.instance = new Instance(this.model);
       this.scene.graph.add(this.instance);
-    },    
+      this.determineTextureFromRotation(Math.PI);
+    },
+    
+    determineTextureFromRotation: function(rotation) {
+      var textureSuffix = 'up';
+      rotation = ExtraMath.clampRotation(rotation);
+      
+      // Account for the isometric PoV
+      rotation += Math.PI / 4.0;
+      
+      if(rotation < Math.PI * 0.12)
+        textureSuffix = 'up';
+      else if(rotation < Math.PI * 0.37)
+        textureSuffix = 'up-right';
+      else if(rotation < Math.PI * 0.62)
+        textureSuffix = 'right';
+      else if(rotation < Math.PI * 0.87)
+        textureSuffix = 'down-right';
+      else if(rotation < Math.PI * 1.12)
+        textureSuffix = 'down';
+      else if(rotation < Math.PI * 1.37)
+        textureSuffix = 'down-left';
+      else if(rotation < Math.PI * 1.62)
+        textureSuffix = 'left';
+      else if(rotation < Math.PI * 1.87)
+        textureSuffix = 'up-left';      
+      
+      this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '-' + textureSuffix + '.png');
+    },
     
     onRemovedFromScene: function() {
       this.scene.graph.remove(this.instance);
@@ -3440,12 +3497,12 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Trackable = require('./components/trackable');
   var Entity = require('../scene/entity');
 
-  var Character = function(id, x ,y, width, height, model) {
+  var Character = function(id, x ,y) {
     Entity.call(this, id);
     
     this.attach(new Physical());
-    this.attach(new Renderable(model));
-    this.attach(new Tangible(x, y, width, height));
+    this.attach(new Renderable('character'));
+    this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
 
@@ -3697,7 +3754,7 @@ define('static/tile',['require','../render/instance'],function(require) {
       var model = this.map.models[item.template];
       var template = this.map.templates[item.template];
       var instance = new Instance(model);
-      instance.scale(template.width, template.height);
+      instance.scale(template.renderwidth, template.renderheight);
       instance.translate(this.x + item.x, this.y + item.y);
       this.instances[i] = instance;
     },
@@ -3827,33 +3884,23 @@ define('static/map',['require','underscore','../render/material','../render/quad
     
     render: function(context) {
       
-    if(this.canvas.width !== context.canvas.width + this.tilewidth || this.canvas.height !== context.canvas.height + this.tileheight) {
-        this.canvas.width = context.canvas.width + this.tilewidth;
-        this.canvas.height = context.canvas.height + this.tileheight;
-        this.redrawBackground();
-      } else {
-       this.evaluateStatus();
-      }     
-
-      var offset = this.getCurrentOffset();
-      var dx = 0;
-      var dy = 0;
-      
-      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
-                  
-      context.drawImage(this.canvas, offset.x, offset.y, 
-      context.canvas.width, context.canvas.height, 
-        offset.x + this.tileleft * this.tilewidth, offset.y + this.tiletop * this.tileheight, 
-      context.canvas.width, context.canvas.height); 
-    },
-    
-    getCurrentOffset: function() {
-      return {
-        x: this.scene.graph.viewport.left % this.tilewidth,
-        y: this.scene.graph.viewport.top % this.tileheight
+      if(this.canvas.width !== context.canvas.width || this.canvas.height !== context.canvas.height) {
+          this.canvas.width = context.canvas.width;
+          this.canvas.height = context.canvas.height;
       };
+
+      this.evaluateStatus();
+
+      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
+      
+      context.save();
+      context.setTransform(1,0,0,1,0,0);          
+                
+      context.drawImage(this.canvas, 0, 0, context.canvas.width, context.canvas.height);
+      
+      context.restore();
     },
-    
+        
     forEachVisibleTile: function(callback) {
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
@@ -3875,8 +3922,8 @@ define('static/map',['require','underscore','../render/material','../render/quad
       
       var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
       var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
-      var tileright = parseInt( Math.min(bottomright.x, topright.x) / this.tilewidth) + 1;
-      var tilebottom = parseInt( Math.min(bottomleft.y, bottomright.y) / this.tileheight) + 1;
+      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) + 1;
+      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) + 1;
       
       tileleft = Math.max(tileleft, 0);
       tiletop = Math.max(tiletop, 0);
@@ -3892,17 +3939,18 @@ define('static/map',['require','underscore','../render/material','../render/quad
         this.tileright = tileright;
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
-        this.redrawBackground();
       }
+      this.redrawBackground();
     },
     
     redrawBackground: function() { 
      
       this.graph.updateViewport(
-          this.tileleft * this.tilewidth,
-          this.tileright * this.tilewidth,
-          this.tiletop * this.tileheight,
-          this.tilebottom * this.tileheight);         
+        this.scene.graph.viewport.left,
+        this.scene.graph.viewport.right,
+        this.scene.graph.viewport.top,
+        this.scene.graph.viewport.bottom      
+      );
         
       this.populateGraph();      
       this.renderer.clear();
@@ -4023,7 +4071,7 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 512.0;
+    this.distance = 256.0;
     
     this.width = 0;
     this.height = 0;
@@ -4043,8 +4091,8 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
             
       var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
       
-      var left = Math.max(isometric.x - this.width / 2.0, 0);
-      var top = Math.max(isometric.y - this.height / 2.0, 0);
+      var left = isometric.x - this.width / 2.0;
+      var top = isometric.y - this.height / 2.0;
       
       
       var right = left + this.width;
@@ -13599,10 +13647,59 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   return Context;
 });
 
-define('apps/demo/app',['require','../../render/material','../../render/quad','../../entities/character','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery'],function(require) {
+define('editor/grid',['require','underscore','../scene/entity','../shared/coords'],function(require) {
+  
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  var Coords = require('../shared/coords');
 
-  var Material = require('../../render/material');
-  var Quad = require('../../render/quad');
+  var Grid = function(map) {
+    Entity.call(this);
+    
+    this.map = map;
+    this.on('AddedToScene', this.addGridRenderable);
+  };
+  
+  Grid.prototype = {
+    addGridRenderable: function(scene) {
+      this.scene = scene;
+      this.scene.graph.add(this);
+    },
+    visible: function() {
+      return true;
+    },
+    render: function(context) {
+      context.save(); 
+      
+      context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
+      context.lineWidth = 0.25;
+          
+      context.beginPath();
+      this.map.forEachVisibleTile(function(left, top, right, bottom) {
+        var topleft = Coords.worldToIsometric(left, top);
+        var topright = Coords.worldToIsometric(right, top);        
+        var bottomright = Coords.worldToIsometric(right, bottom);
+        var bottomleft = Coords.worldToIsometric(left, bottom);
+      
+        context.moveTo(topleft.x, topleft.y);
+        context.lineTo(topright.x, topright.y);
+        context.lineTo(bottomright.x, bottomright.y);
+        context.lineTo(bottomleft.x, bottomleft.y);
+        context.lineTo(topleft.x, topleft.y);
+      });
+      context.stroke();
+      context.restore();
+    }
+  };
+  
+  _.extend(Grid.prototype, Entity.prototype);
+  
+  return Grid;
+
+});
+
+define('apps/demo/app',['require','../../entities/character','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid'],function(require) {
+
   var Character = require('../../entities/character');
   var Scene = require('../../scene/scene');
   var InputEmitter = require('../../input/inputemitter');
@@ -13611,7 +13708,8 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
   var Map = require('../../static/map');
   var Context = require('../../harness/context');
   var $ = require('jquery');
-  
+    var Grid = require('../../editor/grid');
+    
   var Demo = function(element) {
     this.element = element;
   };
@@ -13619,11 +13717,8 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
   Demo.prototype = {
     start: function(context) {          
       this.context = context;
-      var material = new Material();
-      material.diffuseTexture =  context.resources.get('/main/character-up.png');
-      var quad = new Quad(material);
-      
-      var character = new Character("player", 0, 0, 25, 25, quad);
+            
+      var character = new Character("player", 0, 0);
       var controller = new Controller();
       var debug = new Debug();
       
@@ -13634,7 +13729,10 @@ define('apps/demo/app',['require','../../render/material','../../render/quad','.
       context.scene.add(character);
       context.scene.add(controller);
       context.scene.add(map);
-            
+      
+      // Until I have textures
+      this.grid = new Grid(map);
+      this.context.scene.add(this.grid); 
       var input = new InputEmitter(context.scene, this.element);
 
     }

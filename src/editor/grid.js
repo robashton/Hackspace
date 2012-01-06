@@ -22,7 +22,7 @@ define(function(require) {
     render: function(context) {
       context.save(); 
       
-      context.strokeStyle = 'rgba(25, 25, 25, 0.5)';
+      context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
       context.lineWidth = 0.25;
           
       context.beginPath();

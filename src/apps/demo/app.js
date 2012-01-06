@@ -1,7 +1,5 @@
 define(function(require) {
 
-  var Material = require('../../render/material');
-  var Quad = require('../../render/quad');
   var Character = require('../../entities/character');
   var Scene = require('../../scene/scene');
   var InputEmitter = require('../../input/inputemitter');
@@ -10,7 +8,8 @@ define(function(require) {
   var Map = require('../../static/map');
   var Context = require('../../harness/context');
   var $ = require('jquery');
-  
+    var Grid = require('../../editor/grid');
+    
   var Demo = function(element) {
     this.element = element;
   };
@@ -18,11 +17,8 @@ define(function(require) {
   Demo.prototype = {
     start: function(context) {          
       this.context = context;
-      var material = new Material();
-      material.diffuseTexture =  context.resources.get('/main/character-up.png');
-      var quad = new Quad(material);
-      
-      var character = new Character("player", 0, 0, 25, 25, quad);
+            
+      var character = new Character("player", 0, 0);
       var controller = new Controller();
       var debug = new Debug();
       
@@ -33,7 +29,10 @@ define(function(require) {
       context.scene.add(character);
       context.scene.add(controller);
       context.scene.add(map);
-            
+      
+      // Until I have textures
+      this.grid = new Grid(map);
+      this.context.scene.add(this.grid); 
       var input = new InputEmitter(context.scene, this.element);
 
     }

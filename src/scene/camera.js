@@ -6,7 +6,7 @@ define(function(require) {
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 512.0;
+    this.distance = 256.0;
     
     this.width = 0;
     this.height = 0;
@@ -26,8 +26,8 @@ define(function(require) {
             
       var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
       
-      var left = Math.max(isometric.x - this.width / 2.0, 0);
-      var top = Math.max(isometric.y - this.height / 2.0, 0);
+      var left = isometric.x - this.width / 2.0;
+      var top = isometric.y - this.height / 2.0;
       
       
       var right = left + this.width;

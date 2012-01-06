@@ -84,6 +84,11 @@ define(function(require) {
       
       this.redrawBackground();             
     },
+    updateTemplatesFromLibrary: function(library) {
+      for(var i in this.templates) {
+        this.templates[i] = library.getLibraryElement(i);
+      }
+    },
     addTemplate: function(template) {
       this.templates[template.id] = template;
       this.createModelForTemplate(template);

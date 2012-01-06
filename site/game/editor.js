@@ -12232,7 +12232,7 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 512.0;
+    this.distance = 256.0;
     
     this.width = 0;
     this.height = 0;
@@ -12252,8 +12252,8 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
             
       var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
       
-      var left = Math.max(isometric.x - this.width / 2.0, 0);
-      var top = Math.max(isometric.y - this.height / 2.0, 0);
+      var left = isometric.x - this.width / 2.0;
+      var top = isometric.y - this.height / 2.0;
       
       
       var right = left + this.width;
@@ -12487,7 +12487,7 @@ define('static/tile',['require','../render/instance'],function(require) {
       var model = this.map.models[item.template];
       var template = this.map.templates[item.template];
       var instance = new Instance(model);
-      instance.scale(template.width, template.height);
+      instance.scale(template.renderwidth, template.renderheight);
       instance.translate(this.x + item.x, this.y + item.y);
       this.instances[i] = instance;
     },
@@ -12925,33 +12925,23 @@ define('static/map',['require','underscore','../render/material','../render/quad
     
     render: function(context) {
       
-    if(this.canvas.width !== context.canvas.width + this.tilewidth || this.canvas.height !== context.canvas.height + this.tileheight) {
-        this.canvas.width = context.canvas.width + this.tilewidth;
-        this.canvas.height = context.canvas.height + this.tileheight;
-        this.redrawBackground();
-      } else {
-       this.evaluateStatus();
-      }     
-
-      var offset = this.getCurrentOffset();
-      var dx = 0;
-      var dy = 0;
-      
-      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
-                  
-      context.drawImage(this.canvas, offset.x, offset.y, 
-      context.canvas.width, context.canvas.height, 
-        offset.x + this.tileleft * this.tilewidth, offset.y + this.tiletop * this.tileheight, 
-      context.canvas.width, context.canvas.height); 
-    },
-    
-    getCurrentOffset: function() {
-      return {
-        x: this.scene.graph.viewport.left % this.tilewidth,
-        y: this.scene.graph.viewport.top % this.tileheight
+      if(this.canvas.width !== context.canvas.width || this.canvas.height !== context.canvas.height) {
+          this.canvas.width = context.canvas.width;
+          this.canvas.height = context.canvas.height;
       };
+
+      this.evaluateStatus();
+
+      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
+      
+      context.save();
+      context.setTransform(1,0,0,1,0,0);          
+                
+      context.drawImage(this.canvas, 0, 0, context.canvas.width, context.canvas.height);
+      
+      context.restore();
     },
-    
+        
     forEachVisibleTile: function(callback) {
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
@@ -12973,8 +12963,8 @@ define('static/map',['require','underscore','../render/material','../render/quad
       
       var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
       var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
-      var tileright = parseInt( Math.min(bottomright.x, topright.x) / this.tilewidth) + 1;
-      var tilebottom = parseInt( Math.min(bottomleft.y, bottomright.y) / this.tileheight) + 1;
+      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) + 1;
+      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) + 1;
       
       tileleft = Math.max(tileleft, 0);
       tiletop = Math.max(tiletop, 0);
@@ -12990,17 +12980,18 @@ define('static/map',['require','underscore','../render/material','../render/quad
         this.tileright = tileright;
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
-        this.redrawBackground();
       }
+      this.redrawBackground();
     },
     
     redrawBackground: function() { 
      
       this.graph.updateViewport(
-          this.tileleft * this.tilewidth,
-          this.tileright * this.tilewidth,
-          this.tiletop * this.tileheight,
-          this.tilebottom * this.tileheight);         
+        this.scene.graph.viewport.left,
+        this.scene.graph.viewport.right,
+        this.scene.graph.viewport.top,
+        this.scene.graph.viewport.bottom      
+      );
         
       this.populateGraph();      
       this.renderer.clear();
@@ -13223,6 +13214,11 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
       
       this.redrawBackground();             
     },
+    updateTemplatesFromLibrary: function(library) {
+      for(var i in this.templates) {
+        this.templates[i] = library.getLibraryElement(i);
+      }
+    },
     addTemplate: function(template) {
       this.templates[template.id] = template;
       this.createModelForTemplate(template);
@@ -13277,7 +13273,7 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
     render: function(context) {
       context.save(); 
       
-      context.strokeStyle = 'rgba(25, 25, 25, 0.5)';
+      context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
       context.lineWidth = 0.25;
           
       context.beginPath();
@@ -13485,8 +13481,10 @@ define('editor/library',['require','./libraryitemtool'],function(require) {
   var ConstLibraryElements = {
    tree: {
       id: "tree",
-      width: 25,
-      height: 25,
+      width: 10,
+      height: 5,      
+      renderwidth: 25,
+      renderheight: 25,
       texture: "/main/tree.png",
       solid: true
     } 
@@ -13685,7 +13683,9 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
 
       var mapResource = this.context.resources.get('/main/world.json');      
       this.map = new MapBuilder(mapResource.get());
+            this.map.updateTemplatesFromLibrary(this.library);
       this.context.scene.add(this.map);
+
       this.grid = new Grid(this.map);
       this.context.scene.add(this.grid); 
     },
