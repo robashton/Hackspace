@@ -42,16 +42,15 @@ define(function(require) {
       });      
     },
     intersectWithMouse: function(x, y) {
-      if(this.parent.id === 'quest-giver') {
-        console.log(x,y, this.position[0], this.position[1]);
-      
-      }
     
       if(x < this.position[0]) return false;
       if(x > this.position[0] + this.size[0]) return false;
       if(y < this.position[1]) return false;
       if(y > this.position[1] + this.size[1]) return false;
       return true;
+    },
+    getPosition: function() {
+      return this.position;
     },
     collideWithMap: function(map) {     
       var result = {

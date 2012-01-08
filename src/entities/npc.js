@@ -8,6 +8,7 @@ define(function(require) {
   var Directable = require('./components/directable');
   var Trackable = require('./components/trackable');
   var Entity = require('../scene/entity');
+  var Conversational = require('./components/conversational');
 
   var Npc = function(id, x ,y) {
     Entity.call(this, id);
@@ -16,6 +17,7 @@ define(function(require) {
     this.attach(new Renderable('character'));
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
+    this.attach(new Conversational([]));
 
   };  
   Npc.prototype = {};  

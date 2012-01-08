@@ -2901,16 +2901,15 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       });      
     },
     intersectWithMouse: function(x, y) {
-      if(this.parent.id === 'quest-giver') {
-        console.log(x,y, this.position[0], this.position[1]);
-      
-      }
     
       if(x < this.position[0]) return false;
       if(x > this.position[0] + this.size[0]) return false;
       if(y < this.position[1]) return false;
       if(y > this.position[1] + this.size[1]) return false;
       return true;
+    },
+    getPosition: function() {
+      return this.position;
     },
     collideWithMap: function(map) {     
       var result = {
@@ -3351,28 +3350,39 @@ define('entities/components/actionable',['require'],function(require) {
     primaryAction: function(targetId) {
       var self = this;
       this.scene.withEntity(targetId, function(target) {
-        console.log('gagh');
-        var position = target.get('position');
-        self.parent.dispatch('updateDestination', position);
-        self.seekingTarget = true;
-        self.targetId = targetId;
+        if(target.get('canBeSpokenTo', [], false)) {
+          self.speakTo(target);
+        }
       });
+    },
+    
+    speakTo: function(target) {
+      var position = target.get('getPosition');
+      this.parent.dispatch('updateDestination', [position[0], position[1]]);
+      this.seekingTarget = true;
+      this.targetId = target.id;
+      this.actionOnDestinationReached = this.startDialogWithTarget;
     },
     
     onDestinationReached: function() {
       if(this.seekingTarget) {
-        this.actionOnTarget(this.targetId);
+        this.actionOnDestinationReached();
         this.seekingTarget = false;
         this.targetId = null; 
       }
     },
     
-    actionOnTarget: function(targetId) {
-      console.log('Actioned');      
+    startDialogWithTarget: function() {
+      var self = this;
+      this.scene.withEntity(this.targetId, function(target) {
+        target.dispatch('initiateConversationWith', [self.parent.id]);
+      });
     },
     
     onDestinationChanged: function() {
       this.seekingTarget = false;
+      this.actionOnDestinationReached = false;
+      this.targetId = null;
     }
   };
   
@@ -3560,7 +3570,37 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity'],function(require) {
+define('entities/components/carrier',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Carrier = function() {
+    this.items = [];
+  };
+  
+  Carrier.prototype = {
+    countOfItemType: function(itemType) {
+      return _(this.items).count(function(item) {
+        return item.type === itemType;
+      });
+    },
+    add: function(item) {
+      this.items.push(item);
+      this.parent.raise('ItemPickedUp', {
+        item: item
+      });
+    },
+    remove: function(item) {
+      this.items = _(this.items).without(item);
+      this.parent.raise('ItemRemoved', {
+        item: item
+      });
+    }
+  };
+  
+  return Carrier;
+});
+
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier'],function(require) {
 
   var _ = require('underscore');
   
@@ -3571,6 +3611,7 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Trackable = require('./components/trackable');
   var Actionable = require('./components/actionable');
   var Entity = require('../scene/entity');
+  var Carrier = require('./components/carrier');
 
   var Character = function(id, x ,y) {
     Entity.call(this, id);
@@ -3581,6 +3622,7 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
     this.attach(new Actionable());
+    this.attach(new Carrier());
 
   };  
   Character.prototype = {};  
@@ -3589,7 +3631,53 @@ define('entities/character',['require','underscore','./components/physical','./c
   return Character;
 });
 
-define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','../scene/entity'],function(require) {
+define('entities/components/conversational',['require','underscore'],function(require) {
+
+  var _ = require('underscore');
+
+  var Conversational = function(conversations) {
+    this.scene = null;
+    this.conversations = conversations;
+  };
+  
+  Conversational.prototype = { 
+           
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    
+    canBeSpokenTo: function() {
+      return true;
+    },
+    
+    initiateConversationWith: function(entityId) {
+      if(this.attemptAutoStart(entityId)) return;
+      this.showConversationListTo(entityId);      
+    },
+    attemptAutoStart: function(entityId) {
+      var autoConverse = _(this.conversations).find(function(convo) {
+        return convo.autoStartsFor(entityId);
+      });
+      if(autoConverse) {
+        this.startConversation(entityId, autoConverse);
+      };
+      return !!autoConverse;
+    },
+    showConversationListTo: function(entityId) {
+      var appropriateConversations = _(this.conversations).filter(function(convo) {
+        return convo.isAppropriateFor(entityId);
+      });      
+    },
+    startConversation: function(entityId, convo) {
+      convo.run(entityId);
+    }
+  };  
+  
+  return Conversational;
+  
+});
+
+define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','../scene/entity','./components/conversational'],function(require) {
 
   var _ = require('underscore');
   
@@ -3599,6 +3687,7 @@ define('entities/npc',['require','underscore','./components/physical','./compone
   var Directable = require('./components/directable');
   var Trackable = require('./components/trackable');
   var Entity = require('../scene/entity');
+  var Conversational = require('./components/conversational');
 
   var Npc = function(id, x ,y) {
     Entity.call(this, id);
@@ -3607,6 +3696,7 @@ define('entities/npc',['require','underscore','./components/physical','./compone
     this.attach(new Renderable('character'));
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
+    this.attach(new Conversational([]));
 
   };  
   Npc.prototype = {};  
@@ -13569,15 +13659,14 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
            
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
-            x /= scalex;
+     
+      x /= scalex;
       y /= scaley;    
+      
       x += (viewport.left);
       y += (viewport.top); 
-      
-
-      
-     return  Coords.isometricToWorld(x,y); 
-   
+            
+      return  Coords.isometricToWorld(x,y);   
       
     }
   };

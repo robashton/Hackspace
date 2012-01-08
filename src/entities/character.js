@@ -9,6 +9,7 @@ define(function(require) {
   var Trackable = require('./components/trackable');
   var Actionable = require('./components/actionable');
   var Entity = require('../scene/entity');
+  var Carrier = require('./components/carrier');
 
   var Character = function(id, x ,y) {
     Entity.call(this, id);
@@ -19,6 +20,7 @@ define(function(require) {
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
     this.attach(new Actionable());
+    this.attach(new Carrier());
 
   };  
   Character.prototype = {};  

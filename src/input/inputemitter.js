@@ -39,11 +39,8 @@ define(function(require) {
       
       x += (viewport.left);
       y += (viewport.top); 
-      
-
-      
-     return  Coords.isometricToWorld(x,y); 
-   
+            
+      return  Coords.isometricToWorld(x,y);   
       
     }
   };

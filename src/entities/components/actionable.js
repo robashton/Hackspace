@@ -15,28 +15,39 @@ define(function(require) {
     primaryAction: function(targetId) {
       var self = this;
       this.scene.withEntity(targetId, function(target) {
-        console.log('gagh');
-        var position = target.get('position');
-        self.parent.dispatch('updateDestination', position);
-        self.seekingTarget = true;
-        self.targetId = targetId;
+        if(target.get('canBeSpokenTo', [], false)) {
+          self.speakTo(target);
+        }
       });
+    },
+    
+    speakTo: function(target) {
+      var position = target.get('getPosition');
+      this.parent.dispatch('updateDestination', [position[0], position[1]]);
+      this.seekingTarget = true;
+      this.targetId = target.id;
+      this.actionOnDestinationReached = this.startDialogWithTarget;
     },
     
     onDestinationReached: function() {
       if(this.seekingTarget) {
-        this.actionOnTarget(this.targetId);
+        this.actionOnDestinationReached();
         this.seekingTarget = false;
         this.targetId = null; 
       }
     },
     
-    actionOnTarget: function(targetId) {
-      console.log('Actioned');      
+    startDialogWithTarget: function() {
+      var self = this;
+      this.scene.withEntity(this.targetId, function(target) {
+        target.dispatch('initiateConversationWith', [self.parent.id]);
+      });
     },
     
     onDestinationChanged: function() {
       this.seekingTarget = false;
+      this.actionOnDestinationReached = false;
+      this.targetId = null;
     }
   };
   
