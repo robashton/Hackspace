@@ -3350,18 +3350,18 @@ define('entities/components/actionable',['require'],function(require) {
     primaryAction: function(targetId) {
       var self = this;
       this.scene.withEntity(targetId, function(target) {
-        if(target.get('canBeSpokenTo', [], false)) {
-          self.speakTo(target);
+        if(target.get('hasQuests', [], false)) {
+          self.getQuest(target);
         }
       });
     },
     
-    speakTo: function(target) {
+    getQuest: function(target) {
       var position = target.get('getPosition');
       this.parent.dispatch('updateDestination', [position[0], position[1]]);
       this.seekingTarget = true;
       this.targetId = target.id;
-      this.actionOnDestinationReached = this.startDialogWithTarget;
+      this.actionOnDestinationReached = this.getQuestFromTarget;
     },
     
     onDestinationReached: function() {
@@ -3372,10 +3372,10 @@ define('entities/components/actionable',['require'],function(require) {
       }
     },
     
-    startDialogWithTarget: function() {
+    getQuestFromTarget: function() {
       var self = this;
       this.scene.withEntity(this.targetId, function(target) {
-        target.dispatch('initiateConversationWith', [self.parent.id]);
+        target.dispatch('takeQuest', [self.parent]);
       });
     },
     
@@ -3522,7 +3522,6 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
     get: function(query, data, defaultValue) {
       var handler = this.findCommandHandler(query);
       if(!handler) {
-         console.warn("Could not find handler for query '" + query + "' on entity " + this.id);
          return defaultValue;
       }
       return handler.method.apply(handler.component, data); 
@@ -3600,7 +3599,24 @@ define('entities/components/carrier',['require','underscore'],function(require) 
   return Carrier;
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier'],function(require) {
+define('entities/components/quester',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Quester = function() {
+    this.quests = [];
+  };
+  
+  Quester.prototype = {
+    startQuest: function(quest) {
+      this.quests.push(quest);
+      quest.start(this.parent);
+    }
+  };
+  
+  return Quester;
+});
+
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester'],function(require) {
 
   var _ = require('underscore');
   
@@ -3612,6 +3628,7 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Actionable = require('./components/actionable');
   var Entity = require('../scene/entity');
   var Carrier = require('./components/carrier');
+  var Quester = require('./components/quester');
 
   var Character = function(id, x ,y) {
     Entity.call(this, id);
@@ -3623,6 +3640,7 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Trackable());
     this.attach(new Actionable());
     this.attach(new Carrier());
+    this.attach(new Quester());
 
   };  
   Character.prototype = {};  
@@ -3631,53 +3649,86 @@ define('entities/character',['require','underscore','./components/physical','./c
   return Character;
 });
 
-define('entities/components/conversational',['require','underscore'],function(require) {
+define('scripting/quest',['underscore'],function() {
 
   var _ = require('underscore');
 
-  var Conversational = function(conversations) {
-    this.scene = null;
-    this.conversations = conversations;
+  var Quest = function(questTemplate) {
+    this.questTemplate = questTemplate;
   };
   
-  Conversational.prototype = { 
-           
-    onAddedToScene: function(scene) {
-      this.scene = scene;
+  Quest.prototype = {
+    start: function(entity) {
+      this.entity = entity;
+      this.hookEntityEvents();
+      this.questTemplate.start.call(this);
+      console.log('quest started');
     },
-    
-    canBeSpokenTo: function() {
-      return true;
+    stop: function() {
+     for(var key in this.questTemplate) { 
+        if(key.indexOf('on') === 0) {
+          this.entity.off(key.substr(2), this.questTemplate[key], this);
+        }   
+      }
     },
-    
-    initiateConversationWith: function(entityId) {
-      if(this.attemptAutoStart(entityId)) return;
-      this.showConversationListTo(entityId);      
-    },
-    attemptAutoStart: function(entityId) {
-      var autoConverse = _(this.conversations).find(function(convo) {
-        return convo.autoStartsFor(entityId);
-      });
-      if(autoConverse) {
-        this.startConversation(entityId, autoConverse);
-      };
-      return !!autoConverse;
-    },
-    showConversationListTo: function(entityId) {
-      var appropriateConversations = _(this.conversations).filter(function(convo) {
-        return convo.isAppropriateFor(entityId);
-      });      
-    },
-    startConversation: function(entityId, convo) {
-      convo.run(entityId);
+    hookEntityEvents: function() {
+      for(var key in this.questTemplate) { 
+        if(key.indexOf('on') === 0) {
+          this.entity.on(key.substr(2), this.questTemplate[key], this);
+        }   
+      }
     }
-  };  
+  };
   
-  return Conversational;
-  
+  return Quest;
 });
 
-define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','../scene/entity','./components/conversational'],function(require) {
+define('entities/components/questgiver',['require','underscore','../../scripting/quest'],function(require) {
+  var _ = require('underscore');
+  
+  var Quest = require('../../scripting/quest');
+
+  var QuestGiver = function(questTemplate) {
+    this.questTemplate = questTemplate;
+  };
+  
+  QuestGiver.prototype = {
+    takeQuest: function(entity) {
+      var quest = new Quest(this.questTemplate);
+      entity.dispatch('startQuest', [quest]);
+    },
+    hasQuests: function() {
+      return true;
+    }
+  };
+  
+  return QuestGiver;
+});
+
+define('scripting/quests/fetchducks',['underscore'],function() {
+
+  var _ = require('underscore');
+
+  FetchDucks = {
+    start: function() {
+      this.itemCount = 0;
+    },
+    onItemPickedUp: function() {
+      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
+    },
+    onItemRemoved: function() {
+      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
+    },
+    meta: {
+      askText: "Help, please fetch my ducks for me",
+      description: "You've been asked to fetch five ducks"
+    }
+  };
+  
+  return FetchDucks;    
+});
+
+define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/questgiver','../scene/entity','../scripting/quests/fetchducks'],function(require) {
 
   var _ = require('underscore');
   
@@ -3686,8 +3737,10 @@ define('entities/npc',['require','underscore','./components/physical','./compone
   var Tangible = require('./components/tangible');
   var Directable = require('./components/directable');
   var Trackable = require('./components/trackable');
+  var QuestGiver = require('./components/questgiver');
   var Entity = require('../scene/entity');
-  var Conversational = require('./components/conversational');
+  
+  var FetchDucks = require('../scripting/quests/fetchducks');
 
   var Npc = function(id, x ,y) {
     Entity.call(this, id);
@@ -3696,7 +3749,7 @@ define('entities/npc',['require','underscore','./components/physical','./compone
     this.attach(new Renderable('character'));
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
-    this.attach(new Conversational([]));
+    this.attach(new QuestGiver(FetchDucks));
 
   };  
   Npc.prototype = {};  

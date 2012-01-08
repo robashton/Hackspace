@@ -15,18 +15,18 @@ define(function(require) {
     primaryAction: function(targetId) {
       var self = this;
       this.scene.withEntity(targetId, function(target) {
-        if(target.get('canBeSpokenTo', [], false)) {
-          self.speakTo(target);
+        if(target.get('hasQuests', [], false)) {
+          self.getQuest(target);
         }
       });
     },
     
-    speakTo: function(target) {
+    getQuest: function(target) {
       var position = target.get('getPosition');
       this.parent.dispatch('updateDestination', [position[0], position[1]]);
       this.seekingTarget = true;
       this.targetId = target.id;
-      this.actionOnDestinationReached = this.startDialogWithTarget;
+      this.actionOnDestinationReached = this.getQuestFromTarget;
     },
     
     onDestinationReached: function() {
@@ -37,10 +37,10 @@ define(function(require) {
       }
     },
     
-    startDialogWithTarget: function() {
+    getQuestFromTarget: function() {
       var self = this;
       this.scene.withEntity(this.targetId, function(target) {
-        target.dispatch('initiateConversationWith', [self.parent.id]);
+        target.dispatch('takeQuest', [self.parent]);
       });
     },
     

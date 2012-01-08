@@ -7,8 +7,10 @@ define(function(require) {
   var Tangible = require('./components/tangible');
   var Directable = require('./components/directable');
   var Trackable = require('./components/trackable');
+  var QuestGiver = require('./components/questgiver');
   var Entity = require('../scene/entity');
-  var Conversational = require('./components/conversational');
+  
+  var FetchDucks = require('../scripting/quests/fetchducks');
 
   var Npc = function(id, x ,y) {
     Entity.call(this, id);
@@ -17,7 +19,7 @@ define(function(require) {
     this.attach(new Renderable('character'));
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
-    this.attach(new Conversational([]));
+    this.attach(new QuestGiver(FetchDucks));
 
   };  
   Npc.prototype = {};  

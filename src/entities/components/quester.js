@@ -1,31 +1,14 @@
-define(function() {
+define(function(require) {
+  var _ = require('underscore');
 
-  var Quester = function(questFactory) {
-    this.questFactory = questFactory;
+  var Quester = function() {
+    this.quests = [];
   };
   
   Quester.prototype = {
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-    },
-    
-    startQuest: function(questid) {
-      var quest = this.questFactory.get(questId);
-      this.hookQuestEvents(quest);
-    },
-    
-    hookQuestEvents: function(quest) {
-      var self = this;
+    startQuest: function(quest) {
+      this.quests.push(quest);
       quest.start(this.parent);
-      quest.on('Finished', function() {
-        self.onQuestFinished(quest);
-      });
-    },
-    onQuestFinished: function(quest) {
-      this.unhookQuestEvents(quest);
-    },
-    unhookQuestEvents: function(quest) {
-      quest.stop();
     }
   };
   

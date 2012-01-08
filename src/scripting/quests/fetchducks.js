@@ -13,12 +13,10 @@ define(function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
     },
     meta: {
-      id: "fetch-ducks",
       askText: "Help, please fetch my ducks for me",
       description: "You've been asked to fetch five ducks"
     }
   };
   
-  return FetchDucks;  
-  
+  return FetchDucks;    
 });
