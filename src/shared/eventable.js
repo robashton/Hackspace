@@ -7,6 +7,20 @@ define(function(require) {
   };
   
   Eventable.prototype = {
+    autoHook: function(container) {
+      for(var key in container) { 
+        if(key.indexOf('on') === 0) {
+          this.on(key.substr(2), container[key], container);
+        }   
+      }
+    },
+    autoUnhook: function(container) {
+      for(var key in container) { 
+        if(key.indexOf('on') === 0) {
+          this.off(key.substr(2), container[key], container);
+        }   
+      }
+    },
     on: function(eventName, callback, context) {
       this.eventContainerFor(eventName).add(callback, context);
     },

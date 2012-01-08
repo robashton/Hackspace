@@ -1,32 +1,41 @@
-define(function() {
+define(function(require) {
 
   var _ = require('underscore');
+  var Eventable = require('../shared/eventable');
 
   var Quest = function(questTemplate) {
+    Eventable.call(this);
     this.questTemplate = questTemplate;
+    _.extend(this, questTemplate)
   };
   
   Quest.prototype = {
+  
     start: function(entity) {
       this.entity = entity;
       this.hookEntityEvents();
-      this.questTemplate.start.call(this);
-    },
-    stop: function() {
-     for(var key in this.questTemplate) { 
-        if(key.indexOf('on') === 0) {
-          this.entity.off(key.substr(2), this.questTemplate[key], this);
-        }   
-      }
-    },
+      this.init();
+    },   
+    
+    madeFromTemplate: function(template) {
+      return this.questTemplate === template;
+    }, 
+        
     hookEntityEvents: function() {
-      for(var key in this.questTemplate) { 
-        if(key.indexOf('on') === 0) {
-          this.entity.on(key.substr(2), this.questTemplate[key], this);
-        }   
-      }
+      this.entity.autoHook(this);
+    },
+    
+    markComplete: function() {
+      this.raise('Completed');
+      this.stop();
+    },
+    
+    stop: function() {
+      this.entity.autoUnhook(this);
     }
   };
+  
+  _.extend(Quest.prototype, Eventable.prototype);
   
   return Quest;
 });

@@ -8,12 +8,13 @@ define(function(require) {
   };
   
   QuestGiver.prototype = {
-    takeQuest: function(entity) {
-      var quest = new Quest(this.questTemplate);
-      entity.dispatch('startQuest', [quest]);
-    },
-    hasQuests: function() {
+    canTalk: function(entity) {
       return true;
+    },
+    
+    getQuest: function(entity) {
+      if(!entity.get('hasStartedQuest', [ this.questTemplate ]))
+        return this.questTemplate;
     }
   };
   

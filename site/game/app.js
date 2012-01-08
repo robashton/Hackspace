@@ -3359,32 +3359,37 @@ define('entities/components/actionable',['require'],function(require) {
     primaryAction: function(targetId) {
       var self = this;
       this.scene.withEntity(targetId, function(target) {
-        if(target.get('hasQuests', [], false)) {
-          self.getQuest(target);
-        }
+        if(target.get('canTalk', [self], false))
+          self.moveToAndExecute(target, self.discussWithTarget);
+        else if(target.get('hasPickup', [], false))
+           self.moveToAndExecute(target, self.pickupTarget);
       });
     },
     
-    getQuest: function(target) {
+    moveToAndExecute: function(target, callback) {
       var position = target.get('getPosition');
       this.parent.dispatch('updateDestination', [position[0], position[1]]);
       this.seekingTarget = true;
       this.targetId = target.id;
-      this.actionOnDestinationReached = this.getQuestFromTarget;
+      this.actionOnDestinationReached = callback;
     },
-    
+        
     onDestinationReached: function() {
       if(this.seekingTarget) {
         this.actionOnDestinationReached();
         this.seekingTarget = false;
-        this.targetId = null; 
+        this.targetId = null;      
       }
     },
     
-    getQuestFromTarget: function() {
+    discussWithTarget: function() {
+      this.parent.raise('Discussion', this.targetId);
+    },
+    
+    pickupTarget: function() {
       var self = this;
       this.scene.withEntity(this.targetId, function(target) {
-        target.dispatch('takeQuest', [self.parent]);
+        target.dispatch('giveItemTo', [ self.parent.id ]);
       });
     },
     
@@ -3408,7 +3413,8 @@ define('shared/eventcontainer',['require','underscore'],function(require) {
   
   EventContainer.prototype = {
     raise: function(source, data) {
-     for(var i = 0; i < this.handlers.length; i++) {
+     var handlerLength = this.handlers.length;
+     for(var i = 0; i < handlerLength; i++) {
         var handler = this.handlers[i];
         handler.method.call(handler.context || this.defaultContext, data, source);   
      }
@@ -3418,6 +3424,7 @@ define('shared/eventcontainer',['require','underscore'],function(require) {
         method: method,
         context: context      
       });
+      console.log('handler added');
     },
     remove: function(method, context) {
       this.handlers = _(this.handlers).filter(function(item) {
@@ -3438,6 +3445,20 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
   };
   
   Eventable.prototype = {
+    autoHook: function(container) {
+      for(var key in container) { 
+        if(key.indexOf('on') === 0) {
+          this.on(key.substr(2), container[key], container);
+        }   
+      }
+    },
+    autoUnhook: function(container) {
+      for(var key in container) { 
+        if(key.indexOf('on') === 0) {
+          this.off(key.substr(2), container[key], container);
+        }   
+      }
+    },
     on: function(eventName, callback, context) {
       this.eventContainerFor(eventName).add(callback, context);
     },
@@ -3587,9 +3608,9 @@ define('entities/components/carrier',['require','underscore'],function(require) 
   
   Carrier.prototype = {
     countOfItemType: function(itemType) {
-      return _(this.items).count(function(item) {
+      return _(this.items).filter(function(item) {
         return item.type === itemType;
-      });
+      }).length;
     },
     add: function(item) {
       this.items.push(item);
@@ -3601,6 +3622,11 @@ define('entities/components/carrier',['require','underscore'],function(require) 
       this.items = _(this.items).without(item);
       this.parent.raise('ItemRemoved', {
         item: item
+      });
+    },
+    removeItemsOfType: function(itemType) {
+      this.items = _(this.items).filter(function(item) {
+        return item.type !== itemType
       });
     }
   };
@@ -3619,13 +3645,89 @@ define('entities/components/quester',['require','underscore'],function(require) 
     startQuest: function(quest) {
       this.quests.push(quest);
       quest.start(this.parent);
+    },
+    hasStartedQuest: function(template) {
+      return !!_(this.quests).find(function(quest) {
+        return quest.madeFromTemplate(template);
+      });
     }
   };
   
   return Quester;
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester'],function(require) {
+define('scripting/quest',['require','underscore','../shared/eventable'],function(require) {
+
+  var _ = require('underscore');
+  var Eventable = require('../shared/eventable');
+
+  var Quest = function(questTemplate) {
+    Eventable.call(this);
+    this.questTemplate = questTemplate;
+    _.extend(this, questTemplate)
+  };
+  
+  Quest.prototype = {
+  
+    start: function(entity) {
+      this.entity = entity;
+      this.hookEntityEvents();
+      this.init();
+    },   
+    
+    madeFromTemplate: function(template) {
+      return this.questTemplate === template;
+    }, 
+        
+    hookEntityEvents: function() {
+      this.entity.autoHook(this);
+    },
+    
+    markComplete: function() {
+      this.raise('Completed');
+      this.stop();
+    },
+    
+    stop: function() {
+      this.entity.autoUnhook(this);
+    }
+  };
+  
+  _.extend(Quest.prototype, Eventable.prototype);
+  
+  return Quest;
+});
+
+define('entities/components/talker',['require','underscore','../../scripting/quest'],function(require) {
+  var _ = require('underscore');
+  var Quest = require('../../scripting/quest');
+
+  var Talker = function() {
+    
+  };
+  
+  Talker.prototype = {
+    onDiscussion: function(targetid) {
+      var self = this;
+      this.scene.withEntity(targetid, function(target) {
+        var questTemplate = target.get('getQuest', [self.parent]);
+        if(questTemplate)
+          self.startQuestFromTemplate(questTemplate);
+      });
+    },
+    startQuestFromTemplate: function(questTemplate) {
+      var quest = new Quest(questTemplate);
+      this.parent.dispatch('startQuest', [quest]);
+    },
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    }
+  };
+  
+  return Talker;
+});
+
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester','./components/talker'],function(require) {
 
   var _ = require('underscore');
   
@@ -3638,6 +3740,7 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Entity = require('../scene/entity');
   var Carrier = require('./components/carrier');
   var Quester = require('./components/quester');
+  var Talker = require('./components/talker');
 
   var Character = function(id, x ,y) {
     Entity.call(this, id);
@@ -3650,45 +3753,13 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Actionable());
     this.attach(new Carrier());
     this.attach(new Quester());
+    this.attach(new Talker());
 
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);
   
   return Character;
-});
-
-define('scripting/quest',['underscore'],function() {
-
-  var _ = require('underscore');
-
-  var Quest = function(questTemplate) {
-    this.questTemplate = questTemplate;
-  };
-  
-  Quest.prototype = {
-    start: function(entity) {
-      this.entity = entity;
-      this.hookEntityEvents();
-      this.questTemplate.start.call(this);
-    },
-    stop: function() {
-     for(var key in this.questTemplate) { 
-        if(key.indexOf('on') === 0) {
-          this.entity.off(key.substr(2), this.questTemplate[key], this);
-        }   
-      }
-    },
-    hookEntityEvents: function() {
-      for(var key in this.questTemplate) { 
-        if(key.indexOf('on') === 0) {
-          this.entity.on(key.substr(2), this.questTemplate[key], this);
-        }   
-      }
-    }
-  };
-  
-  return Quest;
 });
 
 define('entities/components/questgiver',['require','underscore','../../scripting/quest'],function(require) {
@@ -3701,12 +3772,13 @@ define('entities/components/questgiver',['require','underscore','../../scripting
   };
   
   QuestGiver.prototype = {
-    takeQuest: function(entity) {
-      var quest = new Quest(this.questTemplate);
-      entity.dispatch('startQuest', [quest]);
-    },
-    hasQuests: function() {
+    canTalk: function(entity) {
       return true;
+    },
+    
+    getQuest: function(entity) {
+      if(!entity.get('hasStartedQuest', [ this.questTemplate ]))
+        return this.questTemplate;
     }
   };
   
@@ -3718,14 +3790,34 @@ define('scripting/quests/fetchducks',['underscore'],function() {
   var _ = require('underscore');
 
   FetchDucks = {
-    start: function() {
+    init: function() {
       this.itemCount = 0;
+      console.log('Duck quest started');
     },
     onItemPickedUp: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
+      console.log('Duck quest item picked up');
     },
     onItemRemoved: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
+      console.log('Duck quest item removed');
+    },
+    onDiscussion: function(entityId) {
+      if(entityId === 'quest-giver') {
+        this.determineIfQuestFinished();      
+      }
+    },
+    determineIfQuestFinished: function() {
+      if(this.itemCount === 5) {
+        console.log('Thanks for finding all my ducks');
+        this.removeDucksFromPlayer();
+        this.markComplete();
+      } else {
+        console.log('Please find my ducks, I miss my ducks');
+      }
+    },
+    removeDucksFromPlayer: function() {
+      this.entity.dispatch('removeItemsOfType', [ 'duck' ]);
     },
     meta: {
       askText: "Help, please fetch my ducks for me",
@@ -13661,18 +13753,19 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
      var self = this;
      
      this.element = $(element);
- 
-     this.element.click(function(e) {
-      self.onMouseClick(e);
-     });
+     
+     this.element.on({
+      click: function(e) {
+        var offset = self.element.offset();     
+        self.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
+      },
+      mousemove: function(e) {
+      
+      }
+    });
   };
   
   InputTranslator.prototype = {
-    onMouseClick: function(e) {
-      var offset = this.element.offset();     
-      this.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
-    },
-    
     raisePrimaryAction: function(x, y) {
       this.raise('PrimaryAction', {
         x: x,
@@ -14000,23 +14093,43 @@ define('scripting/item',['require','underscore'],function(require) {
   return Item;
 });
 
-define('entities/pickup',['require','underscore','../scene/entity','./components/renderable','./components/tangible'],function(require) {
+define('entities/pickup',['require','underscore','../scene/entity','./components/renderable','./components/tangible','./components/physical'],function(require) {
 
   var _ = require('underscore');
   var Entity = require('../scene/entity');
   var Renderable = require('./components/renderable');
   var Tangible = require('./components/tangible');
-
+  var Physical = require('./components/physical');
+  
   var Pickup = function(x, y, item) {
     Entity.call(this, 'pickup-' + item.id);
     this.item = item;
     
     this.attach(new Renderable(item.pickupTexture));
     this.attach(new Tangible(x, y, item.pickupWidth, item.pickupHeight));
+    this.attach(new Physical());
+    this.attachSelf();
   };
   
   Pickup.prototype = {
-    
+    attachSelf: function() {
+      var self = this;
+      this.attach({
+        giveItemTo: function(entityId) {
+          self.putItemInEntity(entityId);
+        },
+        hasPickup: function() {
+          return true;
+        }    
+      });
+    },
+    putItemInEntity: function(entityId) {
+      var self = this;
+      this.scene.withEntity(entityId, function(entity) {
+        entity.dispatch('add', [self.item]); 
+        self.scene.remove(self);
+      })
+    } 
   };
   
   _.extend(Pickup.prototype, Entity.prototype);

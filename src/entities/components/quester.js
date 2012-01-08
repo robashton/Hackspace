@@ -9,6 +9,11 @@ define(function(require) {
     startQuest: function(quest) {
       this.quests.push(quest);
       quest.start(this.parent);
+    },
+    hasStartedQuest: function(template) {
+      return !!_(this.quests).find(function(quest) {
+        return quest.madeFromTemplate(template);
+      });
     }
   };
   

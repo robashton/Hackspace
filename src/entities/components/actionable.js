@@ -15,32 +15,37 @@ define(function(require) {
     primaryAction: function(targetId) {
       var self = this;
       this.scene.withEntity(targetId, function(target) {
-        if(target.get('hasQuests', [], false)) {
-          self.getQuest(target);
-        }
+        if(target.get('canTalk', [self], false))
+          self.moveToAndExecute(target, self.discussWithTarget);
+        else if(target.get('hasPickup', [], false))
+           self.moveToAndExecute(target, self.pickupTarget);
       });
     },
     
-    getQuest: function(target) {
+    moveToAndExecute: function(target, callback) {
       var position = target.get('getPosition');
       this.parent.dispatch('updateDestination', [position[0], position[1]]);
       this.seekingTarget = true;
       this.targetId = target.id;
-      this.actionOnDestinationReached = this.getQuestFromTarget;
+      this.actionOnDestinationReached = callback;
     },
-    
+        
     onDestinationReached: function() {
       if(this.seekingTarget) {
         this.actionOnDestinationReached();
         this.seekingTarget = false;
-        this.targetId = null; 
+        this.targetId = null;      
       }
     },
     
-    getQuestFromTarget: function() {
+    discussWithTarget: function() {
+      this.parent.raise('Discussion', this.targetId);
+    },
+    
+    pickupTarget: function() {
       var self = this;
       this.scene.withEntity(this.targetId, function(target) {
-        target.dispatch('takeQuest', [self.parent]);
+        target.dispatch('giveItemTo', [ self.parent.id ]);
       });
     },
     

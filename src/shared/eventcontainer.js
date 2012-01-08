@@ -8,7 +8,8 @@ define(function(require) {
   
   EventContainer.prototype = {
     raise: function(source, data) {
-     for(var i = 0; i < this.handlers.length; i++) {
+     var handlerLength = this.handlers.length;
+     for(var i = 0; i < handlerLength; i++) {
         var handler = this.handlers[i];
         handler.method.call(handler.context || this.defaultContext, data, source);   
      }
@@ -18,6 +19,7 @@ define(function(require) {
         method: method,
         context: context      
       });
+      console.log('handler added');
     },
     remove: function(method, context) {
       this.handlers = _(this.handlers).filter(function(item) {

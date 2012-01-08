@@ -12572,7 +12572,8 @@ define('shared/eventcontainer',['require','underscore'],function(require) {
   
   EventContainer.prototype = {
     raise: function(source, data) {
-     for(var i = 0; i < this.handlers.length; i++) {
+     var handlerLength = this.handlers.length;
+     for(var i = 0; i < handlerLength; i++) {
         var handler = this.handlers[i];
         handler.method.call(handler.context || this.defaultContext, data, source);   
      }
@@ -12582,6 +12583,7 @@ define('shared/eventcontainer',['require','underscore'],function(require) {
         method: method,
         context: context      
       });
+      console.log('handler added');
     },
     remove: function(method, context) {
       this.handlers = _(this.handlers).filter(function(item) {
@@ -12602,6 +12604,20 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
   };
   
   Eventable.prototype = {
+    autoHook: function(container) {
+      for(var key in container) { 
+        if(key.indexOf('on') === 0) {
+          this.on(key.substr(2), container[key], container);
+        }   
+      }
+    },
+    autoUnhook: function(container) {
+      for(var key in container) { 
+        if(key.indexOf('on') === 0) {
+          this.off(key.substr(2), container[key], container);
+        }   
+      }
+    },
     on: function(eventName, callback, context) {
       this.eventContainerFor(eventName).add(callback, context);
     },

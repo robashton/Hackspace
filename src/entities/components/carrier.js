@@ -7,9 +7,9 @@ define(function(require) {
   
   Carrier.prototype = {
     countOfItemType: function(itemType) {
-      return _(this.items).count(function(item) {
+      return _(this.items).filter(function(item) {
         return item.type === itemType;
-      });
+      }).length;
     },
     add: function(item) {
       this.items.push(item);
@@ -21,6 +21,11 @@ define(function(require) {
       this.items = _(this.items).without(item);
       this.parent.raise('ItemRemoved', {
         item: item
+      });
+    },
+    removeItemsOfType: function(itemType) {
+      this.items = _(this.items).filter(function(item) {
+        return item.type !== itemType
       });
     }
   };

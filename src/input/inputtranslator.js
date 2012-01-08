@@ -9,18 +9,19 @@ define(function(require) {
      var self = this;
      
      this.element = $(element);
- 
-     this.element.click(function(e) {
-      self.onMouseClick(e);
-     });
+     
+     this.element.on({
+      click: function(e) {
+        var offset = self.element.offset();     
+        self.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
+      },
+      mousemove: function(e) {
+      
+      }
+    });
   };
   
   InputTranslator.prototype = {
-    onMouseClick: function(e) {
-      var offset = this.element.offset();     
-      this.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
-    },
-    
     raisePrimaryAction: function(x, y) {
       this.raise('PrimaryAction', {
         x: x,

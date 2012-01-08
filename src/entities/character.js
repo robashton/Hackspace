@@ -11,6 +11,7 @@ define(function(require) {
   var Entity = require('../scene/entity');
   var Carrier = require('./components/carrier');
   var Quester = require('./components/quester');
+  var Talker = require('./components/talker');
 
   var Character = function(id, x ,y) {
     Entity.call(this, id);
@@ -23,6 +24,7 @@ define(function(require) {
     this.attach(new Actionable());
     this.attach(new Carrier());
     this.attach(new Quester());
+    this.attach(new Talker());
 
   };  
   Character.prototype = {};  
