@@ -11,7 +11,6 @@ define(function() {
       this.entity = entity;
       this.hookEntityEvents();
       this.questTemplate.start.call(this);
-      console.log('quest started');
     },
     stop: function() {
      for(var key in this.questTemplate) { 

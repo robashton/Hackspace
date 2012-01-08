@@ -5,12 +5,13 @@ define(function(require) {
   var Quad = require('../../render/quad');
   var ExtraMath = require('../../shared/extramath');
   
-  var Renderable = function(textureName) {
+  var Renderable = function(textureName, canRotate) {
     this.scene = null;
     this.instance = null;
     this.textureName = textureName;
     this.material = null;
     this.model = null;
+    this.canRotate = canRotate;
   };
   
   Renderable.prototype = {    
@@ -22,7 +23,8 @@ define(function(require) {
       this.instance.translate(data.x, data.y, data.z);
     },
     onRotationChanged: function(data) {
-      this.determineTextureFromRotation(data.x);
+      if(this.canRotate)
+        this.determineTextureFromRotation(data.x);
     },
        
     onAddedToScene: function(scene) {
@@ -35,7 +37,14 @@ define(function(require) {
       this.model = new Quad(this.material);
       this.instance = new Instance(this.model);
       this.scene.graph.add(this.instance);
-      this.determineTextureFromRotation(Math.PI);
+      if(this.canRotate)
+        this.determineTextureFromRotation(Math.PI);
+      else
+        this.determineFixedTexture();
+    },
+    
+    determineFixedTexture: function() {
+      this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '.png');
     },
     
     determineTextureFromRotation: function(rotation) {

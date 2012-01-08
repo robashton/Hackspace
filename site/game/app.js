@@ -3111,12 +3111,13 @@ define('entities/components/renderable',['require','../../render/instance','../.
   var Quad = require('../../render/quad');
   var ExtraMath = require('../../shared/extramath');
   
-  var Renderable = function(textureName) {
+  var Renderable = function(textureName, canRotate) {
     this.scene = null;
     this.instance = null;
     this.textureName = textureName;
     this.material = null;
     this.model = null;
+    this.canRotate = canRotate;
   };
   
   Renderable.prototype = {    
@@ -3128,7 +3129,8 @@ define('entities/components/renderable',['require','../../render/instance','../.
       this.instance.translate(data.x, data.y, data.z);
     },
     onRotationChanged: function(data) {
-      this.determineTextureFromRotation(data.x);
+      if(this.canRotate)
+        this.determineTextureFromRotation(data.x);
     },
        
     onAddedToScene: function(scene) {
@@ -3141,7 +3143,14 @@ define('entities/components/renderable',['require','../../render/instance','../.
       this.model = new Quad(this.material);
       this.instance = new Instance(this.model);
       this.scene.graph.add(this.instance);
-      this.determineTextureFromRotation(Math.PI);
+      if(this.canRotate)
+        this.determineTextureFromRotation(Math.PI);
+      else
+        this.determineFixedTexture();
+    },
+    
+    determineFixedTexture: function() {
+      this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '.png');
     },
     
     determineTextureFromRotation: function(rotation) {
@@ -3634,7 +3643,7 @@ define('entities/character',['require','underscore','./components/physical','./c
     Entity.call(this, id);
     
     this.attach(new Physical());
-    this.attach(new Renderable('character'));
+    this.attach(new Renderable('character', true));
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
@@ -3662,7 +3671,6 @@ define('scripting/quest',['underscore'],function() {
       this.entity = entity;
       this.hookEntityEvents();
       this.questTemplate.start.call(this);
-      console.log('quest started');
     },
     stop: function() {
      for(var key in this.questTemplate) { 
@@ -3746,7 +3754,7 @@ define('entities/npc',['require','underscore','./components/physical','./compone
     Entity.call(this, id);
     
     this.attach(new Physical());
-    this.attach(new Renderable('character'));
+    this.attach(new Renderable('character', true));
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
     this.attach(new QuestGiver(FetchDucks));
@@ -13966,7 +13974,58 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
 
 });
 
-define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid'],function(require) {
+define('scripting/items/duck',['require'],function(require) {
+
+  return {
+    type: 'duck',
+    pickupWidth: 10,
+    pickupHeight: 10,
+    pickupTexture: 'duck'
+  };
+  
+});
+
+define('scripting/item',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Item = function(id, template) {
+    _.extend(this, template);
+    this.id = id;    
+  };
+  
+  Item.prototype = {
+    
+  };
+  
+  return Item;
+});
+
+define('entities/pickup',['require','underscore','../scene/entity','./components/renderable','./components/tangible'],function(require) {
+
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+
+  var Pickup = function(x, y, item) {
+    Entity.call(this, 'pickup-' + item.id);
+    this.item = item;
+    
+    this.attach(new Renderable(item.pickupTexture));
+    this.attach(new Tangible(x, y, item.pickupWidth, item.pickupHeight));
+  };
+  
+  Pickup.prototype = {
+    
+  };
+  
+  _.extend(Pickup.prototype, Entity.prototype);
+  
+  return Pickup;
+  
+});
+
+define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup'],function(require) {
 
   var Character = require('../../entities/character');
   var Npc = require('../../entities/npc');
@@ -13977,7 +14036,10 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
   var Map = require('../../static/map');
   var Context = require('../../harness/context');
   var $ = require('jquery');
-    var Grid = require('../../editor/grid');
+  var Grid = require('../../editor/grid');
+  var DuckTemplate = require('../../scripting/items/duck');
+  var Item = require('../../scripting/item');
+  var Pickup = require('../../entities/pickup');
     
   var Demo = function(element) {
     this.element = element;
@@ -14003,7 +14065,19 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       this.grid = new Grid(map);
       this.context.scene.add(this.grid); 
       var input = new InputEmitter(context.scene, this.element);
-
+      
+      var duckOne = new Item('duck1', DuckTemplate);
+      var duckTwo = new Item('duck2', DuckTemplate);
+      var duckThree = new Item('duck3', DuckTemplate);
+      var duckFour = new Item('duck4', DuckTemplate);
+      var duckFive = new Item('duck5', DuckTemplate);
+      
+      // And until I have enemies to spawn
+      context.scene.add(new Pickup(320, 220, duckOne));
+      context.scene.add(new Pickup(420, 320, duckTwo));
+      context.scene.add(new Pickup(420, 420, duckThree));
+      context.scene.add(new Pickup(420, 520, duckFour));
+      context.scene.add(new Pickup(520, 520, duckFive));
     }
   }
 

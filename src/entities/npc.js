@@ -16,7 +16,7 @@ define(function(require) {
     Entity.call(this, id);
     
     this.attach(new Physical());
-    this.attach(new Renderable('character'));
+    this.attach(new Renderable('character', true));
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(3.0));
     this.attach(new QuestGiver(FetchDucks));

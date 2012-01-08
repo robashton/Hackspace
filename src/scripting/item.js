@@ -1,8 +1,9 @@
 define(function(require) {
   var _ = require('underscore');
 
-  var Item = function(type) {
-    this.type = type;
+  var Item = function(id, template) {
+    _.extend(this, template);
+    this.id = id;    
   };
   
   Item.prototype = {
