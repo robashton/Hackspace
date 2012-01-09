@@ -3424,7 +3424,6 @@ define('shared/eventcontainer',['require','underscore'],function(require) {
         method: method,
         context: context      
       });
-      console.log('handler added');
     },
     remove: function(method, context) {
       this.handlers = _(this.handlers).filter(function(item) {
@@ -3675,12 +3674,17 @@ define('scripting/quest',['require','underscore','../shared/eventable'],function
       this.init();
     },   
     
+    
     madeFromTemplate: function(template) {
       return this.questTemplate === template;
     }, 
         
     hookEntityEvents: function() {
       this.entity.autoHook(this);
+    },
+    
+    markUpdated: function() {
+      this.raise('Updated');
     },
     
     markComplete: function() {
@@ -3716,6 +3720,9 @@ define('entities/components/talker',['require','underscore','../../scripting/que
       });
     },
     startQuestFromTemplate: function(questTemplate) {
+      this.parent.raise('QuestStarted',  questTemplate);
+    },
+    onQuestStarted: function(questTemplate) {
       var quest = new Quest(questTemplate);
       this.parent.dispatch('startQuest', [quest]);
     },
@@ -3792,15 +3799,14 @@ define('scripting/quests/fetchducks',['underscore'],function() {
   FetchDucks = {
     init: function() {
       this.itemCount = 0;
-      console.log('Duck quest started');
     },
     onItemPickedUp: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
-      console.log('Duck quest item picked up');
+      this.markUpdated();
     },
     onItemRemoved: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
-      console.log('Duck quest item removed');
+      this.markUpdated();
     },
     onDiscussion: function(entityId) {
       if(entityId === 'quest-giver') {
@@ -3809,15 +3815,21 @@ define('scripting/quests/fetchducks',['underscore'],function() {
     },
     determineIfQuestFinished: function() {
       if(this.itemCount === 5) {
-        console.log('Thanks for finding all my ducks');
+        this.talk('Thanks for finding all my ducks');
         this.removeDucksFromPlayer();
         this.markComplete();
       } else {
-        console.log('Please find my ducks, I miss my ducks');
+       this.talk('Please find my ducks, I miss my ducks');
       }
     },
     removeDucksFromPlayer: function() {
       this.entity.dispatch('removeItemsOfType', [ 'duck' ]);
+    },
+    talk: function(text) {
+      this.entity.raise('TalkTo', {
+        id: "quest-giver",
+        text: text        
+      });
     },
     meta: {
       askText: "Help, please fetch my ducks for me",
@@ -14138,7 +14150,36 @@ define('entities/pickup',['require','underscore','../scene/entity','./components
   
 });
 
-define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup'],function(require) {
+define('ui/questasker',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var QuestAsker = function(scene, element) {
+    this.scene = scene;
+    this.scene.autoHook(this);
+    this.element = element;
+    this.element.hide();
+    this.element.find('#quest-started-accept').on({
+      click: function() {
+       element.hide();
+      }
+    });
+  };
+  
+  QuestAsker.prototype = {
+    onQuestStarted: function(questTemplate) {
+      this.element.find('#quest-started-text').text(questTemplate.meta.askText);
+      this.element.show();
+    },
+    onTalkTo: function(data) {
+      this.element.find('#quest-started-text').text(data.text);
+      this.element.show();
+    },
+  };
+  
+  return QuestAsker;
+});
+
+define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker'],function(require) {
 
   var Character = require('../../entities/character');
   var Npc = require('../../entities/npc');
@@ -14153,6 +14194,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
   var DuckTemplate = require('../../scripting/items/duck');
   var Item = require('../../scripting/item');
   var Pickup = require('../../entities/pickup');
+  var QuestAsker = require('../../ui/questasker');
     
   var Demo = function(element) {
     this.element = element;
@@ -14191,6 +14233,9 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       context.scene.add(new Pickup(420, 420, duckThree));
       context.scene.add(new Pickup(420, 520, duckFour));
       context.scene.add(new Pickup(520, 520, duckFive));
+      
+      // Until I have a UI manager
+      this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
     }
   }
 

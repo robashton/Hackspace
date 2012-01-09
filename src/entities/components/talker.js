@@ -16,6 +16,9 @@ define(function(require) {
       });
     },
     startQuestFromTemplate: function(questTemplate) {
+      this.parent.raise('QuestStarted',  questTemplate);
+    },
+    onQuestStarted: function(questTemplate) {
       var quest = new Quest(questTemplate);
       this.parent.dispatch('startQuest', [quest]);
     },

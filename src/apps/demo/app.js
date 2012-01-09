@@ -13,6 +13,7 @@ define(function(require) {
   var DuckTemplate = require('../../scripting/items/duck');
   var Item = require('../../scripting/item');
   var Pickup = require('../../entities/pickup');
+  var QuestAsker = require('../../ui/questasker');
     
   var Demo = function(element) {
     this.element = element;
@@ -51,6 +52,9 @@ define(function(require) {
       context.scene.add(new Pickup(420, 420, duckThree));
       context.scene.add(new Pickup(420, 520, duckFour));
       context.scene.add(new Pickup(520, 520, duckFive));
+      
+      // Until I have a UI manager
+      this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
     }
   }
 

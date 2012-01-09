@@ -17,12 +17,17 @@ define(function(require) {
       this.init();
     },   
     
+    
     madeFromTemplate: function(template) {
       return this.questTemplate === template;
     }, 
         
     hookEntityEvents: function() {
       this.entity.autoHook(this);
+    },
+    
+    markUpdated: function() {
+      this.raise('Updated');
     },
     
     markComplete: function() {

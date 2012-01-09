@@ -12583,7 +12583,6 @@ define('shared/eventcontainer',['require','underscore'],function(require) {
         method: method,
         context: context      
       });
-      console.log('handler added');
     },
     remove: function(method, context) {
       this.handlers = _(this.handlers).filter(function(item) {
