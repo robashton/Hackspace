@@ -43,10 +43,13 @@ define(function(require) {
     },
     intersectWithMouse: function(x, y) {
     
-      if(x < this.position[0]) return false;
-      if(x > this.position[0] + this.size[0]) return false;
-      if(y < this.position[1]) return false;
-      if(y > this.position[1] + this.size[1]) return false;
+      var mouse = Coords.worldToIsometric(x, y);
+      var model = Coords.worldToIsometric(this.position[0], this.position[1]);
+        
+      if(mouse.x < model.x) return false;
+      if(mouse.x > model.x + this.size[0]) return false;
+      if(mouse.y > model.y) return false;
+      if(mouse.y < model.y - this.size[1]) return false;
       return true;
     },
     getPosition: function() {

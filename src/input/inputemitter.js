@@ -12,6 +12,9 @@ define(function(require) {
     this.translator.on('PrimaryAction', function(data) {
       self.onPrimaryAction(data);
     });
+        this.translator.on('Hover', function(data) {
+      self.onHover(data);
+    });
   };
   
   InputEmitter.prototype = {
@@ -22,6 +25,14 @@ define(function(require) {
         y: transformed.y
       });
 
+    },
+    
+    onHover: function(data) {
+      var transformed = this.fromCanvasToWorld(data.x, data.y);
+      this.scene.broadcast('Hover', {
+        x: transformed.x,
+        y: transformed.y
+      });    
     },
     
     fromCanvasToWorld: function(x, y) {

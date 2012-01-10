@@ -16,7 +16,8 @@ define(function(require) {
         self.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
       },
       mousemove: function(e) {
-      
+        var offset = self.element.offset();     
+        self.raiseHover(e.pageX - offset.left, e.pageY - offset.top);
       }
     });
   };
@@ -27,7 +28,13 @@ define(function(require) {
         x: x,
         y: y
       });
-    }
+    },
+    raiseHover: function(x, y) {
+      this.raise('Hover', {
+        x: x,
+        y: y
+      });
+    }, 
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);
   

@@ -2902,10 +2902,13 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
     },
     intersectWithMouse: function(x, y) {
     
-      if(x < this.position[0]) return false;
-      if(x > this.position[0] + this.size[0]) return false;
-      if(y < this.position[1]) return false;
-      if(y > this.position[1] + this.size[1]) return false;
+      var mouse = Coords.worldToIsometric(x, y);
+      var model = Coords.worldToIsometric(this.position[0], this.position[1]);
+        
+      if(mouse.x < model.x) return false;
+      if(mouse.x > model.x + this.size[0]) return false;
+      if(mouse.y > model.y) return false;
+      if(mouse.y < model.y - this.size[1]) return false;
       return true;
     },
     getPosition: function() {
@@ -3065,7 +3068,7 @@ define('render/quad',['require','../shared/coords'],function(require) {
       canvas.drawImage(
         this.image('diffuseTexture'),
         transform.x,
-        transform.y,
+        transform.y - instance.size[1], // Bottom of the image starts at 0 as that's how we'd model it
         instance.size[0],
         instance.size[1]);
     },
@@ -3074,7 +3077,7 @@ define('render/quad',['require','../shared/coords'],function(require) {
           
       canvas.fillRect(
         transform.x,
-        transform.y,
+        transform.y - instance.size[1],
         instance.size[0],
         instance.size[1]);
     },
@@ -4014,13 +4017,34 @@ define('entities/controller',['require','underscore','../scene/entity','../share
 
   var Controller = function() {
     Entity.call(this, "controller");   
-    this.scene = null;
-        
+    this.scene = null;        
     this.on('AddedToScene', this.hookSceneEvents);
+    this.x = 0;
+    this.y = 0;   
   };  
   Controller.prototype = {
     hookSceneEvents: function(scene) {
+      var self = this;
       scene.on('PrimaryAction', this.determineWherePrimaryActionRequested, this);
+      scene.on('Hover', this.onHover, this);
+      setInterval(function() {
+        self.determineWhatMouseIsOver();
+      }, 200);
+    },
+  
+    determineWhatMouseIsOver: function() {
+      var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
+      if(selectedEntity) {
+       // Do something about these
+      } else {
+      
+      }    
+    },
+    
+    
+    onHover: function(data) {
+      this.x = data.x;
+      this.y = data.y;
     },
     
     determineWherePrimaryActionRequested: function(data) {
@@ -13772,7 +13796,8 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
         self.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
       },
       mousemove: function(e) {
-      
+        var offset = self.element.offset();     
+        self.raiseHover(e.pageX - offset.left, e.pageY - offset.top);
       }
     });
   };
@@ -13783,7 +13808,13 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
         x: x,
         y: y
       });
-    }
+    },
+    raiseHover: function(x, y) {
+      this.raise('Hover', {
+        x: x,
+        y: y
+      });
+    }, 
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);
   
@@ -13804,6 +13835,9 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
     this.translator.on('PrimaryAction', function(data) {
       self.onPrimaryAction(data);
     });
+        this.translator.on('Hover', function(data) {
+      self.onHover(data);
+    });
   };
   
   InputEmitter.prototype = {
@@ -13814,6 +13848,14 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
         y: transformed.y
       });
 
+    },
+    
+    onHover: function(data) {
+      var transformed = this.fromCanvasToWorld(data.x, data.y);
+      this.scene.broadcast('Hover', {
+        x: transformed.x,
+        y: transformed.y
+      });    
     },
     
     fromCanvasToWorld: function(x, y) {
@@ -14228,12 +14270,12 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       var duckFive = new Item('duck5', DuckTemplate);
       
       // And until I have enemies to spawn
-      context.scene.add(new Pickup(320, 220, duckOne));
+  /*    context.scene.add(new Pickup(320, 220, duckOne));
       context.scene.add(new Pickup(420, 320, duckTwo));
       context.scene.add(new Pickup(420, 420, duckThree));
       context.scene.add(new Pickup(420, 520, duckFour));
       context.scene.add(new Pickup(520, 520, duckFive));
-      
+    */  
       // Until I have a UI manager
       this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
     }

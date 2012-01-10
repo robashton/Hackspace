@@ -6,13 +6,34 @@ define(function(require) {
 
   var Controller = function() {
     Entity.call(this, "controller");   
-    this.scene = null;
-        
+    this.scene = null;        
     this.on('AddedToScene', this.hookSceneEvents);
+    this.x = 0;
+    this.y = 0;   
   };  
   Controller.prototype = {
     hookSceneEvents: function(scene) {
+      var self = this;
       scene.on('PrimaryAction', this.determineWherePrimaryActionRequested, this);
+      scene.on('Hover', this.onHover, this);
+      setInterval(function() {
+        self.determineWhatMouseIsOver();
+      }, 200);
+    },
+  
+    determineWhatMouseIsOver: function() {
+      var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
+      if(selectedEntity) {
+       // Do something about these
+      } else {
+      
+      }    
+    },
+    
+    
+    onHover: function(data) {
+      this.x = data.x;
+      this.y = data.y;
     },
     
     determineWherePrimaryActionRequested: function(data) {
