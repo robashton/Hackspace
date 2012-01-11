@@ -47,12 +47,12 @@ define(function(require) {
       var duckFive = new Item('duck5', DuckTemplate);
       
       // And until I have enemies to spawn
-  /*    context.scene.add(new Pickup(320, 220, duckOne));
+      context.scene.add(new Pickup(320, 220, duckOne));
       context.scene.add(new Pickup(420, 320, duckTwo));
       context.scene.add(new Pickup(420, 420, duckThree));
       context.scene.add(new Pickup(420, 520, duckFour));
       context.scene.add(new Pickup(520, 520, duckFive));
-    */  
+  
       // Until I have a UI manager
       this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
     }

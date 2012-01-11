@@ -2905,8 +2905,8 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       var mouse = Coords.worldToIsometric(x, y);
       var model = Coords.worldToIsometric(this.position[0], this.position[1]);
         
-      if(mouse.x < model.x) return false;
-      if(mouse.x > model.x + this.size[0]) return false;
+      if(mouse.x < model.x - (this.size[0] / 2.0)) return false;
+      if(mouse.x > model.x + (this.size[0] / 2.0)) return false;
       if(mouse.y > model.y) return false;
       if(mouse.y < model.y - this.size[1]) return false;
       return true;
@@ -3067,8 +3067,8 @@ define('render/quad',['require','../shared/coords'],function(require) {
       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
       canvas.drawImage(
         this.image('diffuseTexture'),
-        transform.x,
-        transform.y - instance.size[1], // Bottom of the image starts at 0 as that's how we'd model it
+        transform.x - (instance.size[0] / 2.0),
+        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
         instance.size[0],
         instance.size[1]);
     },
@@ -3076,8 +3076,8 @@ define('render/quad',['require','../shared/coords'],function(require) {
        var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
           
       canvas.fillRect(
-        transform.x,
-        transform.y - instance.size[1],
+        transform.x - (instance.size[0] / 2.0),
+        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
         instance.size[0],
         instance.size[1]);
     },
@@ -4022,6 +4022,7 @@ define('entities/controller',['require','underscore','../scene/entity','../share
     this.x = 0;
     this.y = 0;   
   };  
+  
   Controller.prototype = {
     hookSceneEvents: function(scene) {
       var self = this;
@@ -14270,12 +14271,12 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       var duckFive = new Item('duck5', DuckTemplate);
       
       // And until I have enemies to spawn
-  /*    context.scene.add(new Pickup(320, 220, duckOne));
+      context.scene.add(new Pickup(320, 220, duckOne));
       context.scene.add(new Pickup(420, 320, duckTwo));
       context.scene.add(new Pickup(420, 420, duckThree));
       context.scene.add(new Pickup(420, 520, duckFour));
       context.scene.add(new Pickup(520, 520, duckFive));
-    */  
+  
       // Until I have a UI manager
       this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
     }

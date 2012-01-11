@@ -12405,8 +12405,8 @@ define('render/quad',['require','../shared/coords'],function(require) {
       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
       canvas.drawImage(
         this.image('diffuseTexture'),
-        transform.x,
-        transform.y - instance.size[1], // Bottom of the image starts at 0 as that's how we'd model it
+        transform.x - (instance.size[0] / 2.0),
+        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
         instance.size[0],
         instance.size[1]);
     },
@@ -12414,8 +12414,8 @@ define('render/quad',['require','../shared/coords'],function(require) {
        var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
           
       canvas.fillRect(
-        transform.x,
-        transform.y - instance.size[1],
+        transform.x - (instance.size[0] / 2.0),
+        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
         instance.size[0],
         instance.size[1]);
     },

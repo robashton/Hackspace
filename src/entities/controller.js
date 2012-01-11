@@ -11,6 +11,7 @@ define(function(require) {
     this.x = 0;
     this.y = 0;   
   };  
+  
   Controller.prototype = {
     hookSceneEvents: function(scene) {
       var self = this;

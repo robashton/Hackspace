@@ -46,8 +46,8 @@ define(function(require) {
       var mouse = Coords.worldToIsometric(x, y);
       var model = Coords.worldToIsometric(this.position[0], this.position[1]);
         
-      if(mouse.x < model.x) return false;
-      if(mouse.x > model.x + this.size[0]) return false;
+      if(mouse.x < model.x - (this.size[0] / 2.0)) return false;
+      if(mouse.x > model.x + (this.size[0] / 2.0)) return false;
       if(mouse.y > model.y) return false;
       if(mouse.y < model.y - this.size[1]) return false;
       return true;
