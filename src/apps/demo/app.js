@@ -14,6 +14,7 @@ define(function(require) {
   var Item = require('../../scripting/item');
   var Pickup = require('../../entities/pickup');
   var QuestAsker = require('../../ui/questasker');
+  var Monster = require('../../entities/monster');
     
   var Demo = function(element) {
     this.element = element;
@@ -52,6 +53,10 @@ define(function(require) {
       context.scene.add(new Pickup(420, 420, duckThree));
       context.scene.add(new Pickup(420, 520, duckFour));
       context.scene.add(new Pickup(520, 520, duckFive));
+
+      for(var i = 0; i < 20; i++) {      
+        context.scene.add(new Monster('monster-' + i, Math.random() * 1000 + 200, Math.random() * 1000 + 20, 'spider'));
+      }
   
       // Until I have a UI manager
       this.questAsker = new QuestAsker(context.scene, $('#quest-started'));

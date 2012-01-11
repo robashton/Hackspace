@@ -14222,7 +14222,66 @@ define('ui/questasker',['require','underscore'],function(require) {
   return QuestAsker;
 });
 
-define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker'],function(require) {
+define('entities/components/roamable',['require','glmatrix'],function(require) {
+
+  var vec3 = require('glmatrix').vec3;
+
+  var Directable = function(startx, starty, minx, miny, maxx, maxy) {
+    this.startx = startx;
+    this.starty = starty;
+    this.minx = minx;
+    this.miny = miny;
+    this.maxx = maxx;
+    this.maxy = maxy;
+  };
+  
+  Directable.prototype = {    
+    createNewDestination: function() {
+      this.parent.dispatch('updateDestination', [ 
+        Math.random() * (this.maxx - this.minx) + this.minx + this.startx, 
+        Math.random() * (this.maxy - this.miny) + this.miny + this.starty, 
+        0]);
+    },
+    onDestinationReached: function() {
+      this.createNewDestination();
+    },
+    onAddedToScene: function() {
+      this.createNewDestination();
+    }
+  };  
+  
+  return Directable;
+  
+});
+
+define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable'],function(require) {
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  
+  var Physical = require('./components/physical');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Roamable = require('./components/roamable');
+  var Directable = require('./components/directable');
+  
+  var Monster = function(id, x, y, texture) {
+    Entity.call(this, id);
+    this.attach(new Physical());
+    this.attach(new Renderable(texture, false));
+    this.attach(new Tangible(x, y, 25, 25));
+    this.attach(new Directable(1.5));
+    this.attach(new Roamable(x, y, -100, -100, 100, 100));
+  };
+  
+  Monster.prototype = {
+    
+  };
+  _.extend(Monster.prototype, Entity.prototype);
+  
+  return Monster;
+});
+
+define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker','../../entities/monster'],function(require) {
 
   var Character = require('../../entities/character');
   var Npc = require('../../entities/npc');
@@ -14238,6 +14297,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
   var Item = require('../../scripting/item');
   var Pickup = require('../../entities/pickup');
   var QuestAsker = require('../../ui/questasker');
+  var Monster = require('../../entities/monster');
     
   var Demo = function(element) {
     this.element = element;
@@ -14276,6 +14336,10 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       context.scene.add(new Pickup(420, 420, duckThree));
       context.scene.add(new Pickup(420, 520, duckFour));
       context.scene.add(new Pickup(520, 520, duckFive));
+
+      for(var i = 0; i < 20; i++) {      
+        context.scene.add(new Monster('monster-' + i, Math.random() * 1000 + 200, Math.random() * 1000 + 20, 'spider'));
+      }
   
       // Until I have a UI manager
       this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
