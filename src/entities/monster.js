@@ -7,6 +7,8 @@ define(function(require) {
   var Tangible = require('./components/tangible');
   var Roamable = require('./components/roamable');
   var Directable = require('./components/directable');
+  var Seeker = require('./components/seeker');
+  var Automatable = require('./components/automatable');
   
   var Monster = function(id, x, y, texture) {
     Entity.call(this, id);
@@ -15,6 +17,8 @@ define(function(require) {
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(1.5));
     this.attach(new Roamable(x, y, -100, -100, 100, 100));
+    this.attach(new Automatable());
+    this.attach(new Seeker('player'));
   };
   
   Monster.prototype = {

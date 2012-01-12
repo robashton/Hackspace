@@ -9,6 +9,7 @@ define(function(require) {
     this.miny = miny;
     this.maxx = maxx;
     this.maxy = maxy;
+    this.wandering = false;
   };
   
   Directable.prototype = {    
@@ -19,10 +20,16 @@ define(function(require) {
         0]);
     },
     onDestinationReached: function() {
-      this.createNewDestination();
+      if(this.wandering)
+        this.createNewDestination();
     },
-    onAddedToScene: function() {
-      this.createNewDestination();
+    onStateChanged: function(state) {
+      if(state === 'Wandering') {
+        this.wandering = true;
+        this.createNewDestination();
+      }
+      else
+        this.wandering = false;
     }
   };  
   

@@ -14,7 +14,7 @@ define(function(require) {
       this.size[0] = data.x;
       this.size[1] = data.y;
       this.size[2] = data.z;
-    },  
+    },
     onPositionChanged: function(data) {
       this.position[0] = data.x;
       this.position[1] = data.y;
@@ -51,9 +51,6 @@ define(function(require) {
       if(mouse.y > model.y) return false;
       if(mouse.y < model.y - this.size[1]) return false;
       return true;
-    },
-    getPosition: function() {
-      return this.position;
     },
     collideWithMap: function(map) {     
       var result = {

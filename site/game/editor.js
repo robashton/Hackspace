@@ -12774,6 +12774,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       this.renderer.draw(this.graph);
     },
     add: function(entity) {
+      if(!entity.id) throw "Attempt to add entity without id: " + entity;
       this.entities.push(entity);
       this.entitiesById[entity.id] = entity;
       entity.setScene(this);
@@ -13291,6 +13292,7 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
     Entity.call(this);
     
     this.map = map;
+    this.id = 'grid';
     this.on('AddedToScene', this.addGridRenderable);
   };
   

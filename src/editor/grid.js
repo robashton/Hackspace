@@ -8,6 +8,7 @@ define(function(require) {
     Entity.call(this);
     
     this.map = map;
+    this.id = 'grid';
     this.on('AddedToScene', this.addGridRenderable);
   };
   

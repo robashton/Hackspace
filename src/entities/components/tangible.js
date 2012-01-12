@@ -32,6 +32,14 @@ define(function(require) {
       });
     },
     
+    getPosition: function() {
+      return this.position;
+    },
+
+    getRadius: function() {
+      return Math.max(this.size[0], this.size[1]) / 2.0;
+    },
+        
     onAddedToScene: function(scene) {
       this.scene = scene;
       this.moveTo(this.position[0], this.position[1], this.position[2]);

@@ -2873,7 +2873,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       this.size[0] = data.x;
       this.size[1] = data.y;
       this.size[2] = data.z;
-    },  
+    },
     onPositionChanged: function(data) {
       this.position[0] = data.x;
       this.position[1] = data.y;
@@ -2910,9 +2910,6 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       if(mouse.y > model.y) return false;
       if(mouse.y < model.y - this.size[1]) return false;
       return true;
-    },
-    getPosition: function() {
-      return this.position;
     },
     collideWithMap: function(map) {     
       var result = {
@@ -3226,6 +3223,14 @@ define('entities/components/tangible',['require','glmatrix'],function(require) {
       });
     },
     
+    getPosition: function() {
+      return this.position;
+    },
+
+    getRadius: function() {
+      return Math.max(this.size[0], this.size[1]) / 2.0;
+    },
+        
     onAddedToScene: function(scene) {
       this.scene = scene;
       this.moveTo(this.position[0], this.position[1], this.position[2]);
@@ -3273,11 +3278,16 @@ define('entities/components/directable',['require','glmatrix'],function(require)
         z: z || 0
       });
     },
+    updateDestinationTarget: function(targetId) {
+      this.parent.raise('DestinationTargetChanged', targetId);
+    },
+    
     onPositionChanged: function(data) {
       this.position[0] = data.x;
       this.position[1] = data.y;
       this.position[2] = data.z;
     },
+    
     onDestinationChanged: function(data) {
       this.destination[0] = data.x;
       this.destination[1] = data.y;
@@ -3285,20 +3295,41 @@ define('entities/components/directable',['require','glmatrix'],function(require)
       this.calculateNewDirection();
       this.moving = true;
     },
+    
+    onDestinationTargetChanged: function(targetId) {
+      this.targetId = targetId;
+      this.moving = true;
+    },
+    
     onClippedTerrain: function(data) {
       this.moving = false;
     },
+    
     calculateNewDirection: function() {
       vec3.subtract(this.destination, this.position, this.direction);
       vec3.normalize(this.direction);
     },
+    
+    updateDestinationIfNecessary: function() {
+      var self = this;
+      this.scene.withEntity(this.targetId, function(target) {
+        self.destination = target.get('getPosition');
+        self.calculateNewDirection();     
+      });
+    },
+    
     onTick: function() {
       if(this.moving) {
+        this.updateDestinationIfNecessary();
         this.moveTowardsDestination();
         this.determineIfDestinationReached()
       }
-      this.parent.raise('Debug', 'Player: ' + [this.position[0], this.position[1], this.position[2]]);
     },
+    
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    
     determineIfDestinationReached: function() {
       vec3.subtract(this.destination, this.position, this.buffer);
       var length = vec3.length(this.buffer);
@@ -3307,6 +3338,7 @@ define('entities/components/directable',['require','glmatrix'],function(require)
         this.parent.raise('DestinationReached');
       }
     },
+    
     moveTowardsDestination: function() {
       this.parent.dispatch('moveTo', [
         this.position[0] + this.direction[0] * this.speed,
@@ -3987,6 +4019,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       this.renderer.draw(this.graph);
     },
     add: function(entity) {
+      if(!entity.id) throw "Attempt to add entity without id: " + entity;
       this.entities.push(entity);
       this.entitiesById[entity.id] = entity;
       entity.setScene(this);
@@ -14080,6 +14113,7 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
     Entity.call(this);
     
     this.map = map;
+    this.id = 'grid';
     this.on('AddedToScene', this.addGridRenderable);
   };
   
@@ -14233,6 +14267,7 @@ define('entities/components/roamable',['require','glmatrix'],function(require) {
     this.miny = miny;
     this.maxx = maxx;
     this.maxy = maxy;
+    this.wandering = false;
   };
   
   Directable.prototype = {    
@@ -14243,10 +14278,16 @@ define('entities/components/roamable',['require','glmatrix'],function(require) {
         0]);
     },
     onDestinationReached: function() {
-      this.createNewDestination();
+      if(this.wandering)
+        this.createNewDestination();
     },
-    onAddedToScene: function() {
-      this.createNewDestination();
+    onStateChanged: function(state) {
+      if(state === 'Wandering') {
+        this.wandering = true;
+        this.createNewDestination();
+      }
+      else
+        this.wandering = false;
     }
   };  
   
@@ -14254,7 +14295,84 @@ define('entities/components/roamable',['require','glmatrix'],function(require) {
   
 });
 
-define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable'],function(require) {
+define('entities/components/seeker',['require','underscore','glmatrix'],function(require) {
+  var _ = require('underscore');
+  var vec3 = require('glmatrix').vec3;
+  
+  var Seeker = function(targetId) {
+    this.targetId = targetId;
+    this.scene = null;
+    this.seeking = false;
+    this.buffer = vec3.create([0,0,0]);
+    this.position = vec3.create([0,0,0]);
+    this.targetPosition = null;
+    this.viewingDistance = 30;
+  };
+  
+  Seeker.prototype = {
+    onTick: function() {   
+      if(!this.seeking) {
+        this.updateTargetPosition();  
+        this.determineTargetProximity();        
+      }
+    },
+    
+    updateTargetPosition: function() {
+      var self = this;
+      this.scene.withEntity(this.targetId, function(target) {
+        self.targetPosition = target.get('getPosition');          
+      });
+    },
+    
+    onPositionChanged: function(data) {
+      this.position[0] = data.x;
+      this.position[1] = data.y;
+      this.position[2] = data.z;
+    },
+    
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    
+    onDestinationTargetChanged: function() {
+      this.seeking = true;
+    },
+     
+    determineTargetProximity: function() {
+      vec3.subtract(this.position, this.targetPosition, this.buffer);
+      var distance = vec3.length(this.buffer);
+      if(distance < 128) {
+        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
+      }
+    }
+  };
+  
+  return Seeker;
+});
+
+define('entities/components/automatable',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Automatable = function() {
+    
+  };
+  
+  Automatable.prototype = {
+    onAddedToScene: function() {
+      this.parent.raise('StateChanged', 'Wandering');
+    },
+    onDestinationTargetChanged: function() {
+      this.parent.raise('StateChanged', 'Seeking');
+    },
+    onDestinationReached: function() {
+      
+    },
+  };
+  
+  return Automatable;
+});
+
+define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/automatable'],function(require) {
   var _ = require('underscore');
   var Entity = require('../scene/entity');
   
@@ -14263,6 +14381,8 @@ define('entities/monster',['require','underscore','../scene/entity','./component
   var Tangible = require('./components/tangible');
   var Roamable = require('./components/roamable');
   var Directable = require('./components/directable');
+  var Seeker = require('./components/seeker');
+  var Automatable = require('./components/automatable');
   
   var Monster = function(id, x, y, texture) {
     Entity.call(this, id);
@@ -14271,6 +14391,8 @@ define('entities/monster',['require','underscore','../scene/entity','./component
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(1.5));
     this.attach(new Roamable(x, y, -100, -100, 100, 100));
+    this.attach(new Automatable());
+    this.attach(new Seeker('player'));
   };
   
   Monster.prototype = {

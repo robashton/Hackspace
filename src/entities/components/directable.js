@@ -19,11 +19,16 @@ define(function(require) {
         z: z || 0
       });
     },
+    updateDestinationTarget: function(targetId) {
+      this.parent.raise('DestinationTargetChanged', targetId);
+    },
+    
     onPositionChanged: function(data) {
       this.position[0] = data.x;
       this.position[1] = data.y;
       this.position[2] = data.z;
     },
+    
     onDestinationChanged: function(data) {
       this.destination[0] = data.x;
       this.destination[1] = data.y;
@@ -31,20 +36,41 @@ define(function(require) {
       this.calculateNewDirection();
       this.moving = true;
     },
+    
+    onDestinationTargetChanged: function(targetId) {
+      this.targetId = targetId;
+      this.moving = true;
+    },
+    
     onClippedTerrain: function(data) {
       this.moving = false;
     },
+    
     calculateNewDirection: function() {
       vec3.subtract(this.destination, this.position, this.direction);
       vec3.normalize(this.direction);
     },
+    
+    updateDestinationIfNecessary: function() {
+      var self = this;
+      this.scene.withEntity(this.targetId, function(target) {
+        self.destination = target.get('getPosition');
+        self.calculateNewDirection();     
+      });
+    },
+    
     onTick: function() {
       if(this.moving) {
+        this.updateDestinationIfNecessary();
         this.moveTowardsDestination();
         this.determineIfDestinationReached()
       }
-      this.parent.raise('Debug', 'Player: ' + [this.position[0], this.position[1], this.position[2]]);
     },
+    
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    
     determineIfDestinationReached: function() {
       vec3.subtract(this.destination, this.position, this.buffer);
       var length = vec3.length(this.buffer);
@@ -53,6 +79,7 @@ define(function(require) {
         this.parent.raise('DestinationReached');
       }
     },
+    
     moveTowardsDestination: function() {
       this.parent.dispatch('moveTo', [
         this.position[0] + this.direction[0] * this.speed,

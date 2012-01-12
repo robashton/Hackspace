@@ -36,6 +36,7 @@ define(function(require) {
       this.renderer.draw(this.graph);
     },
     add: function(entity) {
+      if(!entity.id) throw "Attempt to add entity without id: " + entity;
       this.entities.push(entity);
       this.entitiesById[entity.id] = entity;
       entity.setScene(this);
