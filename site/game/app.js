@@ -14303,6 +14303,7 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
     this.targetId = targetId;
     this.scene = null;
     this.seeking = false;
+    this.found = false;
     this.buffer = vec3.create([0,0,0]);
     this.position = vec3.create([0,0,0]);
     this.targetPosition = null;
@@ -14336,12 +14337,23 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
     
     onDestinationTargetChanged: function() {
       this.seeking = true;
+      this.found = false;
+    },
+    
+    onDestinationReached: function() {
+      if(this.seeking) {
+       this.found = true;
+       this.seeking = false;
+      }
     },
      
     determineTargetProximity: function() {
       vec3.subtract(this.position, this.targetPosition, this.buffer);
       var distance = vec3.length(this.buffer);
-      if(distance < 128) {
+      if(distance < 128 && !this.found) {
+        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
+      }
+      else if(distance > 5 && this.found) {
         this.parent.dispatch('updateDestinationTarget', [this.targetId]);
       }
     }
@@ -14350,29 +14362,23 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   return Seeker;
 });
 
-define('entities/components/automatable',['require','underscore'],function(require) {
+define('entities/components/fighter',['require','underscore'],function(require) {
   var _ = require('underscore');
 
-  var Automatable = function() {
-    
+  var Fighter = function() {
+    this.currentTargetId = null;
   };
   
-  Automatable.prototype = {
-    onAddedToScene: function() {
-      this.parent.raise('StateChanged', 'Wandering');
-    },
-    onDestinationTargetChanged: function() {
-      this.parent.raise('StateChanged', 'Seeking');
-    },
-    onDestinationReached: function() {
-      
-    },
+  Fighter.prototype = {
+    attack: function(targetId) {
+      this.targetId = null;
+    }
   };
   
-  return Automatable;
+  return Fighter;
 });
 
-define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/automatable'],function(require) {
+define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter'],function(require) {
   var _ = require('underscore');
   var Entity = require('../scene/entity');
   
@@ -14382,7 +14388,8 @@ define('entities/monster',['require','underscore','../scene/entity','./component
   var Roamable = require('./components/roamable');
   var Directable = require('./components/directable');
   var Seeker = require('./components/seeker');
-  var Automatable = require('./components/automatable');
+  var Fighter = require('./components/fighter');
+
   
   var Monster = function(id, x, y, texture) {
     Entity.call(this, id);
@@ -14391,12 +14398,34 @@ define('entities/monster',['require','underscore','../scene/entity','./component
     this.attach(new Tangible(x, y, 25, 25));
     this.attach(new Directable(1.5));
     this.attach(new Roamable(x, y, -100, -100, 100, 100));
-    this.attach(new Automatable());
     this.attach(new Seeker('player'));
+    this.attach(new Fighter());
+    this.on('AddedToScene', this.onMonsterAddedToScene);
+    this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
+    this.on('DestinationReached', this.onMonsterDestinationReached);
+    this.on('StateChanged', this.onMonsterStateChanged);
+    this.on('Tick', this.onMonsterTick);
+    this.state = '';
   };
   
   Monster.prototype = {
-    
+    onMonsterAddedToScene: function() {
+      this.raise('StateChanged', 'Wandering');
+    },
+    onMonsterDestinationTargetChanged: function() {
+      this.raise('StateChanged', 'Seeking');
+    },
+    onMonsterDestinationReached: function() {
+      if(this.state === 'Seeking')
+        this.raise('StateChanged', 'Fighting');
+    },
+    onMonsterStateChanged: function(state) {
+      this.state = state;
+    },
+    onMonsterTick: function() {
+     if(this.state === 'Fighting')
+        this.dispatch('attack', [ 'player' ]);
+    }
   };
   _.extend(Monster.prototype, Entity.prototype);
   

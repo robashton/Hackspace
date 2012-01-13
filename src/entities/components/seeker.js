@@ -6,6 +6,7 @@ define(function(require) {
     this.targetId = targetId;
     this.scene = null;
     this.seeking = false;
+    this.found = false;
     this.buffer = vec3.create([0,0,0]);
     this.position = vec3.create([0,0,0]);
     this.targetPosition = null;
@@ -39,12 +40,23 @@ define(function(require) {
     
     onDestinationTargetChanged: function() {
       this.seeking = true;
+      this.found = false;
+    },
+    
+    onDestinationReached: function() {
+      if(this.seeking) {
+       this.found = true;
+       this.seeking = false;
+      }
     },
      
     determineTargetProximity: function() {
       vec3.subtract(this.position, this.targetPosition, this.buffer);
       var distance = vec3.length(this.buffer);
-      if(distance < 128) {
+      if(distance < 128 && !this.found) {
+        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
+      }
+      else if(distance > 5 && this.found) {
         this.parent.dispatch('updateDestinationTarget', [this.targetId]);
       }
     }
