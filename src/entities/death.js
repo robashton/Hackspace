@@ -8,7 +8,7 @@ define(function(require) {
   
   Death.prototype = {
     onDeath: function(data, sender) {
-      console.log(data, sender);
+      this.scene.remove(sender);
     }
   };
   

@@ -70,5 +70,6 @@ define(function(require) {
       then("The character stops moving after reaching the new destination", !characterMoved);
     });
   });
+ 
 
 });

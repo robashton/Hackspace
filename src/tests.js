@@ -9,10 +9,13 @@ requirejs.config({
 });
 
 var when = require('when').when;
-requirejs('./tests/entities');
+
+requirejs('./tests/entitytests');
 requirejs('./tests/actiontests');
 requirejs('./tests/factiontests');
-requirejs('./tests/health');
+requirejs('./tests/healthtests');
+requirejs('./tests/scenetests');
+
 when.allTestsFinished(function() {
   when.printReport();
 });

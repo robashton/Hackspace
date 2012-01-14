@@ -25,8 +25,12 @@ define(function(require) {
       var entity = this.entitiesById[id];
       if(entity) callback(entity);
     },
-    entityAtMouse: function(x, y) {
+    get: function(id) {
+      return this.entitiesById[id];
+    },
+    entityAtMouse: function(x, y, filter) {
       return _(this.entities).find(function(entity){
+        if(filter && !filter(entity)) return false;
         return entity.get('intersectWithMouse', [x, y], false);
       });
     },
@@ -43,7 +47,7 @@ define(function(require) {
     },
     remove: function(entity) {
       this.entities = _(this.entities).without(entity);
-      delete this.entities[entity.id];
+      delete this.entitiesById[entity.id];
       entity.setScene(null);
     },
     dispatch: function(id, command, data) {

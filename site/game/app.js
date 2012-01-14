@@ -3809,14 +3809,28 @@ define('entities/components/fighter',['require','underscore'],function(require) 
       this.parent.raise('AttackedTarget', targetId);
     },
     
+    onDestinationChanged: function() {
+      if(this.currentTargetId)
+        this.parent.raise("CancelledAttackingTarget");
+    },
+    
+    onDestinationTargetChanged: function() {
+      if(this.currentTargetId)
+        this.parent.raise("CancelledAttackingTarget");
+    },
+    
+    onCancelledAttackingTarget: function() {
+      this.currentTargetId = null;
+    },
+    
     onAttackedTarget: function(targetId) {
       this.currentTargetId = targetId;
     },
     
     onTick: function() {
-      if(this.frameCount % 100 === 0 && this.currentTargetId !== null) 
+      if(this.frameCount % 30 === 0 && this.currentTargetId !== null) 
         this.performAttackStep();
-      if(this.frameCount % 100 === 0 && this.currentTargetId === null)
+      if(this.frameCount % 30 === 0 && this.currentTargetId === null)
         this.frameCount = 0;
         
       if(this.frameCount !== 0 || this.currentTargetId)
@@ -3887,6 +3901,7 @@ define('entities/components/hashealth',['require','underscore'],function(require
   HasHealth.prototype = {
     removeHealth: function(amount) {
       this.parent.raise('HealthLost', amount);
+      console.log(this.parent.id + ' lost ' + amount + ' health');
     },
     onHealthLost: function(amount) {
       this.amount -= amount;
@@ -4147,8 +4162,12 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       var entity = this.entitiesById[id];
       if(entity) callback(entity);
     },
-    entityAtMouse: function(x, y) {
+    get: function(id) {
+      return this.entitiesById[id];
+    },
+    entityAtMouse: function(x, y, filter) {
       return _(this.entities).find(function(entity){
+        if(filter && !filter(entity)) return false;
         return entity.get('intersectWithMouse', [x, y], false);
       });
     },
@@ -4165,7 +4184,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
     },
     remove: function(entity) {
       this.entities = _(this.entities).without(entity);
-      delete this.entities[entity.id];
+      delete this.entitiesById[entity.id];
       entity.setScene(null);
     },
     dispatch: function(id, command, data) {
@@ -14570,7 +14589,7 @@ define('entities/death',['require','underscore'],function(require) {
   
   Death.prototype = {
     onDeath: function(data, sender) {
-      console.log(data, sender);
+      this.scene.remove(sender);
     }
   };
   

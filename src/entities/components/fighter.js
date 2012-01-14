@@ -13,14 +13,28 @@ define(function(require) {
       this.parent.raise('AttackedTarget', targetId);
     },
     
+    onDestinationChanged: function() {
+      if(this.currentTargetId)
+        this.parent.raise("CancelledAttackingTarget");
+    },
+    
+    onDestinationTargetChanged: function() {
+      if(this.currentTargetId)
+        this.parent.raise("CancelledAttackingTarget");
+    },
+    
+    onCancelledAttackingTarget: function() {
+      this.currentTargetId = null;
+    },
+    
     onAttackedTarget: function(targetId) {
       this.currentTargetId = targetId;
     },
     
     onTick: function() {
-      if(this.frameCount % 100 === 0 && this.currentTargetId !== null) 
+      if(this.frameCount % 30 === 0 && this.currentTargetId !== null) 
         this.performAttackStep();
-      if(this.frameCount % 100 === 0 && this.currentTargetId === null)
+      if(this.frameCount % 30 === 0 && this.currentTargetId === null)
         this.frameCount = 0;
         
       if(this.frameCount !== 0 || this.currentTargetId)
