@@ -56,8 +56,6 @@ define(function(require) {
     },
     
     onDestinationReached: function() {
-      if(this.targetId)
-        console.log('Reached target: ' + this.targetId);
       this.moving = false;
       this.targetId = null;
     },
@@ -73,8 +71,9 @@ define(function(require) {
     
     updateDestinationIfNecessary: function() {
       var self = this;
+      if(!this.targetId) return;
       this.scene.withEntity(this.targetId, function(target) {
-        self.destination = target.get('getPosition');
+        vec3.set(target.get('getPosition'), self.destination);
         self.calculateNewDirection();     
       });
     },

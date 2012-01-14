@@ -21,6 +21,15 @@ define(function(require) {
         }   
       }
     },
+    once: function(eventName, callback, context) {
+      var self = this;
+      var wrappedCallback = function(data) {
+        callback.call(this, data);
+        self.off(eventName, wrappedCallback, context);
+      };
+      this.on(eventName, wrappedCallback, context);
+    },
+    
     on: function(eventName, callback, context) {
       this.eventContainerFor(eventName).add(callback, context);
     },

@@ -3315,8 +3315,6 @@ define('entities/components/directable',['require','glmatrix'],function(require)
     },
     
     onDestinationReached: function() {
-      if(this.targetId)
-        console.log('Reached target: ' + this.targetId);
       this.moving = false;
       this.targetId = null;
     },
@@ -3332,8 +3330,9 @@ define('entities/components/directable',['require','glmatrix'],function(require)
     
     updateDestinationIfNecessary: function() {
       var self = this;
+      if(!this.targetId) return;
       this.scene.withEntity(this.targetId, function(target) {
-        self.destination = target.get('getPosition');
+        vec3.set(target.get('getPosition'), self.destination);
         self.calculateNewDirection();     
       });
     },
@@ -3410,7 +3409,6 @@ define('entities/components/actionable',['require'],function(require) {
     },
 
     moveToAndExecute: function(target, callback) {
-      console.log(target.id);
       this.parent.dispatch('updateDestinationTarget', [target.id]);
       this.seekingTarget = true;
       this.targetId = target.id;
@@ -3505,6 +3503,15 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
         }   
       }
     },
+    once: function(eventName, callback, context) {
+      var self = this;
+      var wrappedCallback = function(data) {
+        callback.call(this, data);
+        self.off(eventName, wrappedCallback, context);
+      };
+      this.on(eventName, wrappedCallback, context);
+    },
+    
     on: function(eventName, callback, context) {
       this.eventContainerFor(eventName).add(callback, context);
     },
@@ -14407,10 +14414,8 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   
   Seeker.prototype = {
     onTick: function() {   
-      if(!this.seeking) {
-        this.updateTargetPosition();  
-        this.determineTargetProximity();        
-      }
+      this.updateTargetPosition();  
+      this.determineTargetProximity();        
     },
     
     updateTargetPosition: function() {

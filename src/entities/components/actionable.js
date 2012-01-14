@@ -25,7 +25,6 @@ define(function(require) {
     },
 
     moveToAndExecute: function(target, callback) {
-      console.log(target.id);
       this.parent.dispatch('updateDestinationTarget', [target.id]);
       this.seekingTarget = true;
       this.targetId = target.id;

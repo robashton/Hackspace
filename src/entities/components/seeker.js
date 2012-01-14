@@ -15,10 +15,8 @@ define(function(require) {
   
   Seeker.prototype = {
     onTick: function() {   
-      if(!this.seeking) {
-        this.updateTargetPosition();  
-        this.determineTargetProximity();        
-      }
+      this.updateTargetPosition();  
+      this.determineTargetProximity();        
     },
     
     updateTargetPosition: function() {

@@ -1,95 +1,88 @@
 define(function(require) {
+
   var when = require('when').when;
-  var Directable = require('../entities/components/directable');
-  var Entity = require('../scene/entity');
   var Scene = require('../scene/scene');
+  var FakeRenderer = require('./doubles/fakerenderer');
+  var FakeResources = require('./doubles/fakeresources');
+  var Camera = require('../scene/camera');
   var Character = require('../entities/character');
+  var Monster = require('../entities/monster');
     
   var withEmptyScene = function(callback) {
-    var scene = new Scene({}, {}, {});
-    
-    scene.addEntityWithComponents = function(components) {
-      var entity = new Entity("test");
-      for(var i in components)
-        entity.attach(components[i]);
-      scene.add(entity);
-      return entity;
-    };
+    var renderer = new FakeRenderer();
+    var resources = new FakeResources();
+    var camera = new Camera();
+    var scene = new Scene(resources, renderer, camera);
     callback(scene);
   };
   
-  when("a directable is given a destination", function(then) {
-    withEmptyScene(function(scene) {
-      var component = new Directable(2.0);
-      var entity = scene.addEntityWithComponents([component, {
-        moveTo: function() {},
-        rotateTo: function() {} 
-      }]);
-      component.updateDestination(10, 10, 10);
-      
-      then('The directable starts moving', component.moving);
-      then('The directable has no target', !component.targetId);
-    });    
-  });
+  var withACharacterAndMonster = function(callback) {
+    withEmptyScene(function(scene) {        
+      var character = new Character("player", 0, 0);
+      scene.add(character);
+      var monster = new Monster('monster', 10, 10, 'spider');
+      scene.add(monster);
+      callback(scene, character, monster);    
+    });
+  };
   
-  when("a directable is given a destination target", function(then) {
-    withEmptyScene(function(scene) {
-      var component = new Directable(2.0);
-      var entity = scene.addEntityWithComponents([component, {
-        moveTo: function() {},
-        rotateTo: function() {} 
-      }]);
-      var target = scene.addEntityWithComponents([{
-        getPosition: function() { return [ 10, 10, 10]; }
-      }]);
-      component.updateDestinationTarget(target.id);
+  withACharacterAndMonster(function(scene, character, monster) {   
+    when("A character is actioned to go to a monster that is moving towards the character", function(then) {
+      character.dispatch('primaryAction', ['monster']);
+      character.dispatch('moveTo', [ 9.9, 9.9, 0 ]);
       
-      then('The directable starts moving', component.moving);
-      then('The directable has a target', component.targetId);
-    });    
+      character.once('DestinationReached', function() {
+        then("The player destination is reached when proximity is reduced", true);
+      });
+      monster.once('DestinationReached', function() {
+        then("The monster destination is reached when proximity is reduced", true);
+      });
+      scene.tick(); 
+   
+    });
+    
+    when("A character and a monster have met", function(then) {
+      var characterMoved = false;
+      var monsterMoved = false;
+      var monsterDirected = false;
+      character.once('PositionChanged', function() { characterMoved = true; });
+      monster.once('PositionChanged', function() { monsterMoved = true;  });
+      monster.once('DestinationTargetChanged', function() { monsterDirected = true;  });
+      scene.tick();
+      
+      then("The character stops moving", !characterMoved);
+      then("The monster stops moving", !monsterMoved);
+      then("The monster isn't given further orders to move", !monsterDirected);
+    });
+    
   });
 
-  when("a directable reaches a target position", function(then) {
-    withEmptyScene(function(scene) {
-      var component = new Directable(2.0);
-      var entity = scene.addEntityWithComponents([component, {
-        moveTo: function() {},
-        rotateTo: function() {} 
-      }]);
-      component.updateDestination(10, 10, 10);
-      component.onPositionChanged({x: 10, y: 10, z: 10});
-      component.onTick();
+  when("A character has reached a monster and is actioned to go elsewhere", function(then) {
+    withACharacterAndMonster(function(scene, character, monster) {      
+      character.dispatch('primaryAction', ['monster']);
+      character.dispatch('moveTo', [ 9, 9, 0 ]);
       
-      then('The directable ceases moving', !component.moving);
-      then('The directable has no target', !component.targetId);
-    });    
-  });
-  
-   when("a directable reaches a target entity", function(then) {
-    withEmptyScene(function(scene) {
-      var component = new Directable(2.0);
-      var entity = scene.addEntityWithComponents([component, {
-        moveTo: function() {},
-        rotateTo: function() {} 
-      }]);
-      var target = scene.addEntityWithComponents([{
-        getPosition: function() { return [ 10, 10, 10]; }
-      }]);
-      component.updateDestinationTarget(target.id);
-      component.onPositionChanged({x: 10, y: 10, z: 10});
-      component.onTick();
+      monster.once('DestinationTargetChanged', function() {
+        then("The monster seeks the character because of proximity", true);
+      });
+      scene.tick(); 
       
-      then('The directable ceases moving', !component.moving);
-      then('The directable has no target', !component.targetId);
-    });    
-  });
-  
-  
-  when("A character is actioned to go to a monster", function(then) {
-    withEmptyScene(function(scene) {
-      var character = new Character("test", 0, 0);
-      scene.add(character);
-    });  
+      character.dispatch('updateDestination', [ 0, 0, 0]);
+      character.dispatch('moveTo', [ 1, 1, 0 ]);
+      
+      character.once('DestinationReached', function() {
+        then("The character can reach the new destination", true);
+      });
+
+      scene.tick();
+      
+      var characterMoved = false;
+      character.once('PositionChanged', function() {
+        characterMoved = true;
+      });
+      scene.tick();
+      then("The character stops moving after reaching the new destination", !characterMoved);
+    });
   });
 
 });
