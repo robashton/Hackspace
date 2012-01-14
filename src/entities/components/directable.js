@@ -9,6 +9,7 @@ define(function(require) {
     this.buffer = vec3.create([0,0,0]);
     this.speed = speed;
     this.moving = false;
+    this.targetId = null;
   };
   
   Directable.prototype = {    
@@ -46,6 +47,25 @@ define(function(require) {
       this.moving = false;
     },
     
+    onTick: function() {
+      if(this.moving) {
+        this.updateDestinationIfNecessary();
+        this.moveTowardsDestination();
+        this.determineIfDestinationReached()
+      }
+    },
+    
+    onDestinationReached: function() {
+      if(this.targetId)
+        console.log('Reached target: ' + this.targetId);
+      this.moving = false;
+      this.targetId = null;
+    },
+    
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    
     calculateNewDirection: function() {
       vec3.subtract(this.destination, this.position, this.direction);
       vec3.normalize(this.direction);
@@ -59,25 +79,11 @@ define(function(require) {
       });
     },
     
-    onTick: function() {
-      if(this.moving) {
-        this.updateDestinationIfNecessary();
-        this.moveTowardsDestination();
-        this.determineIfDestinationReached()
-      }
-    },
-    
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-    },
-    
     determineIfDestinationReached: function() {
       vec3.subtract(this.destination, this.position, this.buffer);
       var length = vec3.length(this.buffer);
-      if(length < 5) {
-        this.moving = false;
+      if(length < 5)
         this.parent.raise('DestinationReached');
-      }
     },
     
     moveTowardsDestination: function() {

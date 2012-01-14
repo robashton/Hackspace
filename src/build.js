@@ -1,8 +1,10 @@
 (function() {
   var requirejs = require('requirejs');
+  
   var SwallowConfig = require('swallow/config').Config;
   var Swallow = require('swallow').Runner;
-
+  var exec = require('child_process').exec;
+  
   module.exports = function(appName) {
     var config = {
         baseUrl: './src',
@@ -15,7 +17,7 @@
           'jquery': './libs/jquery'
         }
     };
-
+    
     requirejs.optimize(config, function(res) {});
     
     config.name = 'apps/' + appName + '/editor';
@@ -28,8 +30,15 @@
       out: './site/game/assets.json'
     }));
     swallow.run();
+    
+    exec('node src/tests',
+      function (error, stdout, stderr) {
+        console.log(stdout);
+        if (error !== null)
+          console.log('exec error: ' + error);        
+    });  
   };
-
+   
 }).call(this);
 
 

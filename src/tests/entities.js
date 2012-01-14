@@ -1,5 +1,7 @@
 define(function(require) {
   var when = require('when').when;
+
+
   var Entity = require('../scene/entity');
   
   var TestComponent = function() {
@@ -21,11 +23,10 @@ define(function(require) {
     entity.attach(component);
     
     entity.raise('EventRaised', 'event');
-    entity.dispatch('doSomething', 'command');
+    entity.dispatch('doSomething', ['command']);
     
     then("Events raised by the entity should propogate to the component", component.events[0] === 'event');
     then("Commands sent to the entity should be proxied to the component", component.commands[0] === 'command');
     then("The component is given a reference to the entity", component.parent === entity);
   });
-
 });

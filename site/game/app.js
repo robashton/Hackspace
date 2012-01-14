@@ -3268,6 +3268,7 @@ define('entities/components/directable',['require','glmatrix'],function(require)
     this.buffer = vec3.create([0,0,0]);
     this.speed = speed;
     this.moving = false;
+    this.targetId = null;
   };
   
   Directable.prototype = {    
@@ -3305,6 +3306,25 @@ define('entities/components/directable',['require','glmatrix'],function(require)
       this.moving = false;
     },
     
+    onTick: function() {
+      if(this.moving) {
+        this.updateDestinationIfNecessary();
+        this.moveTowardsDestination();
+        this.determineIfDestinationReached()
+      }
+    },
+    
+    onDestinationReached: function() {
+      if(this.targetId)
+        console.log('Reached target: ' + this.targetId);
+      this.moving = false;
+      this.targetId = null;
+    },
+    
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    
     calculateNewDirection: function() {
       vec3.subtract(this.destination, this.position, this.direction);
       vec3.normalize(this.direction);
@@ -3318,25 +3338,11 @@ define('entities/components/directable',['require','glmatrix'],function(require)
       });
     },
     
-    onTick: function() {
-      if(this.moving) {
-        this.updateDestinationIfNecessary();
-        this.moveTowardsDestination();
-        this.determineIfDestinationReached()
-      }
-    },
-    
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-    },
-    
     determineIfDestinationReached: function() {
       vec3.subtract(this.destination, this.position, this.buffer);
       var length = vec3.length(this.buffer);
-      if(length < 5) {
-        this.moving = false;
+      if(length < 5)
         this.parent.raise('DestinationReached');
-      }
     },
     
     moveTowardsDestination: function() {
@@ -3396,14 +3402,16 @@ define('entities/components/actionable',['require'],function(require) {
       this.scene.withEntity(targetId, function(target) {
         if(target.get('canTalk', [self], false))
           self.moveToAndExecute(target, self.discussWithTarget);
+        if(self.parent.get('isEnemyWith', [target], false))
+          self.moveToAndExecute(target, self.attackTarget);
         else if(target.get('hasPickup', [], false))
            self.moveToAndExecute(target, self.pickupTarget);
       });
     },
-    
+
     moveToAndExecute: function(target, callback) {
-      var position = target.get('getPosition');
-      this.parent.dispatch('updateDestination', [position[0], position[1]]);
+      console.log(target.id);
+      this.parent.dispatch('updateDestinationTarget', [target.id]);
       this.seekingTarget = true;
       this.targetId = target.id;
       this.actionOnDestinationReached = callback;
@@ -3419,7 +3427,11 @@ define('entities/components/actionable',['require'],function(require) {
     
     discussWithTarget: function() {
       this.parent.raise('Discussion', this.targetId);
-    },
+    },    
+        
+    attackTarget: function() {
+      this.parent.dispatch('attack', [this.targetId]);
+    },    
     
     pickupTarget: function() {
       var self = this;
@@ -3506,6 +3518,7 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
     },
 
     raise: function(eventName, data) {
+      this.audit(eventName, data);
       var container = this.eventListeners[eventName];
 
       if(container)
@@ -3515,6 +3528,10 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
         event: eventName,
         data: data
       });
+    },
+    
+    audit: function(eventName, data) {
+      
     },
 
     eventContainerFor: function(eventName) {
@@ -3769,7 +3786,80 @@ define('entities/components/talker',['require','underscore','../../scripting/que
   return Talker;
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester','./components/talker'],function(require) {
+define('entities/components/fighter',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Fighter = function() {
+    this.currentTargetId = null;
+    this.frameCount = 0;
+    this.scene = null;
+  };
+  
+  Fighter.prototype = {
+    attack: function(targetId) {
+      this.targetId = targetId;
+    },
+    
+    onTick: function() {
+      if(this.frameCount % 100 === 0 && this.currentTargetId !== null) 
+        this.performAttackStep();
+      this.frameCount++;
+    },
+    
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    
+    performAttackStep: function() {
+      this.scene.withEntity(this.currentTargetId, function(target) {
+        target.dispatch('applyDamage', [{
+          physical: Math.random() * 2
+        }]);
+      });
+    }
+  };
+  
+  return Fighter;
+});
+
+define('entities/components/factionable',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Factionable = function(faction) {
+    this.faction = faction;
+  };
+  
+  Factionable.prototype = {
+    getFaction: function() {
+      return this.faction;
+    },
+    isEnemyWith: function(other) {
+      var otherFaction = other.get('getFaction', [], null);
+      if(!otherFaction) return false;
+      return otherFaction !== this.faction;
+    },    
+  };
+  
+  return Factionable;
+});
+
+define('entities/components/damageable',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Damageable = function() {
+  
+  };
+  
+  Damageable.prototype = {
+    applyDamage: function(data) {
+      console.log(data.physical);
+    }
+  };
+  
+  return Damageable;
+});
+
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester','./components/talker','./components/fighter','./components/factionable','./components/damageable'],function(require) {
 
   var _ = require('underscore');
   
@@ -3783,6 +3873,9 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Carrier = require('./components/carrier');
   var Quester = require('./components/quester');
   var Talker = require('./components/talker');
+  var Fighter = require('./components/fighter');
+  var Factionable = require('./components/factionable');
+  var Damageable = require('./components/damageable');
 
   var Character = function(id, x ,y) {
     Entity.call(this, id);
@@ -3796,7 +3889,9 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Carrier());
     this.attach(new Quester());
     this.attach(new Talker());
-
+    this.attach(new Fighter());
+    this.attach(new Factionable('player'));
+    this.attach(new Damageable());
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);
@@ -14362,23 +14457,7 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   return Seeker;
 });
 
-define('entities/components/fighter',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var Fighter = function() {
-    this.currentTargetId = null;
-  };
-  
-  Fighter.prototype = {
-    attack: function(targetId) {
-      this.targetId = null;
-    }
-  };
-  
-  return Fighter;
-});
-
-define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter'],function(require) {
+define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter','./components/factionable','./components/damageable'],function(require) {
   var _ = require('underscore');
   var Entity = require('../scene/entity');
   
@@ -14389,10 +14468,12 @@ define('entities/monster',['require','underscore','../scene/entity','./component
   var Directable = require('./components/directable');
   var Seeker = require('./components/seeker');
   var Fighter = require('./components/fighter');
-
+  var Factionable = require('./components/factionable');
+  var Damageable = require('./components/damageable');
   
   var Monster = function(id, x, y, texture) {
     Entity.call(this, id);
+    
     this.attach(new Physical());
     this.attach(new Renderable(texture, false));
     this.attach(new Tangible(x, y, 25, 25));
@@ -14400,6 +14481,9 @@ define('entities/monster',['require','underscore','../scene/entity','./component
     this.attach(new Roamable(x, y, -100, -100, 100, 100));
     this.attach(new Seeker('player'));
     this.attach(new Fighter());
+    this.attach(new Factionable('monster'));
+    this.attach(new Damageable());
+    
     this.on('AddedToScene', this.onMonsterAddedToScene);
     this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
     this.on('DestinationReached', this.onMonsterDestinationReached);

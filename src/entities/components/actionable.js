@@ -17,14 +17,16 @@ define(function(require) {
       this.scene.withEntity(targetId, function(target) {
         if(target.get('canTalk', [self], false))
           self.moveToAndExecute(target, self.discussWithTarget);
+        if(self.parent.get('isEnemyWith', [target], false))
+          self.moveToAndExecute(target, self.attackTarget);
         else if(target.get('hasPickup', [], false))
            self.moveToAndExecute(target, self.pickupTarget);
       });
     },
-    
+
     moveToAndExecute: function(target, callback) {
-      var position = target.get('getPosition');
-      this.parent.dispatch('updateDestination', [position[0], position[1]]);
+      console.log(target.id);
+      this.parent.dispatch('updateDestinationTarget', [target.id]);
       this.seekingTarget = true;
       this.targetId = target.id;
       this.actionOnDestinationReached = callback;
@@ -40,7 +42,11 @@ define(function(require) {
     
     discussWithTarget: function() {
       this.parent.raise('Discussion', this.targetId);
-    },
+    },    
+        
+    attackTarget: function() {
+      this.parent.dispatch('attack', [this.targetId]);
+    },    
     
     pickupTarget: function() {
       var self = this;

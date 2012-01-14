@@ -12630,6 +12630,7 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
     },
 
     raise: function(eventName, data) {
+      this.audit(eventName, data);
       var container = this.eventListeners[eventName];
 
       if(container)
@@ -12639,6 +12640,10 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
         event: eventName,
         data: data
       });
+    },
+    
+    audit: function(eventName, data) {
+      
     },
 
     eventContainerFor: function(eventName) {

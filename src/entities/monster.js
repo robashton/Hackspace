@@ -9,10 +9,12 @@ define(function(require) {
   var Directable = require('./components/directable');
   var Seeker = require('./components/seeker');
   var Fighter = require('./components/fighter');
-
+  var Factionable = require('./components/factionable');
+  var Damageable = require('./components/damageable');
   
   var Monster = function(id, x, y, texture) {
     Entity.call(this, id);
+    
     this.attach(new Physical());
     this.attach(new Renderable(texture, false));
     this.attach(new Tangible(x, y, 25, 25));
@@ -20,6 +22,9 @@ define(function(require) {
     this.attach(new Roamable(x, y, -100, -100, 100, 100));
     this.attach(new Seeker('player'));
     this.attach(new Fighter());
+    this.attach(new Factionable('monster'));
+    this.attach(new Damageable());
+    
     this.on('AddedToScene', this.onMonsterAddedToScene);
     this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
     this.on('DestinationReached', this.onMonsterDestinationReached);
