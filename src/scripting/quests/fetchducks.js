@@ -19,6 +19,9 @@ define(function() {
         this.determineIfQuestFinished();      
       }
     },
+    onKilledTarget: function(targetId) {
+      console.log('huzzah');
+    },
     determineIfQuestFinished: function() {
       if(this.itemCount === 5) {
         this.talk('Thanks for finding all my ducks');

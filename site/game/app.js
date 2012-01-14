@@ -3576,6 +3576,15 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
       component.parent = this;
     },
     
+    component: function(type) {
+      for(var i in this.components) {
+        var component = this.components[i];
+        if(component instanceof type)
+          return component;      
+      }
+      throw "Couldn't find component";
+    },
+    
     registerHandlers: function(component) {
       for(var key in component) {
         var item = component[key];
@@ -3841,9 +3850,15 @@ define('entities/components/fighter',['require','underscore'],function(require) 
       this.scene = scene;
     },
     
+    notifyKilledTarget: function(targetid) {
+      this.parent.raise('KilledTarget', targetid);
+    },
+    
     performAttackStep: function() {
+      var self = this;
       this.scene.withEntity(this.currentTargetId, function(target) {
         target.dispatch('applyDamage', [{
+          dealer: self.parent.id,
           physical: Math.random() * 2
         }]);
       });
@@ -3878,13 +3893,26 @@ define('entities/components/damageable',['require','underscore'],function(requir
   var _ = require('underscore');
 
   var Damageable = function() {
-  
+    this.lastDamagerId = null;
+    this.scene = null;
   };
   
   Damageable.prototype = {
     applyDamage: function(data) {
       // Do all the crazy calculations
+      this.lastDamagerId = data.dealer;
       this.parent.dispatch('removeHealth', [ data.physical ]);
+    },
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    onDeath: function() {
+      var self = this;
+      if(this.lastDamagerId) {
+        this.scene.withEntity(this.lastDamagerId, function(damager) {
+          damager.dispatch('notifyKilledTarget', [self.parent.id]);
+        });
+      }
     }
   };
   
@@ -3901,7 +3929,6 @@ define('entities/components/hashealth',['require','underscore'],function(require
   HasHealth.prototype = {
     removeHealth: function(amount) {
       this.parent.raise('HealthLost', amount);
-      console.log(this.parent.id + ' lost ' + amount + ' health');
     },
     onHealthLost: function(amount) {
       this.amount -= amount;
@@ -4001,6 +4028,9 @@ define('scripting/quests/fetchducks',['underscore'],function() {
       if(entityId === 'quest-giver') {
         this.determineIfQuestFinished();      
       }
+    },
+    onKilledTarget: function(targetId) {
+      console.log('huzzah');
     },
     determineIfQuestFinished: function() {
       if(this.itemCount === 5) {

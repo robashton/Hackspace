@@ -12835,6 +12835,15 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
       component.parent = this;
     },
     
+    component: function(type) {
+      for(var i in this.components) {
+        var component = this.components[i];
+        if(component instanceof type)
+          return component;      
+      }
+      throw "Couldn't find component";
+    },
+    
     registerHandlers: function(component) {
       for(var key in component) {
         var item = component[key];

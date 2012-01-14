@@ -45,9 +45,15 @@ define(function(require) {
       this.scene = scene;
     },
     
+    notifyKilledTarget: function(targetid) {
+      this.parent.raise('KilledTarget', targetid);
+    },
+    
     performAttackStep: function() {
+      var self = this;
       this.scene.withEntity(this.currentTargetId, function(target) {
         target.dispatch('applyDamage', [{
+          dealer: self.parent.id,
           physical: Math.random() * 2
         }]);
       });
