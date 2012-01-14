@@ -1,7 +1,5 @@
 define(function(require) {
   var when = require('when').when;
-
-
   var Entity = require('../scene/entity');
   
   var TestComponent = function() {

@@ -11,6 +11,7 @@ define(function(require) {
   var Fighter = require('./components/fighter');
   var Factionable = require('./components/factionable');
   var Damageable = require('./components/damageable');
+  var HasHealth = require('./components/hashealth');
   
   var Monster = function(id, x, y, texture) {
     Entity.call(this, id);
@@ -24,6 +25,7 @@ define(function(require) {
     this.attach(new Fighter());
     this.attach(new Factionable('monster'));
     this.attach(new Damageable());
+    this.attach(new HasHealth(10));
     
     this.on('AddedToScene', this.onMonsterAddedToScene);
     this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);

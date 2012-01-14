@@ -15,6 +15,7 @@ define(function(require) {
   var Pickup = require('../../entities/pickup');
   var QuestAsker = require('../../ui/questasker');
   var Monster = require('../../entities/monster');
+  var Death = require('../../entities/death');
     
   var Demo = function(element) {
     this.element = element;
@@ -60,6 +61,7 @@ define(function(require) {
   
       // Until I have a UI manager
       this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
+      this.death = new Death(context.scene);
     }
   }
 

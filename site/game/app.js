@@ -3398,6 +3398,7 @@ define('entities/components/actionable',['require'],function(require) {
     
     primaryAction: function(targetId) {
       var self = this;
+      this.targetId = targetId;
       this.scene.withEntity(targetId, function(target) {
         if(target.get('canTalk', [self], false))
           self.moveToAndExecute(target, self.discussWithTarget);
@@ -3505,8 +3506,8 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
     },
     once: function(eventName, callback, context) {
       var self = this;
-      var wrappedCallback = function(data) {
-        callback.call(this, data);
+      var wrappedCallback = function(data, sender) {
+        callback.call(this, data, sender);
         self.off(eventName, wrappedCallback, context);
       };
       this.on(eventName, wrappedCallback, context);
@@ -3524,14 +3525,14 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
       this.allContainer.add(callback, context);
     },
 
-    raise: function(eventName, data) {
+    raise: function(eventName, data, sender) {
       this.audit(eventName, data);
       var container = this.eventListeners[eventName];
 
       if(container)
-        container.raise(this, data);
+        container.raise(sender || this, data);
 
-      this.allContainer.raise(this, {
+      this.allContainer.raise(sender || this, {
         event: eventName,
         data: data
       });
@@ -3648,7 +3649,7 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
     },
     propogateEventToScene: function(data) {
       if(this.scene)
-        this.scene.broadcast(data.event, data.data);
+        this.scene.broadcast(data.event, data.data, this);
     },
   };
   _.extend(Entity.prototype, ComponentBag.prototype);
@@ -3803,14 +3804,23 @@ define('entities/components/fighter',['require','underscore'],function(require) 
   };
   
   Fighter.prototype = {
+  
     attack: function(targetId) {
-      this.targetId = targetId;
+      this.parent.raise('AttackedTarget', targetId);
+    },
+    
+    onAttackedTarget: function(targetId) {
+      this.currentTargetId = targetId;
     },
     
     onTick: function() {
       if(this.frameCount % 100 === 0 && this.currentTargetId !== null) 
         this.performAttackStep();
-      this.frameCount++;
+      if(this.frameCount % 100 === 0 && this.currentTargetId === null)
+        this.frameCount = 0;
+        
+      if(this.frameCount !== 0 || this.currentTargetId)
+        this.frameCount++;
     },
     
     onAddedToScene: function(scene) {
@@ -3859,14 +3869,39 @@ define('entities/components/damageable',['require','underscore'],function(requir
   
   Damageable.prototype = {
     applyDamage: function(data) {
-      console.log(data.physical);
+      // Do all the crazy calculations
+      this.parent.dispatch('removeHealth', [ data.physical ]);
     }
   };
   
   return Damageable;
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester','./components/talker','./components/fighter','./components/factionable','./components/damageable'],function(require) {
+define('entities/components/hashealth',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var HasHealth = function(amount) {
+    this.amount = amount;
+  };
+  
+  HasHealth.prototype = {
+    removeHealth: function(amount) {
+      this.parent.raise('HealthLost', amount);
+    },
+    onHealthLost: function(amount) {
+      this.amount -= amount;
+      if(this.amount <= 0)
+        this.raiseDeath();
+    },
+    raiseDeath: function() {
+      this.parent.raise('Death');
+    }
+  };
+  
+  return HasHealth;
+});
+
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth'],function(require) {
 
   var _ = require('underscore');
   
@@ -3883,6 +3918,7 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Fighter = require('./components/fighter');
   var Factionable = require('./components/factionable');
   var Damageable = require('./components/damageable');
+  var HasHealth = require('./components/hashealth');
 
   var Character = function(id, x ,y) {
     Entity.call(this, id);
@@ -3899,6 +3935,7 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Fighter());
     this.attach(new Factionable('player'));
     this.attach(new Damageable());
+    this.attach(new HasHealth(100));
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);
@@ -4135,8 +4172,8 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       var entity = this.entitiesById[id];
       entity.dispatch(command, data);
     },
-    broadcast: function(event, data) {
-      this.raise(event, data);
+    broadcast: function(event, data, sender) {
+      this.raise(event, data, sender || this);
     }
   };
   _.extend(Scene.prototype, Eventable.prototype);
@@ -14462,7 +14499,7 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   return Seeker;
 });
 
-define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter','./components/factionable','./components/damageable'],function(require) {
+define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth'],function(require) {
   var _ = require('underscore');
   var Entity = require('../scene/entity');
   
@@ -14475,6 +14512,7 @@ define('entities/monster',['require','underscore','../scene/entity','./component
   var Fighter = require('./components/fighter');
   var Factionable = require('./components/factionable');
   var Damageable = require('./components/damageable');
+  var HasHealth = require('./components/hashealth');
   
   var Monster = function(id, x, y, texture) {
     Entity.call(this, id);
@@ -14488,6 +14526,7 @@ define('entities/monster',['require','underscore','../scene/entity','./component
     this.attach(new Fighter());
     this.attach(new Factionable('monster'));
     this.attach(new Damageable());
+    this.attach(new HasHealth(10));
     
     this.on('AddedToScene', this.onMonsterAddedToScene);
     this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
@@ -14521,7 +14560,24 @@ define('entities/monster',['require','underscore','../scene/entity','./component
   return Monster;
 });
 
-define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker','../../entities/monster'],function(require) {
+define('entities/death',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Death = function(scene) {
+    this.scene = scene;
+    this.scene.autoHook(this);
+  };
+  
+  Death.prototype = {
+    onDeath: function(data, sender) {
+      console.log(data, sender);
+    }
+  };
+  
+  return Death;
+});
+
+define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker','../../entities/monster','../../entities/death'],function(require) {
 
   var Character = require('../../entities/character');
   var Npc = require('../../entities/npc');
@@ -14538,6 +14594,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
   var Pickup = require('../../entities/pickup');
   var QuestAsker = require('../../ui/questasker');
   var Monster = require('../../entities/monster');
+  var Death = require('../../entities/death');
     
   var Demo = function(element) {
     this.element = element;
@@ -14583,6 +14640,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
   
       // Until I have a UI manager
       this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
+      this.death = new Death(context.scene);
     }
   }
 

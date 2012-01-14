@@ -50,8 +50,8 @@ define(function(require) {
       var entity = this.entitiesById[id];
       entity.dispatch(command, data);
     },
-    broadcast: function(event, data) {
-      this.raise(event, data);
+    broadcast: function(event, data, sender) {
+      this.raise(event, data, sender || this);
     }
   };
   _.extend(Scene.prototype, Eventable.prototype);

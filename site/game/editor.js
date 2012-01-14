@@ -12619,8 +12619,8 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
     },
     once: function(eventName, callback, context) {
       var self = this;
-      var wrappedCallback = function(data) {
-        callback.call(this, data);
+      var wrappedCallback = function(data, sender) {
+        callback.call(this, data, sender);
         self.off(eventName, wrappedCallback, context);
       };
       this.on(eventName, wrappedCallback, context);
@@ -12638,14 +12638,14 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
       this.allContainer.add(callback, context);
     },
 
-    raise: function(eventName, data) {
+    raise: function(eventName, data, sender) {
       this.audit(eventName, data);
       var container = this.eventListeners[eventName];
 
       if(container)
-        container.raise(this, data);
+        container.raise(sender || this, data);
 
-      this.allContainer.raise(this, {
+      this.allContainer.raise(sender || this, {
         event: eventName,
         data: data
       });
@@ -12802,8 +12802,8 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       var entity = this.entitiesById[id];
       entity.dispatch(command, data);
     },
-    broadcast: function(event, data) {
-      this.raise(event, data);
+    broadcast: function(event, data, sender) {
+      this.raise(event, data, sender || this);
     }
   };
   _.extend(Scene.prototype, Eventable.prototype);
@@ -12904,7 +12904,7 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
     },
     propogateEventToScene: function(data) {
       if(this.scene)
-        this.scene.broadcast(data.event, data.data);
+        this.scene.broadcast(data.event, data.data, this);
     },
   };
   _.extend(Entity.prototype, ComponentBag.prototype);

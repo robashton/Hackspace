@@ -14,6 +14,7 @@ define(function(require) {
     
     primaryAction: function(targetId) {
       var self = this;
+      this.targetId = targetId;
       this.scene.withEntity(targetId, function(target) {
         if(target.get('canTalk', [self], false))
           self.moveToAndExecute(target, self.discussWithTarget);

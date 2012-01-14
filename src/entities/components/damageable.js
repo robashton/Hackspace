@@ -7,7 +7,8 @@ define(function(require) {
   
   Damageable.prototype = {
     applyDamage: function(data) {
-      console.log(data.physical);
+      // Do all the crazy calculations
+      this.parent.dispatch('removeHealth', [ data.physical ]);
     }
   };
   

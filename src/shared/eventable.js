@@ -23,8 +23,8 @@ define(function(require) {
     },
     once: function(eventName, callback, context) {
       var self = this;
-      var wrappedCallback = function(data) {
-        callback.call(this, data);
+      var wrappedCallback = function(data, sender) {
+        callback.call(this, data, sender);
         self.off(eventName, wrappedCallback, context);
       };
       this.on(eventName, wrappedCallback, context);
@@ -42,14 +42,14 @@ define(function(require) {
       this.allContainer.add(callback, context);
     },
 
-    raise: function(eventName, data) {
+    raise: function(eventName, data, sender) {
       this.audit(eventName, data);
       var container = this.eventListeners[eventName];
 
       if(container)
-        container.raise(this, data);
+        container.raise(sender || this, data);
 
-      this.allContainer.raise(this, {
+      this.allContainer.raise(sender || this, {
         event: eventName,
         data: data
       });

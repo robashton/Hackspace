@@ -8,14 +8,23 @@ define(function(require) {
   };
   
   Fighter.prototype = {
+  
     attack: function(targetId) {
-      this.targetId = targetId;
+      this.parent.raise('AttackedTarget', targetId);
+    },
+    
+    onAttackedTarget: function(targetId) {
+      this.currentTargetId = targetId;
     },
     
     onTick: function() {
       if(this.frameCount % 100 === 0 && this.currentTargetId !== null) 
         this.performAttackStep();
-      this.frameCount++;
+      if(this.frameCount % 100 === 0 && this.currentTargetId === null)
+        this.frameCount = 0;
+        
+      if(this.frameCount !== 0 || this.currentTargetId)
+        this.frameCount++;
     },
     
     onAddedToScene: function(scene) {
