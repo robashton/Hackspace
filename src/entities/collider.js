@@ -24,7 +24,7 @@ define(function(require) {
         result.x = -result.x;
         result.y = -result.y;
         result.collidedEntityId = entityOne.id;
-        entityTwo.raise('Collided', result);
+     //   entityTwo.raise('Collided', result);
       }      
     },
     intersect: function(one, two) {
@@ -43,7 +43,7 @@ define(function(require) {
          one.x + one.width < two.x + two.width &&
          one.y + (one.height / 2.0) > two.y &&
          one.y + (one.height / 2.0) < two.y + two.height) {
-          
+         
         intersectResult.x = two.x - (one.x + one.width); // Return a negative value indicating the desired change
         return intersectResult;     
       }
@@ -67,8 +67,17 @@ define(function(require) {
         intersectResult.y =  two.y - (one.y + one.height); // Return a negative value indicating the desired change
         return intersectResult;     
       }
+      
+      // Clip Top
+      if(one.x + (one.width / 2.0) > two.x && 
+         one.x + (one.width / 2.0) < two.x + two.width &&
+         one.y > two.y &&
+         one.y < two.y + two.height) {
 
-      // then top, then bottom (not relevant for the mo')
+        intersectResult.y =   (two.y + two.height) - one.y; // Return a negative value indicating the desired change
+        return intersectResult;     
+      }
+
       return intersectResult;
     }
   };

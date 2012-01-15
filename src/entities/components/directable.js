@@ -74,9 +74,10 @@ define(function(require) {
       if(!this.targetId) return;
                   
       var bounds = this.scene.fromEntity(this.targetId, 'getBounds');
+      var myBounds = this.parent.get('getBounds');
       if(!bounds) return;
       
-      this.desiredDistanceFromTarget = bounds.circle.radius;
+      this.desiredDistanceFromTarget = (bounds.circle.radius + myBounds.circle.radius) + 2;
       this.destination[0] = bounds.circle.x;
       this.destination[1] = bounds.circle.y;
       this.calculateNewDirection();    

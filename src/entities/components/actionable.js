@@ -45,7 +45,6 @@ define(function(require) {
     },    
         
     attackTarget: function() {
-      console.log(this.parent.id + ' attacked ' + this.targetId);
       this.parent.dispatch('attack', [this.targetId]);
     },    
     

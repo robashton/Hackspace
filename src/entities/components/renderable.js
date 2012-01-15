@@ -32,9 +32,9 @@ define(function(require) {
       this.updateModel();
     },
     updateModel: function() {
-      this.instance.scale(this.size[0], this.size[0], this.size[1]);
-      this.instance.translate(this.position[0] - this.size[0] / 2.0, 
-                              this.position[1] - this.size[1] / 2.0, 
+      this.instance.scale(this.size[0], this.size[1], this.size[2]);
+      this.instance.translate(this.position[0] - (this.size[0] / 2.0), 
+                              this.position[1] - (this.size[1] / 2.0), 
                               this.position[2]);
     },
     onRotationChanged: function(data) {

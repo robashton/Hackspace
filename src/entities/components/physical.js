@@ -52,10 +52,11 @@ define(function(require) {
     
     intersectWithMouse: function(x, y) {
     
-      var mouse = Coords.worldToIsometric(x, y);
-      var model = Coords.worldToIsometric(
-        this.position[0] - this.size[0] / 2.0, 
-        this.position[1] - this.size[2] / 2.0);
+      var mouse = { x: x, y: y};  
+      var model = { 
+        x: this.position[0] - this.size[0] / 2.0, 
+        y: this.position[1] - this.size[1] / 2.0
+      };
               
       if(mouse.x < model.x) return false;
       if(mouse.x > model.x + this.size[0]) return false;
@@ -66,12 +67,12 @@ define(function(require) {
     },
     getBounds: function() {
       return {
-        x: this.position[0] - this.size[0] / 2.0,
-        y: this.position[1] - this.size[1] / 2.0,
+        x: this.position[0], // - (this.size[0] / 2.0),
+        y: this.position[1], // - (this.size[1] / 2.0),
         width: this.size[0],
         height: this.size[1],
         circle: {
-          radius: Math.max(this.size[0], this.size[1]),
+          radius: Math.max(this.size[0] / 2.0, this.size[1] / 2.0),
           x: this.position[0],
           y: this.position[1]
         }

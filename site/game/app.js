@@ -2911,10 +2911,11 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
     
     intersectWithMouse: function(x, y) {
     
-      var mouse = Coords.worldToIsometric(x, y);
-      var model = Coords.worldToIsometric(
-        this.position[0] - this.size[0] / 2.0, 
-        this.position[1] - this.size[2] / 2.0);
+      var mouse = { x: x, y: y};  
+      var model = { 
+        x: this.position[0] - this.size[0] / 2.0, 
+        y: this.position[1] - this.size[1] / 2.0
+      };
               
       if(mouse.x < model.x) return false;
       if(mouse.x > model.x + this.size[0]) return false;
@@ -2925,12 +2926,12 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
     },
     getBounds: function() {
       return {
-        x: this.position[0] - this.size[0] / 2.0,
-        y: this.position[1] - this.size[1] / 2.0,
+        x: this.position[0], // - (this.size[0] / 2.0),
+        y: this.position[1], // - (this.size[1] / 2.0),
         width: this.size[0],
         height: this.size[1],
         circle: {
-          radius: Math.max(this.size[0], this.size[1]),
+          radius: Math.max(this.size[0] / 2.0, this.size[1] / 2.0),
           x: this.position[0],
           y: this.position[1]
         }
@@ -3119,6 +3120,8 @@ define('render/quad',['require','../shared/coords'],function(require) {
       var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
       
+      canvas.strokeStyle = 'rgba(100, 100, 100, 0.5)';
+      canvas.lineWidth = 0.25;
       canvas.beginPath();
       canvas.moveTo(topLeft.x, topLeft.y);
       canvas.lineTo(topRight.x, topRight.y);
@@ -3184,9 +3187,9 @@ define('entities/components/renderable',['require','../../render/instance','../.
       this.updateModel();
     },
     updateModel: function() {
-      this.instance.scale(this.size[0], this.size[0], this.size[1]);
-      this.instance.translate(this.position[0] - this.size[0] / 2.0, 
-                              this.position[1] - this.size[1] / 2.0, 
+      this.instance.scale(this.size[0], this.size[1], this.size[2]);
+      this.instance.translate(this.position[0] - (this.size[0] / 2.0), 
+                              this.position[1] - (this.size[1] / 2.0), 
                               this.position[2]);
     },
     onRotationChanged: function(data) {
@@ -3256,7 +3259,7 @@ define('entities/components/tangible',['require','glmatrix'],function(require) {
 
   var Tangible = function(x, y, width, height) {
     this.position = vec3.create([x,y,0]);
-    this.size = vec3.create([width, height,0]);
+    this.size = vec3.create([width, width, height]);
     this.rotation = 0;
   };
   
@@ -3394,9 +3397,10 @@ define('entities/components/directable',['require','glmatrix'],function(require)
       if(!this.targetId) return;
                   
       var bounds = this.scene.fromEntity(this.targetId, 'getBounds');
+      var myBounds = this.parent.get('getBounds');
       if(!bounds) return;
       
-      this.desiredDistanceFromTarget = bounds.circle.radius;
+      this.desiredDistanceFromTarget = (bounds.circle.radius + myBounds.circle.radius) + 2;
       this.destination[0] = bounds.circle.x;
       this.destination[1] = bounds.circle.y;
       this.calculateNewDirection();    
@@ -3499,7 +3503,6 @@ define('entities/components/actionable',['require'],function(require) {
     },    
         
     attackTarget: function() {
-      console.log(this.parent.id + ' attacked ' + this.targetId);
       this.parent.dispatch('attack', [this.targetId]);
     },    
     
@@ -4289,7 +4292,7 @@ define('entities/controller',['require','underscore','../scene/entity','../share
     determineWhatMouseIsOver: function() {
       var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
       if(selectedEntity) {
-       // Do something about these
+      //  console.log(selectedEntity.id);
       } else {
       
       }    
@@ -14648,7 +14651,7 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
       if(distance < 128 && !this.found) {
         this.parent.dispatch('updateDestinationTarget', [this.targetId]);
       }
-      else if(distance > this.parent.get('getRadius') && this.found) {
+      else if(distance > 30 && this.found) {
         this.parent.dispatch('updateDestinationTarget', [this.targetId]);
       }
     }
@@ -14761,7 +14764,7 @@ define('entities/collider',['require','underscore','../scene/entity'],function(r
         result.x = -result.x;
         result.y = -result.y;
         result.collidedEntityId = entityOne.id;
-        entityTwo.raise('Collided', result);
+     //   entityTwo.raise('Collided', result);
       }      
     },
     intersect: function(one, two) {
@@ -14780,7 +14783,7 @@ define('entities/collider',['require','underscore','../scene/entity'],function(r
          one.x + one.width < two.x + two.width &&
          one.y + (one.height / 2.0) > two.y &&
          one.y + (one.height / 2.0) < two.y + two.height) {
-          
+         
         intersectResult.x = two.x - (one.x + one.width); // Return a negative value indicating the desired change
         return intersectResult;     
       }
@@ -14804,8 +14807,17 @@ define('entities/collider',['require','underscore','../scene/entity'],function(r
         intersectResult.y =  two.y - (one.y + one.height); // Return a negative value indicating the desired change
         return intersectResult;     
       }
+      
+      // Clip Top
+      if(one.x + (one.width / 2.0) > two.x && 
+         one.x + (one.width / 2.0) < two.x + two.width &&
+         one.y > two.y &&
+         one.y < two.y + two.height) {
 
-      // then top, then bottom (not relevant for the mo')
+        intersectResult.y =   (two.y + two.height) - one.y; // Return a negative value indicating the desired change
+        return intersectResult;     
+      }
+
       return intersectResult;
     }
   };

@@ -12572,6 +12572,8 @@ define('render/quad',['require','../shared/coords'],function(require) {
       var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
       
+      canvas.strokeStyle = 'rgba(100, 100, 100, 0.5)';
+      canvas.lineWidth = 0.25;
       canvas.beginPath();
       canvas.moveTo(topLeft.x, topLeft.y);
       canvas.lineTo(topRight.x, topRight.y);

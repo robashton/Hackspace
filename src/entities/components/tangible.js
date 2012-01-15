@@ -4,7 +4,7 @@ define(function(require) {
 
   var Tangible = function(x, y, width, height) {
     this.position = vec3.create([x,y,0]);
-    this.size = vec3.create([width, height,0]);
+    this.size = vec3.create([width, width, height]);
     this.rotation = 0;
   };
   
