@@ -10,6 +10,8 @@ define(function(require) {
     this.speed = speed;
     this.moving = false;
     this.targetId = null;
+    this.desiredDistanceFromTarget = 5.0;
+    this.scene = null;
   };
   
   Directable.prototype = {    
@@ -36,15 +38,13 @@ define(function(require) {
       this.destination[2] = data.z;
       this.calculateNewDirection();
       this.moving = true;
+      this.targetId = null;
+      this.desiredDistanceFromTarget = 5.0;
     },
     
     onDestinationTargetChanged: function(targetId) {
       this.targetId = targetId;
       this.moving = true;
-    },
-    
-    onClippedTerrain: function(data) {
-      
     },
     
     onTick: function() {
@@ -72,16 +72,25 @@ define(function(require) {
     updateDestinationIfNecessary: function() {
       var self = this;
       if(!this.targetId) return;
-      this.scene.withEntity(this.targetId, function(target) {
-        vec3.set(target.get('getPosition'), self.destination);
-        self.calculateNewDirection();     
-      });
+                  
+      var bounds = this.scene.fromEntity(this.targetId, 'getBounds');
+      if(!bounds) return;
+      
+      this.desiredDistanceFromTarget = bounds.circle.radius;
+      this.destination[0] = bounds.circle.x;
+      this.destination[1] = bounds.circle.y;
+      this.calculateNewDirection();    
     },
     
     determineIfDestinationReached: function() {
       vec3.subtract(this.destination, this.position, this.buffer);
       var length = vec3.length(this.buffer);
-      if(length < 5)
+      if(length < (this.desiredDistanceFromTarget))
+        this.parent.raise('DestinationReached');
+    },
+    
+    onCollided: function(data) {
+      if(this.targetId && data.collidedEntityId === this.targetId)
         this.parent.raise('DestinationReached');
     },
     

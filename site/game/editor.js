@@ -12549,7 +12549,7 @@ define('render/quad',['require','../shared/coords'],function(require) {
         width,
         height);
         
-  //    this.drawFloor(canvas, instance);
+      this.drawFloor(canvas, instance);
     },
     drawPlainQuad: function(canvas, instance) {
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
@@ -12800,6 +12800,18 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
     withEntity: function(id, callback) {
       var entity = this.entitiesById[id];
       if(entity) callback(entity);
+    },
+    fromEntity: function(id, query, params, defaultValue) {
+      var entity = this.entitiesById[id];
+      if(!entity) return defaultValue;
+      return entity.get(query, params, defaultValue);
+    },
+    crossEach: function(callback, context) {
+      for(var i = 0 ; i < this.entities.length; i++) {
+        for(var j = (i+1) ; j < this.entities.length; j++) {
+          callback.call(context || this, i, j, this.entities[i], this.entities[j]);
+        }
+      }
     },
     get: function(id) {
       return this.entitiesById[id];
@@ -13301,13 +13313,16 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
           for(var x = 0 ; x < tile.length; x++) {
             var item = tile[x];
             var template = map.templates[item.template];
-            var realx = parseInt(item.x + startx);
-            var realy = parseInt(item.y + starty);
-            var width = parseInt(template.collision[0]);
-            var height = parseInt(template.collision[1]);
+            var realx = item.x + startx + (template.size[0] / 2.0);
+            var realy = item.y + starty + (template.size[1] / 2.0);
+            var width = template.collision[0];
+            var height = template.collision[1];
             
-            realx += width / 2;
-            realy += height / 2;
+            realx += width / 2.0;
+            realy += height / 2.0;
+            
+            realx = parseInt(realx);
+            realy = parseInt(realy);
             
             for(var a = realx ; a < realx + width ; a++) {
               for(var b = realy ; b < realy + height; b++) {

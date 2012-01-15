@@ -54,7 +54,7 @@ define(function(require) {
       if(distance < 128 && !this.found) {
         this.parent.dispatch('updateDestinationTarget', [this.targetId]);
       }
-      else if(distance > 5 && this.found) {
+      else if(distance > this.parent.get('getRadius') && this.found) {
         this.parent.dispatch('updateDestinationTarget', [this.targetId]);
       }
     }

@@ -55,13 +55,16 @@ define(function(require) {
           for(var x = 0 ; x < tile.length; x++) {
             var item = tile[x];
             var template = map.templates[item.template];
-            var realx = parseInt(item.x + startx);
-            var realy = parseInt(item.y + starty);
-            var width = parseInt(template.collision[0]);
-            var height = parseInt(template.collision[1]);
+            var realx = item.x + startx + (template.size[0] / 2.0);
+            var realy = item.y + starty + (template.size[1] / 2.0);
+            var width = template.collision[0];
+            var height = template.collision[1];
             
-            realx += width / 2;
-            realy += height / 2;
+            realx += width / 2.0;
+            realy += height / 2.0;
+            
+            realx = parseInt(realx);
+            realy = parseInt(realy);
             
             for(var a = realx ; a < realx + width ; a++) {
               for(var b = realy ; b < realy + height; b++) {

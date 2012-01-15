@@ -34,6 +34,14 @@ define(function(require) {
       ]); 
     },
     
+    onCollided: function(data) {
+      this.parent.dispatch('moveTo', [
+        this.position[0] + data.x,
+        this.position[1] + data.y,
+        this.position[2]
+      ]);
+    },
+    
     checkLandscapeBounds: function() {
       if(!this.scene) return;
       var self = this;
@@ -45,13 +53,29 @@ define(function(require) {
     intersectWithMouse: function(x, y) {
     
       var mouse = Coords.worldToIsometric(x, y);
-      var model = Coords.worldToIsometric(this.position[0], this.position[1]);
-        
-      if(mouse.x < model.x - (this.size[0] / 2.0)) return false;
-      if(mouse.x > model.x + (this.size[0] / 2.0)) return false;
-      if(mouse.y > model.y) return false;
-      if(mouse.y < model.y - this.size[1]) return false;
+      var model = Coords.worldToIsometric(
+        this.position[0] - this.size[0] / 2.0, 
+        this.position[1] - this.size[2] / 2.0);
+              
+      if(mouse.x < model.x) return false;
+      if(mouse.x > model.x + this.size[0]) return false;
+      if(mouse.y < model.y) return false;
+      if(mouse.y > model.y + this.size[1]) return false;
+      
       return true;
+    },
+    getBounds: function() {
+      return {
+        x: this.position[0] - this.size[0] / 2.0,
+        y: this.position[1] - this.size[1] / 2.0,
+        width: this.size[0],
+        height: this.size[1],
+        circle: {
+          radius: Math.max(this.size[0], this.size[1]),
+          x: this.position[0],
+          y: this.position[1]
+        }
+      }
     },
     collideWithMap: function(map) {     
       var result = {

@@ -7,7 +7,6 @@ define(function(require) {
   
   HasHealth.prototype = {
     removeHealth: function(amount) {
-      console.log(this.parent.id + ' lost ', amount);
       this.parent.raise('HealthLost', amount);
     },
     onHealthLost: function(amount) {

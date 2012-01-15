@@ -16,6 +16,7 @@ define(function(require) {
   var QuestAsker = require('../../ui/questasker');
   var Monster = require('../../entities/monster');
   var Death = require('../../entities/death');
+  var Collider = require('../../entities/collider');
     
   var Demo = function(element) {
     this.element = element;
@@ -28,6 +29,7 @@ define(function(require) {
       var character = new Character("player", 0, 0);
       var questGiver = new Npc("quest-giver", 150, 100);
       var controller = new Controller();
+      var collider = new Collider();
       
       var mapResource = context.resources.get('/main/world.json');
       var map = new Map(mapResource.get());
@@ -36,6 +38,7 @@ define(function(require) {
       context.scene.add(controller);
       context.scene.add(map);
       context.scene.add(questGiver);
+      context.scene.add(collider);
       
       // Until I have textures
       this.grid = new Grid(map);

@@ -29,7 +29,7 @@ define(function(require) {
         width,
         height);
         
-  //    this.drawFloor(canvas, instance);
+      this.drawFloor(canvas, instance);
     },
     drawPlainQuad: function(canvas, instance) {
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);

@@ -2893,6 +2893,14 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       ]); 
     },
     
+    onCollided: function(data) {
+      this.parent.dispatch('moveTo', [
+        this.position[0] + data.x,
+        this.position[1] + data.y,
+        this.position[2]
+      ]);
+    },
+    
     checkLandscapeBounds: function() {
       if(!this.scene) return;
       var self = this;
@@ -2904,13 +2912,29 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
     intersectWithMouse: function(x, y) {
     
       var mouse = Coords.worldToIsometric(x, y);
-      var model = Coords.worldToIsometric(this.position[0], this.position[1]);
-        
-      if(mouse.x < model.x - (this.size[0] / 2.0)) return false;
-      if(mouse.x > model.x + (this.size[0] / 2.0)) return false;
-      if(mouse.y > model.y) return false;
-      if(mouse.y < model.y - this.size[1]) return false;
+      var model = Coords.worldToIsometric(
+        this.position[0] - this.size[0] / 2.0, 
+        this.position[1] - this.size[2] / 2.0);
+              
+      if(mouse.x < model.x) return false;
+      if(mouse.x > model.x + this.size[0]) return false;
+      if(mouse.y < model.y) return false;
+      if(mouse.y > model.y + this.size[1]) return false;
+      
       return true;
+    },
+    getBounds: function() {
+      return {
+        x: this.position[0] - this.size[0] / 2.0,
+        y: this.position[1] - this.size[1] / 2.0,
+        width: this.size[0],
+        height: this.size[1],
+        circle: {
+          radius: Math.max(this.size[0], this.size[1]),
+          x: this.position[0],
+          y: this.position[1]
+        }
+      }
     },
     collideWithMap: function(map) {     
       var result = {
@@ -3072,7 +3096,7 @@ define('render/quad',['require','../shared/coords'],function(require) {
         width,
         height);
         
-  //    this.drawFloor(canvas, instance);
+      this.drawFloor(canvas, instance);
     },
     drawPlainQuad: function(canvas, instance) {
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
@@ -3126,12 +3150,13 @@ define('shared/extramath',['require'],function(require) {
 
 });
 
-define('entities/components/renderable',['require','../../render/instance','../../render/material','../../render/quad','../../shared/extramath'],function(require) {
+define('entities/components/renderable',['require','../../render/instance','../../render/material','../../render/quad','../../shared/extramath','glmatrix'],function(require) {
 
   var Instance = require('../../render/instance');
   var Material = require('../../render/material');
   var Quad = require('../../render/quad');
   var ExtraMath = require('../../shared/extramath');
+  var vec3 = require('glmatrix').vec3;
   
   var Renderable = function(textureName, canRotate) {
     this.scene = null;
@@ -3140,15 +3165,29 @@ define('entities/components/renderable',['require','../../render/instance','../.
     this.material = null;
     this.model = null;
     this.canRotate = canRotate;
+    this.size = vec3.create([0,0,0]);
+    this.position = vec3.create([0,0,0]);
   };
   
   Renderable.prototype = {    
     onSizeChanged: function(data) {
-      this.instance.scale(data.x, data.x, data.y);
+      this.size[0] = data.x;
+      this.size[1] = data.y;
+      this.size[2] = data.z;
+      this.updateModel();
     },    
     
     onPositionChanged: function(data) {
-      this.instance.translate(data.x, data.y, data.z);
+      this.position[0] = data.x;
+      this.position[1] = data.y;
+      this.position[2] = data.z;
+      this.updateModel();
+    },
+    updateModel: function() {
+      this.instance.scale(this.size[0], this.size[0], this.size[1]);
+      this.instance.translate(this.position[0] - this.size[0] / 2.0, 
+                              this.position[1] - this.size[1] / 2.0, 
+                              this.position[2]);
     },
     onRotationChanged: function(data) {
       if(this.canRotate)
@@ -3291,6 +3330,8 @@ define('entities/components/directable',['require','glmatrix'],function(require)
     this.speed = speed;
     this.moving = false;
     this.targetId = null;
+    this.desiredDistanceFromTarget = 5.0;
+    this.scene = null;
   };
   
   Directable.prototype = {    
@@ -3317,15 +3358,13 @@ define('entities/components/directable',['require','glmatrix'],function(require)
       this.destination[2] = data.z;
       this.calculateNewDirection();
       this.moving = true;
+      this.targetId = null;
+      this.desiredDistanceFromTarget = 5.0;
     },
     
     onDestinationTargetChanged: function(targetId) {
       this.targetId = targetId;
       this.moving = true;
-    },
-    
-    onClippedTerrain: function(data) {
-      
     },
     
     onTick: function() {
@@ -3353,16 +3392,25 @@ define('entities/components/directable',['require','glmatrix'],function(require)
     updateDestinationIfNecessary: function() {
       var self = this;
       if(!this.targetId) return;
-      this.scene.withEntity(this.targetId, function(target) {
-        vec3.set(target.get('getPosition'), self.destination);
-        self.calculateNewDirection();     
-      });
+                  
+      var bounds = this.scene.fromEntity(this.targetId, 'getBounds');
+      if(!bounds) return;
+      
+      this.desiredDistanceFromTarget = bounds.circle.radius;
+      this.destination[0] = bounds.circle.x;
+      this.destination[1] = bounds.circle.y;
+      this.calculateNewDirection();    
     },
     
     determineIfDestinationReached: function() {
       vec3.subtract(this.destination, this.position, this.buffer);
       var length = vec3.length(this.buffer);
-      if(length < 5)
+      if(length < (this.desiredDistanceFromTarget))
+        this.parent.raise('DestinationReached');
+    },
+    
+    onCollided: function(data) {
+      if(this.targetId && data.collidedEntityId === this.targetId)
         this.parent.raise('DestinationReached');
     },
     
@@ -3981,7 +4029,6 @@ define('entities/components/hashealth',['require','underscore'],function(require
   
   HasHealth.prototype = {
     removeHealth: function(amount) {
-      console.log(this.parent.id + ' lost ', amount);
       this.parent.raise('HealthLost', amount);
     },
     onHealthLost: function(amount) {
@@ -4164,6 +4211,18 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
     withEntity: function(id, callback) {
       var entity = this.entitiesById[id];
       if(entity) callback(entity);
+    },
+    fromEntity: function(id, query, params, defaultValue) {
+      var entity = this.entitiesById[id];
+      if(!entity) return defaultValue;
+      return entity.get(query, params, defaultValue);
+    },
+    crossEach: function(callback, context) {
+      for(var i = 0 ; i < this.entities.length; i++) {
+        for(var j = (i+1) ; j < this.entities.length; j++) {
+          callback.call(context || this, i, j, this.entities[i], this.entities[j]);
+        }
+      }
     },
     get: function(id) {
       return this.entitiesById[id];
@@ -14589,7 +14648,7 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
       if(distance < 128 && !this.found) {
         this.parent.dispatch('updateDestinationTarget', [this.targetId]);
       }
-      else if(distance > 5 && this.found) {
+      else if(distance > this.parent.get('getRadius') && this.found) {
         this.parent.dispatch('updateDestinationTarget', [this.targetId]);
       }
     }
@@ -14676,7 +14735,86 @@ define('entities/death',['require','underscore'],function(require) {
   return Death;
 });
 
-define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker','../../entities/monster','../../entities/death'],function(require) {
+define('entities/collider',['require','underscore','../scene/entity'],function(require) {
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  
+  var Collider = function() {
+    Entity.call(this, "Collision");
+    this.on('Tick', this.onColliderTick);
+  };
+  
+  Collider.prototype = {
+    onColliderTick: function() {
+      this.scene.crossEach(this.collideEntities, this);
+    },
+    collideEntities: function(i, j, entityOne, entityTwo) {
+      var boundsOne = entityOne.get('getBounds');
+      var boundsTwo = entityTwo.get('getBounds');
+      if(!boundsOne || !boundsTwo) return;
+      
+      var result = this.intersect(boundsOne, boundsTwo);
+      
+      if(result.intersects) {
+        result.collidedEntityId = entityTwo.id;
+        entityOne.raise('Collided', result);
+        result.x = -result.x;
+        result.y = -result.y;
+        result.collidedEntityId = entityOne.id;
+        entityTwo.raise('Collided', result);
+      }      
+    },
+    intersect: function(one, two) {
+      var intersectResult = {
+        x: 0, y: 0, intersects: false
+      };
+      if(one.x > two.x + two.width) return intersectResult;
+      if(one.y > two.y + two.height) return intersectResult;
+      if(one.x + one.width < two.x) return intersectResult;
+      if(one.y + one.height < two.y) return intersectResult;
+
+      intersectResult.intersects = true;
+
+      // Clip right
+      if(one.x + one.width > two.x && 
+         one.x + one.width < two.x + two.width &&
+         one.y + (one.height / 2.0) > two.y &&
+         one.y + (one.height / 2.0) < two.y + two.height) {
+          
+        intersectResult.x = two.x - (one.x + one.width); // Return a negative value indicating the desired change
+        return intersectResult;     
+      }
+     
+      // Clip left
+      if(one.x > two.x && 
+         one.x < two.x + two.width &&
+         one.y + (one.height / 2.0) > two.y &&
+         one.y + (one.height / 2.0) < two.y + two.height) {
+          
+        intersectResult.x = (two.x + two.width) - one.x;  // Return a positive value indicating the desired change
+        return intersectResult;     
+      }
+
+      // Clip bottom
+      if(one.x + (one.width / 2.0) > two.x && 
+         one.x + (one.width / 2.0) < two.x + two.width &&
+         one.y + one.height > two.y &&
+         one.y + one.height < two.y + two.height) {
+
+        intersectResult.y =  two.y - (one.y + one.height); // Return a negative value indicating the desired change
+        return intersectResult;     
+      }
+
+      // then top, then bottom (not relevant for the mo')
+      return intersectResult;
+    }
+  };
+  _.extend(Collider.prototype, Entity.prototype);
+  
+  return Collider;
+});
+
+define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker','../../entities/monster','../../entities/death','../../entities/collider'],function(require) {
 
   var Character = require('../../entities/character');
   var Npc = require('../../entities/npc');
@@ -14694,6 +14832,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
   var QuestAsker = require('../../ui/questasker');
   var Monster = require('../../entities/monster');
   var Death = require('../../entities/death');
+  var Collider = require('../../entities/collider');
     
   var Demo = function(element) {
     this.element = element;
@@ -14706,6 +14845,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       var character = new Character("player", 0, 0);
       var questGiver = new Npc("quest-giver", 150, 100);
       var controller = new Controller();
+      var collider = new Collider();
       
       var mapResource = context.resources.get('/main/world.json');
       var map = new Map(mapResource.get());
@@ -14714,6 +14854,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       context.scene.add(controller);
       context.scene.add(map);
       context.scene.add(questGiver);
+      context.scene.add(collider);
       
       // Until I have textures
       this.grid = new Grid(map);

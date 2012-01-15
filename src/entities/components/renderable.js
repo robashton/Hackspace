@@ -4,6 +4,7 @@ define(function(require) {
   var Material = require('../../render/material');
   var Quad = require('../../render/quad');
   var ExtraMath = require('../../shared/extramath');
+  var vec3 = require('glmatrix').vec3;
   
   var Renderable = function(textureName, canRotate) {
     this.scene = null;
@@ -12,15 +13,29 @@ define(function(require) {
     this.material = null;
     this.model = null;
     this.canRotate = canRotate;
+    this.size = vec3.create([0,0,0]);
+    this.position = vec3.create([0,0,0]);
   };
   
   Renderable.prototype = {    
     onSizeChanged: function(data) {
-      this.instance.scale(data.x, data.x, data.y);
+      this.size[0] = data.x;
+      this.size[1] = data.y;
+      this.size[2] = data.z;
+      this.updateModel();
     },    
     
     onPositionChanged: function(data) {
-      this.instance.translate(data.x, data.y, data.z);
+      this.position[0] = data.x;
+      this.position[1] = data.y;
+      this.position[2] = data.z;
+      this.updateModel();
+    },
+    updateModel: function() {
+      this.instance.scale(this.size[0], this.size[0], this.size[1]);
+      this.instance.translate(this.position[0] - this.size[0] / 2.0, 
+                              this.position[1] - this.size[1] / 2.0, 
+                              this.position[2]);
     },
     onRotationChanged: function(data) {
       if(this.canRotate)

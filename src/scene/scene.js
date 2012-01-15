@@ -25,6 +25,18 @@ define(function(require) {
       var entity = this.entitiesById[id];
       if(entity) callback(entity);
     },
+    fromEntity: function(id, query, params, defaultValue) {
+      var entity = this.entitiesById[id];
+      if(!entity) return defaultValue;
+      return entity.get(query, params, defaultValue);
+    },
+    crossEach: function(callback, context) {
+      for(var i = 0 ; i < this.entities.length; i++) {
+        for(var j = (i+1) ; j < this.entities.length; j++) {
+          callback.call(context || this, i, j, this.entities[i], this.entities[j]);
+        }
+      }
+    },
     get: function(id) {
       return this.entitiesById[id];
     },
