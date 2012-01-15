@@ -13273,8 +13273,11 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
             var template = map.templates[item.template];
             var realx = parseInt(item.x + startx);
             var realy = parseInt(item.y + starty);
-            var width = parseInt(template.size[0]);
-            var height = parseInt(template.size[1]);
+            var width = parseInt(template.collision[0]);
+            var height = parseInt(template.collision[1]);
+            
+            realx += width / 2;
+            realy += height / 2;
             
             for(var a = realx ; a < realx + width ; a++) {
               for(var b = realy ; b < realy + height; b++) {
@@ -13569,7 +13572,8 @@ define('editor/library',['require','./libraryitemtool'],function(require) {
   var ConstLibraryElements = {
    tree: {
       id: "tree",
-      size: [ 25, 25, 50 ],      
+      size: [ 25, 25, 50 ],
+      collision: [12, 12],    
       texture: "/main/tree.png",
       solid: true
     } 

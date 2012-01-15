@@ -6,5 +6,5 @@ define(function(require) {
     pickupHeight: 8,
     pickupTexture: 'duck'
   };
-  
+    
 });

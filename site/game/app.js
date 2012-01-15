@@ -2900,6 +2900,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         self.collideWithMap(map);
       });      
     },
+    
     intersectWithMouse: function(x, y) {
     
       var mouse = Coords.worldToIsometric(x, y);
@@ -14277,7 +14278,7 @@ define('scripting/items/duck',['require'],function(require) {
     pickupHeight: 8,
     pickupTexture: 'duck'
   };
-  
+    
 });
 
 define('scripting/item',['require','underscore'],function(require) {

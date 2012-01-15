@@ -41,6 +41,7 @@ define(function(require) {
         self.collideWithMap(map);
       });      
     },
+    
     intersectWithMouse: function(x, y) {
     
       var mouse = Coords.worldToIsometric(x, y);

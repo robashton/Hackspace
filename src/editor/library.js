@@ -4,7 +4,8 @@ define(function(require) {
   var ConstLibraryElements = {
    tree: {
       id: "tree",
-      size: [ 25, 25, 50 ],      
+      size: [ 25, 25, 50 ],
+      collision: [12, 12],    
       texture: "/main/tree.png",
       solid: true
     } 
