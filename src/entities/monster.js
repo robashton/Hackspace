@@ -18,7 +18,7 @@ define(function(require) {
     
     this.attach(new Physical());
     this.attach(new Renderable(texture, false));
-    this.attach(new Tangible(x, y, 25, 25));
+    this.attach(new Tangible(x, y, 12, 18));
     this.attach(new Directable(1.5));
     this.attach(new Roamable(x, y, -100, -100, 100, 100));
     this.attach(new Seeker('player'));

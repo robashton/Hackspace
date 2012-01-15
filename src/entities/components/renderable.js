@@ -16,7 +16,7 @@ define(function(require) {
   
   Renderable.prototype = {    
     onSizeChanged: function(data) {
-      this.instance.scale(data.x, data.y, data.z);
+      this.instance.scale(data.x, data.x, data.y);
     },    
     
     onPositionChanged: function(data) {

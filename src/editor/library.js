@@ -4,10 +4,7 @@ define(function(require) {
   var ConstLibraryElements = {
    tree: {
       id: "tree",
-      width: 10,
-      height: 5,      
-      renderwidth: 25,
-      renderheight: 25,
+      size: [ 25, 25, 50 ],      
       texture: "/main/tree.png",
       solid: true
     } 

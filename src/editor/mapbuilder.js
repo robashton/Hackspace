@@ -57,8 +57,8 @@ define(function(require) {
             var template = map.templates[item.template];
             var realx = parseInt(item.x + startx);
             var realy = parseInt(item.y + starty);
-            var width = parseInt(template.width);
-            var height = parseInt(template.height);
+            var width = parseInt(template.size[0]);
+            var height = parseInt(template.size[1]);
             
             for(var a = realx ; a < realx + width ; a++) {
               for(var b = realy ; b < realy + height; b++) {

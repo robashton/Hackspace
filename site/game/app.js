@@ -3061,25 +3061,48 @@ define('render/quad',['require','../shared/coords'],function(require) {
         this.drawPlainQuad(canvas, instance);      
     },
     drawTexturedQuad: function(canvas, instance) {
-      var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      var width = instance.size[0] + instance.size[1];
+      var height = instance.size[2];
+      
       canvas.drawImage(
         this.image('diffuseTexture'),
-        transform.x - (instance.size[0] / 2.0),
-        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
-        instance.size[0],
-        instance.size[1]);
+        bottomLeft.x,
+        bottomLeft.y - height,
+        width,
+        height);
+        
+  //    this.drawFloor(canvas, instance);
     },
     drawPlainQuad: function(canvas, instance) {
-       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      var width = instance.size[0] + instance.size[1];
+      var height = instance.size[2];
           
       canvas.fillRect(
-        transform.x - (instance.size[0] / 2.0),
-        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
-        instance.size[0],
-        instance.size[1]);
+        bottomLeft.x,
+        bottomLeft.y - height,
+        width,
+        height);
     },
     image: function(name) {
        return this.material[name].get()
+    },
+    drawFloor: function(canvas, instance) {
+      var topLeft = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+      var topRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1]);
+      var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      canvas.beginPath();
+      canvas.moveTo(topLeft.x, topLeft.y);
+      canvas.lineTo(topRight.x, topRight.y);
+      canvas.lineTo(bottomRight.x, bottomRight.y);
+      canvas.lineTo(bottomLeft.x, bottomLeft.y);
+      canvas.lineTo(topLeft.x, topLeft.y);
+      canvas.stroke();
     }
   }; 
   
@@ -3122,7 +3145,7 @@ define('entities/components/renderable',['require','../../render/instance','../.
   
   Renderable.prototype = {    
     onSizeChanged: function(data) {
-      this.instance.scale(data.x, data.y, data.z);
+      this.instance.scale(data.x, data.x, data.y);
     },    
     
     onPositionChanged: function(data) {
@@ -3967,7 +3990,7 @@ define('entities/character',['require','underscore','./components/physical','./c
     
     this.attach(new Physical());
     this.attach(new Renderable('character', true));
-    this.attach(new Tangible(x, y, 25, 25));
+    this.attach(new Tangible(x, y, 12, 18));
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
     this.attach(new Actionable());
@@ -4297,7 +4320,7 @@ define('static/tile',['require','../render/instance'],function(require) {
       var model = this.map.models[item.template];
       var template = this.map.templates[item.template];
       var instance = new Instance(model);
-      instance.scale(template.renderwidth, template.renderheight);
+      instance.scale(template.size[0], template.size[1], template.size[2]);
       instance.translate(this.x + item.x, this.y + item.y);
       this.instances[i] = instance;
     },
@@ -14250,8 +14273,8 @@ define('scripting/items/duck',['require'],function(require) {
 
   return {
     type: 'duck',
-    pickupWidth: 10,
-    pickupHeight: 10,
+    pickupWidth: 5,
+    pickupHeight: 8,
     pickupTexture: 'duck'
   };
   
@@ -14400,7 +14423,7 @@ define('entities/npc',['require','underscore','./components/physical','./compone
     
     this.attach(new Physical());
     this.attach(new Renderable('character', true));
-    this.attach(new Tangible(x, y, 25, 25));
+    this.attach(new Tangible(x, y, 12, 18));
     this.attach(new Directable(3.0));
     this.attach(new QuestGiver(FetchDucks));
 
@@ -14564,7 +14587,7 @@ define('entities/monster',['require','underscore','../scene/entity','./component
     
     this.attach(new Physical());
     this.attach(new Renderable(texture, false));
-    this.attach(new Tangible(x, y, 25, 25));
+    this.attach(new Tangible(x, y, 12, 18));
     this.attach(new Directable(1.5));
     this.attach(new Roamable(x, y, -100, -100, 100, 100));
     this.attach(new Seeker('player'));

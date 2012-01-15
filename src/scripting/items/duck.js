@@ -2,8 +2,8 @@ define(function(require) {
 
   return {
     type: 'duck',
-    pickupWidth: 10,
-    pickupHeight: 10,
+    pickupWidth: 5,
+    pickupHeight: 8,
     pickupTexture: 'duck'
   };
   

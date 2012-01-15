@@ -22,7 +22,7 @@ define(function(require) {
     
     this.attach(new Physical());
     this.attach(new Renderable('character', true));
-    this.attach(new Tangible(x, y, 25, 25));
+    this.attach(new Tangible(x, y, 12, 18));
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
     this.attach(new Actionable());

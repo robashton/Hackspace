@@ -26,7 +26,7 @@ define(function(require) {
       var model = this.map.models[item.template];
       var template = this.map.templates[item.template];
       var instance = new Instance(model);
-      instance.scale(template.renderwidth, template.renderheight);
+      instance.scale(template.size[0], template.size[1], template.size[2]);
       instance.translate(this.x + item.x, this.y + item.y);
       this.instances[i] = instance;
     },

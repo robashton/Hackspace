@@ -12368,7 +12368,7 @@ define('static/tile',['require','../render/instance'],function(require) {
       var model = this.map.models[item.template];
       var template = this.map.templates[item.template];
       var instance = new Instance(model);
-      instance.scale(template.renderwidth, template.renderheight);
+      instance.scale(template.size[0], template.size[1], template.size[2]);
       instance.translate(this.x + item.x, this.y + item.y);
       this.instances[i] = instance;
     },
@@ -12537,25 +12537,48 @@ define('render/quad',['require','../shared/coords'],function(require) {
         this.drawPlainQuad(canvas, instance);      
     },
     drawTexturedQuad: function(canvas, instance) {
-      var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      var width = instance.size[0] + instance.size[1];
+      var height = instance.size[2];
+      
       canvas.drawImage(
         this.image('diffuseTexture'),
-        transform.x - (instance.size[0] / 2.0),
-        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
-        instance.size[0],
-        instance.size[1]);
+        bottomLeft.x,
+        bottomLeft.y - height,
+        width,
+        height);
+        
+  //    this.drawFloor(canvas, instance);
     },
     drawPlainQuad: function(canvas, instance) {
-       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      var width = instance.size[0] + instance.size[1];
+      var height = instance.size[2];
           
       canvas.fillRect(
-        transform.x - (instance.size[0] / 2.0),
-        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
-        instance.size[0],
-        instance.size[1]);
+        bottomLeft.x,
+        bottomLeft.y - height,
+        width,
+        height);
     },
     image: function(name) {
        return this.material[name].get()
+    },
+    drawFloor: function(canvas, instance) {
+      var topLeft = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+      var topRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1]);
+      var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      canvas.beginPath();
+      canvas.moveTo(topLeft.x, topLeft.y);
+      canvas.lineTo(topRight.x, topRight.y);
+      canvas.lineTo(bottomRight.x, bottomRight.y);
+      canvas.lineTo(bottomLeft.x, bottomLeft.y);
+      canvas.lineTo(topLeft.x, topLeft.y);
+      canvas.stroke();
     }
   }; 
   
@@ -13250,8 +13273,8 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
             var template = map.templates[item.template];
             var realx = parseInt(item.x + startx);
             var realy = parseInt(item.y + starty);
-            var width = parseInt(template.width);
-            var height = parseInt(template.height);
+            var width = parseInt(template.size[0]);
+            var height = parseInt(template.size[1]);
             
             for(var a = realx ; a < realx + width ; a++) {
               for(var b = realy ; b < realy + height; b++) {
@@ -13486,7 +13509,7 @@ define('editor/libraryitemtool',['require','../render/material','../render/quad'
     this.material.diffuseTexture = editor.context.resources.get(element.texture);
     this.quad = new Quad(this.material);
     this.instance = new Instance(this.quad);
-    this.instance.scale(element.renderwidth, element.renderwidth);
+    this.instance.scale(element.size[0], element.size[1], element.size[2]);
   };
   
   LibraryItemTool.prototype = {
@@ -13546,10 +13569,7 @@ define('editor/library',['require','./libraryitemtool'],function(require) {
   var ConstLibraryElements = {
    tree: {
       id: "tree",
-      width: 10,
-      height: 5,      
-      renderwidth: 25,
-      renderheight: 25,
+      size: [ 25, 25, 50 ],      
       texture: "/main/tree.png",
       solid: true
     } 
