@@ -13967,11 +13967,11 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
   var Coords = require('../shared/coords');
   var InputTranslator = require('./inputtranslator');
   
-  var InputEmitter = function(scene, canvasElement) {
+  var InputEmitter = function(context) {
     var self = this;
-    this.scene = scene;
-    this.canvasElement = canvasElement;
-    this.translator = new InputTranslator(canvasElement);
+    this.scene = context.scene;
+    this.context = context;
+    this.translator = new InputTranslator(context.element);
     
     this.translator.on('PrimaryAction', function(data) {
       self.onPrimaryAction(data);
@@ -13983,7 +13983,7 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
   
   InputEmitter.prototype = {
     onPrimaryAction: function(data) {
-      var transformed = this.fromCanvasToWorld(data.x, data.y);
+      var transformed = this.context.pageCoordsToWorldCoords(data.x, data.y);
       this.scene.broadcast('PrimaryAction', {
         x: transformed.x,
         y: transformed.y
@@ -13992,31 +13992,11 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
     },
     
     onHover: function(data) {
-      var transformed = this.fromCanvasToWorld(data.x, data.y);
+      var transformed = this.context.pageCoordsToWorldCoords(data.x, data.y);
       this.scene.broadcast('Hover', {
         x: transformed.x,
         y: transformed.y
       });    
-    },
-    
-    fromCanvasToWorld: function(x, y) {
-      var viewport = this.scene.graph.viewport;
-      
-      var canvasWidth = this.canvasElement.width;
-      var canvasHeight = this.canvasElement.height;
-
-           
-      var scalex = canvasWidth / (viewport.right - viewport.left);
-      var scaley = canvasHeight / (viewport.bottom - viewport.top);
-     
-      x /= scalex;
-      y /= scaley;    
-      
-      x += (viewport.left);
-      y += (viewport.top); 
-            
-      return  Coords.isometricToWorld(x,y);   
-      
     }
   };
   
@@ -14140,14 +14120,14 @@ define('resources/packagedresources',['require','./package','../shared/eventable
   return PackagedResources;
 });
 
-define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map'],function(require) {
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map','../shared/coords'],function(require) {
 
   var CanvasRender = require('../render/canvasrender');
   var PackagedResources = require('../resources/packagedresources'); 
   var Camera = require('../scene/camera');
   var Scene = require('../scene/scene');
   var Map = require('../static/map');
-
+  var Coords = require('../shared/coords');
   
   var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
@@ -14171,20 +14151,23 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   };
   
   Context.prototype = {    
-    pageCoordsToWorldCoords: function(x, y) {
-      var offset = this.wrappedElement.offset();
-      var nx = x - offset.left;
-      var ny = y - offset.top;
-      return this.elementCoordsToWorldCoords(nx, ny);
-    },  
-    elementCoordsToWorldCoords: function(x, y) {
-      var scaleX = parseInt( this.wrappedElement.width() / this.scene.graph.width());
-      var scaleY = parseInt( this.wrappedElement.height() / this.scene.graph.height());
+  
+    pageCoordsToWorldCoords: function(x, y) {    
+      var viewport = this.scene.graph.viewport;
       
-      return {
-        x: (x * scaleX) + this.scene.graph.viewport.left,
-        y: (y * scaleY) + this.scene.graph.viewport.top
-      };
+      var canvasWidth = this.element.width;
+      var canvasHeight = this.element.height;
+           
+      var scalex = canvasWidth / (viewport.right - viewport.left);
+      var scaley = canvasHeight / (viewport.bottom - viewport.top);
+     
+      x /= scalex;
+      y /= scaley;    
+      
+      x += (viewport.left);
+      y += (viewport.top); 
+            
+      return  Coords.isometricToWorld(x,y);   
     },
     onResourcesLoaded: function() { 
       var self = this;
@@ -14681,7 +14664,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       // Until I have textures
       this.grid = new Grid(map);
       this.context.scene.add(this.grid); 
-      var input = new InputEmitter(context.scene, this.element);
+      var input = new InputEmitter(context);
 
       for(var i = 0; i < 20; i++) {      
         context.scene.add(new Monster('monster-' + i, Math.random() * 1000 + 200, Math.random() * 1000 + 20, 'spider'));

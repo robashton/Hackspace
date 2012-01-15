@@ -5,7 +5,7 @@ define(function(require) {
   var Camera = require('../scene/camera');
   var Scene = require('../scene/scene');
   var Map = require('../static/map');
-
+  var Coords = require('../shared/coords');
   
   var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
@@ -29,20 +29,23 @@ define(function(require) {
   };
   
   Context.prototype = {    
-    pageCoordsToWorldCoords: function(x, y) {
-      var offset = this.wrappedElement.offset();
-      var nx = x - offset.left;
-      var ny = y - offset.top;
-      return this.elementCoordsToWorldCoords(nx, ny);
-    },  
-    elementCoordsToWorldCoords: function(x, y) {
-      var scaleX = parseInt( this.wrappedElement.width() / this.scene.graph.width());
-      var scaleY = parseInt( this.wrappedElement.height() / this.scene.graph.height());
+  
+    pageCoordsToWorldCoords: function(x, y) {    
+      var viewport = this.scene.graph.viewport;
       
-      return {
-        x: (x * scaleX) + this.scene.graph.viewport.left,
-        y: (y * scaleY) + this.scene.graph.viewport.top
-      };
+      var canvasWidth = this.element.width;
+      var canvasHeight = this.element.height;
+           
+      var scalex = canvasWidth / (viewport.right - viewport.left);
+      var scaley = canvasHeight / (viewport.bottom - viewport.top);
+     
+      x /= scalex;
+      y /= scaley;    
+      
+      x += (viewport.left);
+      y += (viewport.top); 
+            
+      return  Coords.isometricToWorld(x,y);   
     },
     onResourcesLoaded: function() { 
       var self = this;

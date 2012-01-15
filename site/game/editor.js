@@ -12196,85 +12196,6 @@ return {
 };
 });
 
-define('shared/coords',['require'],function(require) {
-
-  var Coords = {
-  
-    worldToIsometric: function(x, y) {
-   /*   return {
-        x: x,
-        y: y
-      };*/
-      return {
-        x: x - y,
-        y: (x + y) / 2.0
-      };
-    },
-    
-    isometricToWorld: function(x, y) {
-      var ty = (((2.0 * y) - x) / 2.0);
-      var tx = x + ty;
- /*     return {
-        x: x,
-        y: y
-      };*/
-      return {
-        x: tx,
-        y: ty
-      }
-    }
-  };
-  
-  return Coords;
-
-});
-
-define('scene/camera',['require','glmatrix','../shared/coords'],function(require) {
-  var vec3 = require('glmatrix').vec3;
-  var Coords = require('../shared/coords');
-
-  var Camera = function(aspectRatio, fieldOfView) {
-    this.aspectRatio = aspectRatio;
-    this.fieldOfView = fieldOfView;
-    this.centre = vec3.create([0,0,0]);
-    this.distance = 256.0;
-    
-    this.width = 0;
-    this.height = 0;
-  };
-  
-  Camera.prototype = {
-    lookAt: function(x, y, z) {
-      this.centre[0] = x || 0;
-      this.centre[1] = y || 0;
-      this.centre[2] = z || 0;
-    },
-    move: function(x, y, z) {
-      this.lookAt(this.centre[0] + x, this.centre[1] + y, this.centre[2] + z);
-    },
-    updateViewport: function(graph) {
-      this.calculateDimensions();
-            
-      var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
-           
-      var left = isometric.x - (this.width / 2.0);
-      var top = isometric.y - (this.height / 2.0);
-            
-      var right = left + this.width;
-      var bottom = top + this.height;
-            
-      graph.updateViewport(left, right, top, bottom);
-    
-    },
-    calculateDimensions: function() {
-      this.width = this.distance * Math.tan(this.fieldOfView);
-      this.height = this.width / this.aspectRatio;
-    }
-  };
-  
-  return Camera; 
-});
-
 define('render/rendergraph',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -12381,50 +12302,6 @@ define('render/material',['require','./color'],function(require) {
   };
   return Material;
   
-});
-
-define('render/quad',['require','../shared/coords'],function(require) {
-
-  var Coords = require('../shared/coords');
-
-  var Quad = function(material) {
-    this.material = material;
-  };
-  
-  Quad.prototype = {
-    upload: function(context) {
-    //  this.material.upload(context);
-    },
-    render: function(canvas, instance) {
-      if(this.material.diffuseTexture)
-        this.drawTexturedQuad(canvas, instance);
-      else
-        this.drawPlainQuad(canvas, instance);      
-    },
-    drawTexturedQuad: function(canvas, instance) {
-      var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
-      canvas.drawImage(
-        this.image('diffuseTexture'),
-        transform.x - (instance.size[0] / 2.0),
-        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
-        instance.size[0],
-        instance.size[1]);
-    },
-    drawPlainQuad: function(canvas, instance) {
-       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
-          
-      canvas.fillRect(
-        transform.x - (instance.size[0] / 2.0),
-        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
-        instance.size[0],
-        instance.size[1]);
-    },
-    image: function(name) {
-       return this.material[name].get()
-    }
-  }; 
-  
-  return Quad;
 });
 
 define('render/instance',['require','glmatrix'],function(require) {
@@ -12560,6 +12437,129 @@ define('static/collisionmap',['require','../shared/bitfield'],function(require) 
   };
   
   return CollisionMap;
+});
+
+define('shared/coords',['require'],function(require) {
+
+  var Coords = {
+  
+    worldToIsometric: function(x, y) {
+   /*   return {
+        x: x,
+        y: y
+      };*/
+      return {
+        x: x - y,
+        y: (x + y) / 2.0
+      };
+    },
+    
+    isometricToWorld: function(x, y) {
+      var ty = (((2.0 * y) - x) / 2.0);
+      var tx = x + ty;
+ /*     return {
+        x: x,
+        y: y
+      };*/
+      return {
+        x: tx,
+        y: ty
+      }
+    }
+  };
+  
+  return Coords;
+
+});
+
+define('scene/camera',['require','glmatrix','../shared/coords'],function(require) {
+  var vec3 = require('glmatrix').vec3;
+  var Coords = require('../shared/coords');
+
+  var Camera = function(aspectRatio, fieldOfView) {
+    this.aspectRatio = aspectRatio;
+    this.fieldOfView = fieldOfView;
+    this.centre = vec3.create([0,0,0]);
+    this.distance = 256.0;
+    
+    this.width = 0;
+    this.height = 0;
+  };
+  
+  Camera.prototype = {
+    lookAt: function(x, y, z) {
+      this.centre[0] = x || 0;
+      this.centre[1] = y || 0;
+      this.centre[2] = z || 0;
+    },
+    move: function(x, y, z) {
+      this.lookAt(this.centre[0] + x, this.centre[1] + y, this.centre[2] + z);
+    },
+    updateViewport: function(graph) {
+      this.calculateDimensions();
+            
+      var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
+           
+      var left = isometric.x - (this.width / 2.0);
+      var top = isometric.y - (this.height / 2.0);
+            
+      var right = left + this.width;
+      var bottom = top + this.height;
+            
+      graph.updateViewport(left, right, top, bottom);
+    
+    },
+    calculateDimensions: function() {
+      this.width = this.distance * Math.tan(this.fieldOfView);
+      this.height = this.width / this.aspectRatio;
+    }
+  };
+  
+  return Camera; 
+});
+
+define('render/quad',['require','../shared/coords'],function(require) {
+
+  var Coords = require('../shared/coords');
+
+  var Quad = function(material) {
+    this.material = material;
+  };
+  
+  Quad.prototype = {
+    upload: function(context) {
+    //  this.material.upload(context);
+    },
+    render: function(canvas, instance) {
+      if(this.material.diffuseTexture)
+        this.drawTexturedQuad(canvas, instance);
+      else
+        this.drawPlainQuad(canvas, instance);      
+    },
+    drawTexturedQuad: function(canvas, instance) {
+      var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+      canvas.drawImage(
+        this.image('diffuseTexture'),
+        transform.x - (instance.size[0] / 2.0),
+        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
+        instance.size[0],
+        instance.size[1]);
+    },
+    drawPlainQuad: function(canvas, instance) {
+       var transform = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+          
+      canvas.fillRect(
+        transform.x - (instance.size[0] / 2.0),
+        transform.y - (instance.size[1]), // Bottom of the image starts at 0 as that's how we'd model it
+        instance.size[0],
+        instance.size[1]);
+    },
+    image: function(name) {
+       return this.material[name].get()
+    }
+  }; 
+  
+  return Quad;
 });
 
 define('shared/eventcontainer',['require','underscore'],function(require) {
@@ -13118,14 +13118,14 @@ define('static/map',['require','underscore','../render/material','../render/quad
 
 });
 
-define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map'],function(require) {
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map','../shared/coords'],function(require) {
 
   var CanvasRender = require('../render/canvasrender');
   var PackagedResources = require('../resources/packagedresources'); 
   var Camera = require('../scene/camera');
   var Scene = require('../scene/scene');
   var Map = require('../static/map');
-
+  var Coords = require('../shared/coords');
   
   var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
@@ -13149,20 +13149,23 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   };
   
   Context.prototype = {    
-    pageCoordsToWorldCoords: function(x, y) {
-      var offset = this.wrappedElement.offset();
-      var nx = x - offset.left;
-      var ny = y - offset.top;
-      return this.elementCoordsToWorldCoords(nx, ny);
-    },  
-    elementCoordsToWorldCoords: function(x, y) {
-      var scaleX = parseInt( this.wrappedElement.width() / this.scene.graph.width());
-      var scaleY = parseInt( this.wrappedElement.height() / this.scene.graph.height());
+  
+    pageCoordsToWorldCoords: function(x, y) {    
+      var viewport = this.scene.graph.viewport;
       
-      return {
-        x: (x * scaleX) + this.scene.graph.viewport.left,
-        y: (y * scaleY) + this.scene.graph.viewport.top
-      };
+      var canvasWidth = this.element.width;
+      var canvasHeight = this.element.height;
+           
+      var scalex = canvasWidth / (viewport.right - viewport.left);
+      var scaley = canvasHeight / (viewport.bottom - viewport.top);
+     
+      x /= scalex;
+      y /= scaley;    
+      
+      x += (viewport.left);
+      y += (viewport.top); 
+            
+      return  Coords.isometricToWorld(x,y);   
     },
     onResourcesLoaded: function() { 
       var self = this;
@@ -13483,7 +13486,7 @@ define('editor/libraryitemtool',['require','../render/material','../render/quad'
     this.material.diffuseTexture = editor.context.resources.get(element.texture);
     this.quad = new Quad(this.material);
     this.instance = new Instance(this.quad);
-    this.instance.scale(element.width, element.height);
+    this.instance.scale(element.renderwidth, element.renderwidth);
   };
   
   LibraryItemTool.prototype = {
@@ -13613,7 +13616,9 @@ define('editor/selecttool',['require'],function(require) {
   return SelectTool;
 });
 
-define('editor/movetool',['require'],function(require) {
+define('editor/movetool',['require','../shared/coords'],function(require) {
+
+  var Coords = require('../shared/coords');
 
   var MoveTool = function(editor) {
     this.editor = editor;
@@ -13629,7 +13634,8 @@ define('editor/movetool',['require'],function(require) {
      this.editor.input.off('drag', this.onElementDragEvent, this);
     },
     onElementDragEvent: function(e) {
-      this.editor.moveViewer(e.dx * -2.0, e.dy * -2.0);
+      var translated = Coords.isometricToWorld(e.dx, e.dy);
+      this.editor.moveViewer(translated.x * - 1.0, translated.y * -1.0);
     }
   };
   

@@ -40,7 +40,7 @@ define(function(require) {
       // Until I have textures
       this.grid = new Grid(map);
       this.context.scene.add(this.grid); 
-      var input = new InputEmitter(context.scene, this.element);
+      var input = new InputEmitter(context);
 
       for(var i = 0; i < 20; i++) {      
         context.scene.add(new Monster('monster-' + i, Math.random() * 1000 + 200, Math.random() * 1000 + 20, 'spider'));

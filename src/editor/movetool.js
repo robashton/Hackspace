@@ -1,5 +1,7 @@
 define(function(require) {
 
+  var Coords = require('../shared/coords');
+
   var MoveTool = function(editor) {
     this.editor = editor;
   };
@@ -14,7 +16,8 @@ define(function(require) {
      this.editor.input.off('drag', this.onElementDragEvent, this);
     },
     onElementDragEvent: function(e) {
-      this.editor.moveViewer(e.dx * -2.0, e.dy * -2.0);
+      var translated = Coords.isometricToWorld(e.dx, e.dy);
+      this.editor.moveViewer(translated.x * - 1.0, translated.y * -1.0);
     }
   };
   

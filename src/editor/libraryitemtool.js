@@ -12,7 +12,7 @@ define(function(require) {
     this.material.diffuseTexture = editor.context.resources.get(element.texture);
     this.quad = new Quad(this.material);
     this.instance = new Instance(this.quad);
-    this.instance.scale(element.width, element.height);
+    this.instance.scale(element.renderwidth, element.renderwidth);
   };
   
   LibraryItemTool.prototype = {
