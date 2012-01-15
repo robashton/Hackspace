@@ -3739,10 +3739,10 @@ define('scripting/quest',['require','underscore','../shared/eventable'],function
   
     start: function(entity) {
       this.entity = entity;
+      this.scene = entity.scene;
       this.hookEntityEvents();
       this.init();
-    },   
-    
+    },  
     
     madeFromTemplate: function(template) {
       return this.questTemplate === template;
@@ -4006,87 +4006,6 @@ define('entities/components/questgiver',['require','underscore','../../scripting
   };
   
   return QuestGiver;
-});
-
-define('scripting/quests/fetchducks',['underscore'],function() {
-
-  var _ = require('underscore');
-
-  FetchDucks = {
-    init: function() {
-      this.itemCount = 0;
-    },
-    onItemPickedUp: function() {
-      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
-      this.markUpdated();
-    },
-    onItemRemoved: function() {
-      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
-      this.markUpdated();
-    },
-    onDiscussion: function(entityId) {
-      if(entityId === 'quest-giver') {
-        this.determineIfQuestFinished();      
-      }
-    },
-    onKilledTarget: function(targetId) {
-      console.log('huzzah');
-    },
-    determineIfQuestFinished: function() {
-      if(this.itemCount === 5) {
-        this.talk('Thanks for finding all my ducks');
-        this.removeDucksFromPlayer();
-        this.markComplete();
-      } else {
-       this.talk('Please find my ducks, I miss my ducks');
-      }
-    },
-    removeDucksFromPlayer: function() {
-      this.entity.dispatch('removeItemsOfType', [ 'duck' ]);
-    },
-    talk: function(text) {
-      this.entity.raise('TalkTo', {
-        id: "quest-giver",
-        text: text        
-      });
-    },
-    meta: {
-      askText: "Help, please fetch my ducks for me",
-      description: "You've been asked to fetch five ducks"
-    }
-  };
-  
-  return FetchDucks;    
-});
-
-define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/questgiver','../scene/entity','../scripting/quests/fetchducks'],function(require) {
-
-  var _ = require('underscore');
-  
-  var Physical = require('./components/physical');
-  var Renderable = require('./components/renderable');
-  var Tangible = require('./components/tangible');
-  var Directable = require('./components/directable');
-  var Trackable = require('./components/trackable');
-  var QuestGiver = require('./components/questgiver');
-  var Entity = require('../scene/entity');
-  
-  var FetchDucks = require('../scripting/quests/fetchducks');
-
-  var Npc = function(id, x ,y) {
-    Entity.call(this, id);
-    
-    this.attach(new Physical());
-    this.attach(new Renderable('character', true));
-    this.attach(new Tangible(x, y, 25, 25));
-    this.attach(new Directable(3.0));
-    this.attach(new QuestGiver(FetchDucks));
-
-  };  
-  Npc.prototype = {};  
-  _.extend(Npc.prototype, Entity.prototype);
-  
-  return Npc;
 });
 
 define('render/rendergraph',['require','underscore'],function(require) {
@@ -14415,6 +14334,100 @@ define('entities/pickup',['require','underscore','../scene/entity','./components
   
 });
 
+define('scripting/quests/fetchducks',['require','underscore','../item','../items/duck','../../entities/pickup'],function(require) {
+
+  var _ = require('underscore');
+  var Item = require('../item');
+  var DuckTemplate = require('../items/duck');
+  var Pickup = require('../../entities/pickup');
+
+  FetchDucks = {
+    init: function() {
+      this.itemCount = 0;
+    },
+    onItemPickedUp: function() {
+      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
+      this.markUpdated();
+      console.log('Item count: ' + this.itemCount);
+    },
+    onItemRemoved: function() {
+      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
+      this.markUpdated();
+      console.log('Item count: ' + this.itemCount);
+    },
+    onDiscussion: function(entityId) {
+      if(entityId === 'quest-giver') {
+        this.determineIfQuestFinished();      
+      }
+    },
+    onKilledTarget: function(targetId) {
+      var self = this;
+      console.log('Genning item for ' + targetId);
+      this.scene.withEntity(targetId, function(target) {
+        // Check some value         
+        var targetPosition = target.get('getPosition');        
+        // TODO: This needs to come via item generation       
+        var duck = new Item('duck-' + (Math.random() * 100000) , DuckTemplate);
+        self.scene.add(new Pickup(targetPosition[0], targetPosition[1], duck));
+      });
+    },
+    determineIfQuestFinished: function() {
+      if(this.itemCount === 5) {
+        this.talk('Thanks for finding all my ducks');
+        this.removeDucksFromPlayer();
+        this.markComplete();
+      } else {
+       this.talk('Please find my ducks, I miss my ducks');
+      }
+    },
+    removeDucksFromPlayer: function() {
+      this.entity.dispatch('removeItemsOfType', [ 'duck' ]);
+    },
+    talk: function(text) {
+      this.entity.raise('TalkTo', {
+        id: "quest-giver",
+        text: text        
+      });
+    },
+    meta: {
+      askText: "Help, please fetch my ducks for me",
+      description: "You've been asked to fetch five ducks"
+    }
+  };
+  
+  return FetchDucks;    
+});
+
+define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/questgiver','../scene/entity','../scripting/quests/fetchducks'],function(require) {
+
+  var _ = require('underscore');
+  
+  var Physical = require('./components/physical');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Directable = require('./components/directable');
+  var Trackable = require('./components/trackable');
+  var QuestGiver = require('./components/questgiver');
+  var Entity = require('../scene/entity');
+  
+  var FetchDucks = require('../scripting/quests/fetchducks');
+
+  var Npc = function(id, x ,y) {
+    Entity.call(this, id);
+    
+    this.attach(new Physical());
+    this.attach(new Renderable('character', true));
+    this.attach(new Tangible(x, y, 25, 25));
+    this.attach(new Directable(3.0));
+    this.attach(new QuestGiver(FetchDucks));
+
+  };  
+  Npc.prototype = {};  
+  _.extend(Npc.prototype, Entity.prototype);
+  
+  return Npc;
+});
+
 define('ui/questasker',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -14575,7 +14588,7 @@ define('entities/monster',['require','underscore','../scene/entity','./component
     this.attach(new Fighter());
     this.attach(new Factionable('monster'));
     this.attach(new Damageable());
-    this.attach(new HasHealth(10));
+    this.attach(new HasHealth(2));
     
     this.on('AddedToScene', this.onMonsterAddedToScene);
     this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
@@ -14669,19 +14682,6 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       this.grid = new Grid(map);
       this.context.scene.add(this.grid); 
       var input = new InputEmitter(context.scene, this.element);
-      
-      var duckOne = new Item('duck1', DuckTemplate);
-      var duckTwo = new Item('duck2', DuckTemplate);
-      var duckThree = new Item('duck3', DuckTemplate);
-      var duckFour = new Item('duck4', DuckTemplate);
-      var duckFive = new Item('duck5', DuckTemplate);
-      
-      // And until I have enemies to spawn
-      context.scene.add(new Pickup(320, 220, duckOne));
-      context.scene.add(new Pickup(420, 320, duckTwo));
-      context.scene.add(new Pickup(420, 420, duckThree));
-      context.scene.add(new Pickup(420, 520, duckFour));
-      context.scene.add(new Pickup(520, 520, duckFive));
 
       for(var i = 0; i < 20; i++) {      
         context.scene.add(new Monster('monster-' + i, Math.random() * 1000 + 200, Math.random() * 1000 + 20, 'spider'));

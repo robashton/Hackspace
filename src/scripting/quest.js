@@ -13,10 +13,10 @@ define(function(require) {
   
     start: function(entity) {
       this.entity = entity;
+      this.scene = entity.scene;
       this.hookEntityEvents();
       this.init();
-    },   
-    
+    },  
     
     madeFromTemplate: function(template) {
       return this.questTemplate === template;

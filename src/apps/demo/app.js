@@ -41,19 +41,6 @@ define(function(require) {
       this.grid = new Grid(map);
       this.context.scene.add(this.grid); 
       var input = new InputEmitter(context.scene, this.element);
-      
-      var duckOne = new Item('duck1', DuckTemplate);
-      var duckTwo = new Item('duck2', DuckTemplate);
-      var duckThree = new Item('duck3', DuckTemplate);
-      var duckFour = new Item('duck4', DuckTemplate);
-      var duckFive = new Item('duck5', DuckTemplate);
-      
-      // And until I have enemies to spawn
-      context.scene.add(new Pickup(320, 220, duckOne));
-      context.scene.add(new Pickup(420, 320, duckTwo));
-      context.scene.add(new Pickup(420, 420, duckThree));
-      context.scene.add(new Pickup(420, 520, duckFour));
-      context.scene.add(new Pickup(520, 520, duckFive));
 
       for(var i = 0; i < 20; i++) {      
         context.scene.add(new Monster('monster-' + i, Math.random() * 1000 + 200, Math.random() * 1000 + 20, 'spider'));

@@ -25,7 +25,7 @@ define(function(require) {
     this.attach(new Fighter());
     this.attach(new Factionable('monster'));
     this.attach(new Damageable());
-    this.attach(new HasHealth(10));
+    this.attach(new HasHealth(2));
     
     this.on('AddedToScene', this.onMonsterAddedToScene);
     this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);

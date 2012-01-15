@@ -1,6 +1,9 @@
-define(function() {
+define(function(require) {
 
   var _ = require('underscore');
+  var Item = require('../item');
+  var DuckTemplate = require('../items/duck');
+  var Pickup = require('../../entities/pickup');
 
   FetchDucks = {
     init: function() {
@@ -9,10 +12,12 @@ define(function() {
     onItemPickedUp: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
       this.markUpdated();
+      console.log('Item count: ' + this.itemCount);
     },
     onItemRemoved: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
       this.markUpdated();
+      console.log('Item count: ' + this.itemCount);
     },
     onDiscussion: function(entityId) {
       if(entityId === 'quest-giver') {
@@ -20,7 +25,15 @@ define(function() {
       }
     },
     onKilledTarget: function(targetId) {
-      console.log('huzzah');
+      var self = this;
+      console.log('Genning item for ' + targetId);
+      this.scene.withEntity(targetId, function(target) {
+        // Check some value         
+        var targetPosition = target.get('getPosition');        
+        // TODO: This needs to come via item generation       
+        var duck = new Item('duck-' + (Math.random() * 100000) , DuckTemplate);
+        self.scene.add(new Pickup(targetPosition[0], targetPosition[1], duck));
+      });
     },
     determineIfQuestFinished: function() {
       if(this.itemCount === 5) {
