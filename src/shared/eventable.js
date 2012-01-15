@@ -4,6 +4,7 @@ define(function(require) {
   var Eventable = function() {
     this.eventListeners = {};
     this.allContainer = new EventContainer(this);
+    this.eventDepth = 0;
   };
   
   Eventable.prototype = {
@@ -48,7 +49,7 @@ define(function(require) {
 
       if(container)
         container.raise(sender || this, data);
-
+      
       this.allContainer.raise(sender || this, {
         event: eventName,
         data: data

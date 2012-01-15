@@ -27,4 +27,27 @@ define(function(require) {
     then("Commands sent to the entity should be proxied to the component", component.commands[0] === 'command');
     then("The component is given a reference to the entity", component.parent === entity);
   });
+  
+  when("An command causes another command to be dispatched to the same entity", function(then) {
+    var entity = new Entity('test');
+    var eventHandleCount = 0;
+    entity.attach({
+      firstCommand: function() {
+        this.parent.raise('FirstCommand');
+      },
+      secondCommand: function() {
+        then("The command is not dispatched until current command is fully handled", eventHandleCount == 2);
+      },
+      onFirstCommand: function() {
+        this.parent.dispatch('secondCommand');
+        eventHandleCount++;
+      }
+    });
+    entity.attach({
+      onFirstCommand: function() {
+        eventHandleCount++;
+      }
+    }); 
+    entity.dispatch('firstCommand');
+  });
 });

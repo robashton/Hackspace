@@ -12623,6 +12623,7 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
   var Eventable = function() {
     this.eventListeners = {};
     this.allContainer = new EventContainer(this);
+    this.eventDepth = 0;
   };
   
   Eventable.prototype = {
@@ -12667,7 +12668,7 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
 
       if(container)
         container.raise(sender || this, data);
-
+      
       this.allContainer.raise(sender || this, {
         event: eventName,
         data: data
@@ -12848,6 +12849,9 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
     this.components = [];
     this.eventHandlers = {};
     this.commandHandlers = {};
+    this.queuedCommands = [];
+    this.on('EventHandled', this.onEventHandled);
+    this.currentCommandDepth = 0;
   };
   
   ComponentBag.prototype = {
@@ -12892,11 +12896,37 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
         method: handler
       };
     },
-        
+    
+    isCurrentlyHandlingCommand: function() {
+      return this.currentCommandDepth > 0;
+    },
+          
     dispatch: function(command, data) {
+      if(this.isCurrentlyHandlingCommand())
+        this.queueCommand(command, data);
+      else
+        this.dispatchCommand(command, data);
+    },
+    
+    queueCommand: function(command, data) {
+      this.queuedCommands.push({command: command, data: data});
+    },
+
+    dispatchCommand: function(command, data) {
+      this.currentCommandDepth++;
       var handler = this.findCommandHandler(command);
       if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
-      handler.method.apply(handler.component, data); 
+      handler.method.apply(handler.component, data);
+      this.currentCommandDepth--;
+      if(this.currentCommandDepth === 0)
+        this.pumpPendingCommands();
+    },
+    
+    pumpPendingCommands: function() {
+      if(this.queuedCommands.length > 0) {
+        var item = this.queuedCommands.shift();
+        this.dispatchCommand(item.command, item.data);
+      }
     },
     
     get: function(query, data, defaultValue) {

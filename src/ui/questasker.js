@@ -21,7 +21,7 @@ define(function(require) {
     onTalkTo: function(data) {
       this.element.find('#quest-started-text').text(data.text);
       this.element.show();
-    },
+    }
   };
   
   return QuestAsker;

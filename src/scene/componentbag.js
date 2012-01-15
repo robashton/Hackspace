@@ -8,6 +8,9 @@ define(function(require) {
     this.components = [];
     this.eventHandlers = {};
     this.commandHandlers = {};
+    this.queuedCommands = [];
+    this.on('EventHandled', this.onEventHandled);
+    this.currentCommandDepth = 0;
   };
   
   ComponentBag.prototype = {
@@ -52,11 +55,37 @@ define(function(require) {
         method: handler
       };
     },
-        
+    
+    isCurrentlyHandlingCommand: function() {
+      return this.currentCommandDepth > 0;
+    },
+          
     dispatch: function(command, data) {
+      if(this.isCurrentlyHandlingCommand())
+        this.queueCommand(command, data);
+      else
+        this.dispatchCommand(command, data);
+    },
+    
+    queueCommand: function(command, data) {
+      this.queuedCommands.push({command: command, data: data});
+    },
+
+    dispatchCommand: function(command, data) {
+      this.currentCommandDepth++;
       var handler = this.findCommandHandler(command);
       if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
-      handler.method.apply(handler.component, data); 
+      handler.method.apply(handler.component, data);
+      this.currentCommandDepth--;
+      if(this.currentCommandDepth === 0)
+        this.pumpPendingCommands();
+    },
+    
+    pumpPendingCommands: function() {
+      if(this.queuedCommands.length > 0) {
+        var item = this.queuedCommands.shift();
+        this.dispatchCommand(item.command, item.data);
+      }
     },
     
     get: function(query, data, defaultValue) {

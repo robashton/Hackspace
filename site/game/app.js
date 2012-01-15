@@ -2938,15 +2938,13 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       result.y += d;
     },
     collideWithRight: function(map, result) {
-      var x = result.x +  this.position[0] + this.size[0];
+      var x = result.x + this.position[0] + this.size[0];
       var y = result.y + this.position[1] + (this.size[1] / 2.0);
       var d = 0;
       while(map.solidAt(x + d, y)) {
         d--;
         result.collided = true;
       }
-            
-
       result.x += d;
     },
     collideWithBottom: function(map, result) {
@@ -2967,7 +2965,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         d++;
         result.collided = true;
       }
-      result.x += x;
+      result.x += d;
     }    
   };  
   
@@ -3327,7 +3325,7 @@ define('entities/components/directable',['require','glmatrix'],function(require)
     },
     
     onClippedTerrain: function(data) {
-      this.moving = false;
+      
     },
     
     onTick: function() {
@@ -3453,6 +3451,7 @@ define('entities/components/actionable',['require'],function(require) {
     },    
         
     attackTarget: function() {
+      console.log(this.parent.id + ' attacked ' + this.targetId);
       this.parent.dispatch('attack', [this.targetId]);
     },    
     
@@ -3511,6 +3510,7 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
   var Eventable = function() {
     this.eventListeners = {};
     this.allContainer = new EventContainer(this);
+    this.eventDepth = 0;
   };
   
   Eventable.prototype = {
@@ -3555,7 +3555,7 @@ define('shared/eventable',['require','./eventcontainer'],function(require) {
 
       if(container)
         container.raise(sender || this, data);
-
+      
       this.allContainer.raise(sender || this, {
         event: eventName,
         data: data
@@ -3590,6 +3590,9 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
     this.components = [];
     this.eventHandlers = {};
     this.commandHandlers = {};
+    this.queuedCommands = [];
+    this.on('EventHandled', this.onEventHandled);
+    this.currentCommandDepth = 0;
   };
   
   ComponentBag.prototype = {
@@ -3634,11 +3637,37 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
         method: handler
       };
     },
-        
+    
+    isCurrentlyHandlingCommand: function() {
+      return this.currentCommandDepth > 0;
+    },
+          
     dispatch: function(command, data) {
+      if(this.isCurrentlyHandlingCommand())
+        this.queueCommand(command, data);
+      else
+        this.dispatchCommand(command, data);
+    },
+    
+    queueCommand: function(command, data) {
+      this.queuedCommands.push({command: command, data: data});
+    },
+
+    dispatchCommand: function(command, data) {
+      this.currentCommandDepth++;
       var handler = this.findCommandHandler(command);
       if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
-      handler.method.apply(handler.component, data); 
+      handler.method.apply(handler.component, data);
+      this.currentCommandDepth--;
+      if(this.currentCommandDepth === 0)
+        this.pumpPendingCommands();
+    },
+    
+    pumpPendingCommands: function() {
+      if(this.queuedCommands.length > 0) {
+        var item = this.queuedCommands.shift();
+        this.dispatchCommand(item.command, item.data);
+      }
     },
     
     get: function(query, data, defaultValue) {
@@ -3952,6 +3981,7 @@ define('entities/components/hashealth',['require','underscore'],function(require
   
   HasHealth.prototype = {
     removeHealth: function(amount) {
+      console.log(this.parent.id + ' lost ', amount);
       this.parent.raise('HealthLost', amount);
     },
     onHealthLost: function(amount) {
@@ -14458,7 +14488,7 @@ define('ui/questasker',['require','underscore'],function(require) {
     onTalkTo: function(data) {
       this.element.find('#quest-started-text').text(data.text);
       this.element.show();
-    },
+    }
   };
   
   return QuestAsker;

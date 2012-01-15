@@ -44,7 +44,7 @@ define(function(require) {
     },
     
     onClippedTerrain: function(data) {
-      this.moving = false;
+      
     },
     
     onTick: function() {

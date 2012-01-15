@@ -79,15 +79,13 @@ define(function(require) {
       result.y += d;
     },
     collideWithRight: function(map, result) {
-      var x = result.x +  this.position[0] + this.size[0];
+      var x = result.x + this.position[0] + this.size[0];
       var y = result.y + this.position[1] + (this.size[1] / 2.0);
       var d = 0;
       while(map.solidAt(x + d, y)) {
         d--;
         result.collided = true;
       }
-            
-
       result.x += d;
     },
     collideWithBottom: function(map, result) {
@@ -108,7 +106,7 @@ define(function(require) {
         d++;
         result.collided = true;
       }
-      result.x += x;
+      result.x += d;
     }    
   };  
   
