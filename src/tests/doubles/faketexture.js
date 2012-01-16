@@ -6,7 +6,9 @@ define(function(require) {
   };
   
   FakeTexture.prototype = {
-  
+    get: function() {
+      return {};
+    }
   };
   
   return FakeTexture;

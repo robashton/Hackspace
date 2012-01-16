@@ -16,7 +16,9 @@ define(function(require) {
   var Factionable = require('./components/factionable');
   var Damageable = require('./components/damageable');
   var HasHealth = require('./components/hashealth');
-
+  var Animatable = require('./components/animatable');
+  var StandardAnimations = require('./components/standardanimations');
+  
   var Character = function(id, x ,y) {
     Entity.call(this, id);
     
@@ -33,6 +35,8 @@ define(function(require) {
     this.attach(new Factionable('player'));
     this.attach(new Damageable());
     this.attach(new HasHealth(100));
+    this.attach(new Animatable('character'));
+    this.attach(new StandardAnimations());
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);

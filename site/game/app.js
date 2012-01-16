@@ -3170,6 +3170,9 @@ define('entities/components/renderable',['require','../../render/instance','../.
     this.canRotate = canRotate;
     this.size = vec3.create([0,0,0]);
     this.position = vec3.create([0,0,0]);
+    this.animationName = 'static';
+    this.animationFrame = -1;
+    this.rotation = 0;
   };
   
   Renderable.prototype = {    
@@ -3193,8 +3196,9 @@ define('entities/components/renderable',['require','../../render/instance','../.
                               this.position[2]);
     },
     onRotationChanged: function(data) {
+      this.rotation = data.x;
       if(this.canRotate)
-        this.determineTextureFromRotation(data.x);
+        this.determineTextureFromRotation();
     },
        
     onAddedToScene: function(scene) {
@@ -3218,8 +3222,10 @@ define('entities/components/renderable',['require','../../render/instance','../.
     },
     
     determineTextureFromRotation: function(rotation) {
+      var path = '/main/' + this.textureName + '/' + this.animationName + '-';
+    
       var textureSuffix = 'up';
-      rotation = ExtraMath.clampRotation(rotation);
+      var rotation = ExtraMath.clampRotation(this.rotation);
       
       // Account for the isometric PoV
       rotation += Math.PI / 4.0;
@@ -3239,9 +3245,19 @@ define('entities/components/renderable',['require','../../render/instance','../.
       else if(rotation < Math.PI * 1.62)
         textureSuffix = 'left';
       else if(rotation < Math.PI * 1.87)
-        textureSuffix = 'up-left';      
-      
-      this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '-' + textureSuffix + '.png');
+        textureSuffix = 'up-left'; 
+        
+      if(this.animationFrame < 0)
+        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '.png');
+      else
+        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '-' + this.animationFrame + '.png'); 
+    },
+    onAnimationFrameChanged: function(frame) {
+      this.animationFrame = frame;
+      this.determineTextureFromRotation();
+    },
+    onAnimationChanged: function(data) {
+      this.animationName = data.animation;
     },
     
     onRemovedFromScene: function() {
@@ -4047,7 +4063,92 @@ define('entities/components/hashealth',['require','underscore'],function(require
   return HasHealth;
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth'],function(require) {
+define('entities/components/animatable',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Animatable = function(textureName) {
+    this.currentAnimation = 'static';
+    this.currentAnimationRate = 15;
+    this.currentFrame = -1;
+    this.textureName = textureName;
+    this.currentMaxFrame = 0;
+    this.meta = null;
+    this.scene = null;
+    this.ticks = 0;
+  };
+  
+  Animatable.prototype = {
+    cancelAnimations: function() {
+      this.startAnimation('static');
+    },
+    startAnimation: function(animation, rate) {
+      this.parent.raise('AnimationChanged', {
+        animation: animation,
+        rate: rate || 100
+      });
+    },
+    onAnimationChanged: function(data) {
+      this.currentAnimation = data.animation;
+      this.currentAnimationRate = data.rate;
+      this.ticks = 0;
+      this.currentMaxFrame = this.meta[this.currentAnimation].frameCount;
+      this.setCurrentFrameAt(this.currentMaxFrame === 0 ? -1 : 0);
+    },
+    onTick: function() {
+      var totalFrames = parseInt(this.ticks++ / this.currentAnimationRate);
+      var frame = -1; 
+      
+      if(this.currentMaxFrame > 0)
+        frame = totalFrames % this.currentMaxFrame;
+                  
+      this.setCurrentFrameAt(frame);
+    },
+    setCurrentFrameAt: function(frame) {
+      if(frame !== this.currentFrame)
+        this.parent.raise('AnimationFrameChanged', frame); 
+    },
+    onAnimationFrameChanged: function(frame) {
+      this.currentFrame = frame;
+    },
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+      this.meta = scene.resources.get('/main/' + this.textureName + '/meta.json').get();
+    }
+  };
+  
+  return Animatable;
+});
+
+define('entities/components/standardanimations',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var StandardAnimations = function() {
+    this.walking = false;
+  };
+  
+  StandardAnimations.prototype = {
+    onDestinationChanged: function() {
+      if(!this.walking)
+        this.startWalking();
+    },
+    onDestinationTargetChanged: function() {
+      if(!this.walking)
+        this.startWalking();
+    },
+    startWalking: function() {
+      this.parent.dispatch('startAnimation', [ 'walking', 3 ]);
+      this.walking = true;
+    },
+    onDestinationReached: function() {
+      this.parent.dispatch('cancelAnimations', []);
+      this.walking = false;
+    }
+  };
+  
+  return StandardAnimations;
+});
+
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations'],function(require) {
 
   var _ = require('underscore');
   
@@ -4065,7 +4166,9 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Factionable = require('./components/factionable');
   var Damageable = require('./components/damageable');
   var HasHealth = require('./components/hashealth');
-
+  var Animatable = require('./components/animatable');
+  var StandardAnimations = require('./components/standardanimations');
+  
   var Character = function(id, x ,y) {
     Entity.call(this, id);
     
@@ -4082,6 +4185,8 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Factionable('player'));
     this.attach(new Damageable());
     this.attach(new HasHealth(100));
+    this.attach(new Animatable('character'));
+    this.attach(new StandardAnimations());
   };  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);

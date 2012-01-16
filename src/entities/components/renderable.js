@@ -15,6 +15,9 @@ define(function(require) {
     this.canRotate = canRotate;
     this.size = vec3.create([0,0,0]);
     this.position = vec3.create([0,0,0]);
+    this.animationName = 'static';
+    this.animationFrame = -1;
+    this.rotation = 0;
   };
   
   Renderable.prototype = {    
@@ -38,8 +41,9 @@ define(function(require) {
                               this.position[2]);
     },
     onRotationChanged: function(data) {
+      this.rotation = data.x;
       if(this.canRotate)
-        this.determineTextureFromRotation(data.x);
+        this.determineTextureFromRotation();
     },
        
     onAddedToScene: function(scene) {
@@ -63,8 +67,10 @@ define(function(require) {
     },
     
     determineTextureFromRotation: function(rotation) {
+      var path = '/main/' + this.textureName + '/' + this.animationName + '-';
+    
       var textureSuffix = 'up';
-      rotation = ExtraMath.clampRotation(rotation);
+      var rotation = ExtraMath.clampRotation(this.rotation);
       
       // Account for the isometric PoV
       rotation += Math.PI / 4.0;
@@ -84,9 +90,19 @@ define(function(require) {
       else if(rotation < Math.PI * 1.62)
         textureSuffix = 'left';
       else if(rotation < Math.PI * 1.87)
-        textureSuffix = 'up-left';      
-      
-      this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '-' + textureSuffix + '.png');
+        textureSuffix = 'up-left'; 
+        
+      if(this.animationFrame < 0)
+        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '.png');
+      else
+        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '-' + this.animationFrame + '.png'); 
+    },
+    onAnimationFrameChanged: function(frame) {
+      this.animationFrame = frame;
+      this.determineTextureFromRotation();
+    },
+    onAnimationChanged: function(data) {
+      this.animationName = data.animation;
     },
     
     onRemovedFromScene: function() {
