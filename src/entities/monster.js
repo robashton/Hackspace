@@ -12,12 +12,14 @@ define(function(require) {
   var Factionable = require('./components/factionable');
   var Damageable = require('./components/damageable');
   var HasHealth = require('./components/hashealth');
+  var StandardAnimations = require('./components/standardanimations');
+  var Animatable = require('./components/animatable');
   
   var Monster = function(id, x, y, texture) {
     Entity.call(this, id);
     
     this.attach(new Physical());
-    this.attach(new Renderable(texture, false));
+    this.attach(new Renderable(texture, true));
     this.attach(new Tangible(x, y, 12, 18));
     this.attach(new Directable(1.5));
     this.attach(new Roamable(x, y, -100, -100, 100, 100));
@@ -26,7 +28,9 @@ define(function(require) {
     this.attach(new Factionable('monster'));
     this.attach(new Damageable());
     this.attach(new HasHealth(2));
-    
+    this.attach(new Animatable(texture));
+    this.attach(new StandardAnimations());
+       
     this.on('AddedToScene', this.onMonsterAddedToScene);
     this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
     this.on('DestinationReached', this.onMonsterDestinationReached);

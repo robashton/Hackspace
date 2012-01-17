@@ -1,0 +1,8 @@
+{
+  "static": {
+    "frameCount": 0
+  },
+  "walking": {
+    "frameCount": 2
+  }
+}
