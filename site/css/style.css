@@ -15,6 +15,14 @@ body {
   padding: 0;
 }
 
+.healthbar {
+  position: absolute;
+  background-color: #00FF00;
+  border: 1px solid #AAAAAA;
+  width: 50px;
+  height: 5px;
+}
+
 
 #quest-started {
   position: absolute;

@@ -45,7 +45,6 @@ define(function(require) {
     uploadTransforms: function(context) {
       this.applyScale(context);
       this.applyTranslate(context);
-
     },
     
     applyTranslate: function(context) {

@@ -2879,7 +2879,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       this.position[1] = data.y;
       this.position[2] = data.z;
       this.checkLandscapeBounds();
-    },  
+    },
            
     onAddedToScene: function(scene) {
       this.scene = scene;
@@ -2926,8 +2926,8 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
     },
     getBounds: function() {
       return {
-        x: this.position[0], // - (this.size[0] / 2.0),
-        y: this.position[1], // - (this.size[1] / 2.0),
+        x: this.position[0],
+        y: this.position[1],
         width: this.size[0],
         height: this.size[1],
         circle: {
@@ -3439,7 +3439,7 @@ define('entities/components/directable',['require','glmatrix'],function(require)
         this.position[0] + this.direction[0] * this.speed,
         this.position[1] + this.direction[1] * this.speed,
         this.position[2] + this.direction[2] * this.speed
-      ]);
+      ]); 
       this.parent.dispatch('rotateTo', [Math.atan2(this.direction[0], -this.direction[1])]);
     }
   };  
@@ -4044,6 +4044,7 @@ define('entities/components/hashealth',['require','underscore'],function(require
 
   var HasHealth = function(amount) {
     this.amount = amount;
+    this.totalAmount = amount;
   };
   
   HasHealth.prototype = {
@@ -4054,6 +4055,12 @@ define('entities/components/hashealth',['require','underscore'],function(require
       this.amount -= amount;
       if(this.amount <= 0)
         this.raiseDeath();
+    },
+    getMaxHealth: function() {
+      return this.totalAmount;
+    },
+    getCurrentHealth:  function() {
+      return this.amount;
     },
     raiseDeath: function() {
       this.parent.raise('Death');
@@ -4264,7 +4271,6 @@ define('render/rendergraph',['require','underscore'],function(require) {
     uploadTransforms: function(context) {
       this.applyScale(context);
       this.applyTranslate(context);
-
     },
     
     applyTranslate: function(context) {
@@ -4315,6 +4321,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
         if(entity.tick) 
           entity.tick();
       });
+      this.raise('PostTick');
     },
     withEntity: function(id, callback) {
       var entity = this.entitiesById[id];
@@ -4345,6 +4352,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       this.camera.updateViewport(this.graph);
       this.renderer.clear();
       this.renderer.draw(this.graph);
+      this.raise('PostRender');
     },
     add: function(entity) {
       if(!entity.id) throw "Attempt to add entity without id: " + entity;
@@ -14373,7 +14381,40 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   
   Context.prototype = {    
   
-    pageCoordsToWorldCoords: function(x, y) {    
+    pageCoordsToWorldCoords: function(x, y) {
+      var viewport = this.scene.graph.viewport;
+      var scale = this.getScaleComponent();
+     
+      x /= scale.x;
+      y /= scale.y;    
+      
+      x += (viewport.left);
+      y += (viewport.top); 
+            
+      return  Coords.isometricToWorld(x,y);   
+    },
+    worldCoordsToPageCoords: function(x, y) {
+      var viewport = this.scene.graph.viewport;
+      var scale = this.getScaleComponent();
+      
+      var screen = Coords.worldToIsometric(x, y);
+      
+      screen.x -= (viewport.left);
+      screen.y -= (viewport.top);
+      
+      screen.x *= scale.x;
+      screen.y *= scale.y;
+      
+      return screen;    
+    },
+    worldScaleToPage: function(width, height) {
+      var scale = this.getScaleComponent();
+      return {
+        width: width *= scale.x,
+        height: height *= scale.y
+      };
+    },
+    getScaleComponent: function() {
       var viewport = this.scene.graph.viewport;
       
       var canvasWidth = this.element.width;
@@ -14381,14 +14422,11 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
            
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
-     
-      x /= scalex;
-      y /= scaley;    
       
-      x += (viewport.left);
-      y += (viewport.top); 
-            
-      return  Coords.isometricToWorld(x,y);   
+      return {
+        x: scalex,
+        y: scaley
+      };
     },
     onResourcesLoaded: function() { 
       var self = this;
@@ -14661,6 +14699,83 @@ define('ui/questasker',['require','underscore'],function(require) {
   return QuestAsker;
 });
 
+define('ui/healthbars',['require','underscore','jquery','../shared/coords'],function(require) {
+  var _ = require('underscore');
+  var $ = require('jquery');
+  var Coords = require('../shared/coords');
+   
+
+  var Healthbars = function(context) {
+    this.context = context;
+    this.scene = context.scene;
+    this.healthbars = {};
+    this.scene.autoHook(this);
+  };
+  
+  Healthbars.prototype = {
+    onHealthLost: function(amount, sender) {
+      this.registerHealthBar(sender.id);
+    },
+    onPostRender: function() {
+      for(var i in this.healthbars)
+        this.updateHealthBar(i);  
+    },
+    onDeath: function(data, sender) {
+      this.removeHealthBar(sender.id);
+    },
+    registerHealthBar: function(id) {
+      if(this.healthbars[id])
+        this.updateHealthBar(id);
+      else
+        this.createHealthBar(id);
+    },
+    updateHealthBar: function(id) {
+      var entity = this.scene.get(id);
+      if(!entity) {
+        this.removeHealthBar(id);
+        return;
+      }
+      var currentHealth = entity.get('getCurrentHealth');
+      var maxHealth = entity.get('getMaxHealth');
+      var percentage = (currentHealth / maxHealth);
+      var bounds = entity.get('getBounds');
+      var screen = this.context.worldCoordsToPageCoords(bounds.x - bounds.width / 4.0, bounds.y + bounds.height / 4.0);
+      var size = this.context.worldScaleToPage(bounds.width, bounds.height);
+      var colour = ''
+      
+      if(percentage > 0.75)
+        colour = '#00FF00';
+      else if (percentage > 0.30)
+        colour = '#FFFF00';
+      else
+        colour = '#FF0000';            
+      
+      var bar = this.healthbars[id];
+      bar.css('left', screen.x)
+         .css('top', screen.y + 2)
+         .css('width', size.width * percentage)
+         .css('background-color', colour);
+      
+    },
+    removeHealthBar: function(id) {
+      var bar = this.healthbars[id];
+      bar.remove();
+      delete this.healthbars[id];
+    },
+    createHealthBar: function(id) {
+      var bar = $('<div/>')
+                  .addClass('healthbar')
+                  .attr('id', 'healthbar-' + id)
+                  .appendTo('#container');
+                  
+      this.healthbars[id] = bar;
+      this.updateHealthBar(id);
+    }
+  };
+  
+  return Healthbars;
+});
+
 define('entities/components/roamable',['require','glmatrix'],function(require) {
 
   var vec3 = require('glmatrix').vec3;
@@ -14931,7 +15046,7 @@ define('entities/collider',['require','underscore','../scene/entity'],function(r
   return Collider;
 });
 
-define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker','../../entities/monster','../../entities/death','../../entities/collider'],function(require) {
+define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker','../../ui/healthbars','../../entities/monster','../../entities/death','../../entities/collider'],function(require) {
 
   var Character = require('../../entities/character');
   var Npc = require('../../entities/npc');
@@ -14947,6 +15062,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
   var Item = require('../../scripting/item');
   var Pickup = require('../../entities/pickup');
   var QuestAsker = require('../../ui/questasker');
+  var HealthBars = require('../../ui/healthbars');
   var Monster = require('../../entities/monster');
   var Death = require('../../entities/death');
   var Collider = require('../../entities/collider');
@@ -14963,6 +15079,7 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       var questGiver = new Npc("quest-giver", 150, 100);
       var controller = new Controller();
       var collider = new Collider();
+      var healthbars = new HealthBars(this.context);
       
       var mapResource = context.resources.get('/main/world.json');
       var map = new Map(mapResource.get());

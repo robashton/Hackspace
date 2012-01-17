@@ -14,6 +14,7 @@ define(function(require) {
   var Item = require('../../scripting/item');
   var Pickup = require('../../entities/pickup');
   var QuestAsker = require('../../ui/questasker');
+  var HealthBars = require('../../ui/healthbars');
   var Monster = require('../../entities/monster');
   var Death = require('../../entities/death');
   var Collider = require('../../entities/collider');
@@ -30,6 +31,7 @@ define(function(require) {
       var questGiver = new Npc("quest-giver", 150, 100);
       var controller = new Controller();
       var collider = new Collider();
+      var healthbars = new HealthBars(this.context);
       
       var mapResource = context.resources.get('/main/world.json');
       var map = new Map(mapResource.get());

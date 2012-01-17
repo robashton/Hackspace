@@ -20,6 +20,7 @@ define(function(require) {
         if(entity.tick) 
           entity.tick();
       });
+      this.raise('PostTick');
     },
     withEntity: function(id, callback) {
       var entity = this.entitiesById[id];
@@ -50,6 +51,7 @@ define(function(require) {
       this.camera.updateViewport(this.graph);
       this.renderer.clear();
       this.renderer.draw(this.graph);
+      this.raise('PostRender');
     },
     add: function(entity) {
       if(!entity.id) throw "Attempt to add entity without id: " + entity;

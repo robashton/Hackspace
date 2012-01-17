@@ -30,7 +30,40 @@ define(function(require) {
   
   Context.prototype = {    
   
-    pageCoordsToWorldCoords: function(x, y) {    
+    pageCoordsToWorldCoords: function(x, y) {
+      var viewport = this.scene.graph.viewport;
+      var scale = this.getScaleComponent();
+     
+      x /= scale.x;
+      y /= scale.y;    
+      
+      x += (viewport.left);
+      y += (viewport.top); 
+            
+      return  Coords.isometricToWorld(x,y);   
+    },
+    worldCoordsToPageCoords: function(x, y) {
+      var viewport = this.scene.graph.viewport;
+      var scale = this.getScaleComponent();
+      
+      var screen = Coords.worldToIsometric(x, y);
+      
+      screen.x -= (viewport.left);
+      screen.y -= (viewport.top);
+      
+      screen.x *= scale.x;
+      screen.y *= scale.y;
+      
+      return screen;    
+    },
+    worldScaleToPage: function(width, height) {
+      var scale = this.getScaleComponent();
+      return {
+        width: width *= scale.x,
+        height: height *= scale.y
+      };
+    },
+    getScaleComponent: function() {
       var viewport = this.scene.graph.viewport;
       
       var canvasWidth = this.element.width;
@@ -38,14 +71,11 @@ define(function(require) {
            
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
-     
-      x /= scalex;
-      y /= scaley;    
       
-      x += (viewport.left);
-      y += (viewport.top); 
-            
-      return  Coords.isometricToWorld(x,y);   
+      return {
+        x: scalex,
+        y: scaley
+      };
     },
     onResourcesLoaded: function() { 
       var self = this;

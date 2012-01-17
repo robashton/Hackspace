@@ -20,7 +20,7 @@ define(function(require) {
       this.position[1] = data.y;
       this.position[2] = data.z;
       this.checkLandscapeBounds();
-    },  
+    },
            
     onAddedToScene: function(scene) {
       this.scene = scene;
@@ -67,8 +67,8 @@ define(function(require) {
     },
     getBounds: function() {
       return {
-        x: this.position[0], // - (this.size[0] / 2.0),
-        y: this.position[1], // - (this.size[1] / 2.0),
+        x: this.position[0],
+        y: this.position[1],
         width: this.size[0],
         height: this.size[1],
         circle: {

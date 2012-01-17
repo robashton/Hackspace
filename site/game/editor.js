@@ -12243,7 +12243,6 @@ define('render/rendergraph',['require','underscore'],function(require) {
     uploadTransforms: function(context) {
       this.applyScale(context);
       this.applyTranslate(context);
-
     },
     
     applyTranslate: function(context) {
@@ -12798,6 +12797,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
         if(entity.tick) 
           entity.tick();
       });
+      this.raise('PostTick');
     },
     withEntity: function(id, callback) {
       var entity = this.entitiesById[id];
@@ -12828,6 +12828,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       this.camera.updateViewport(this.graph);
       this.renderer.clear();
       this.renderer.draw(this.graph);
+      this.raise('PostRender');
     },
     add: function(entity) {
       if(!entity.id) throw "Attempt to add entity without id: " + entity;
@@ -13217,7 +13218,40 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   
   Context.prototype = {    
   
-    pageCoordsToWorldCoords: function(x, y) {    
+    pageCoordsToWorldCoords: function(x, y) {
+      var viewport = this.scene.graph.viewport;
+      var scale = this.getScaleComponent();
+     
+      x /= scale.x;
+      y /= scale.y;    
+      
+      x += (viewport.left);
+      y += (viewport.top); 
+            
+      return  Coords.isometricToWorld(x,y);   
+    },
+    worldCoordsToPageCoords: function(x, y) {
+      var viewport = this.scene.graph.viewport;
+      var scale = this.getScaleComponent();
+      
+      var screen = Coords.worldToIsometric(x, y);
+      
+      screen.x -= (viewport.left);
+      screen.y -= (viewport.top);
+      
+      screen.x *= scale.x;
+      screen.y *= scale.y;
+      
+      return screen;    
+    },
+    worldScaleToPage: function(width, height) {
+      var scale = this.getScaleComponent();
+      return {
+        width: width *= scale.x,
+        height: height *= scale.y
+      };
+    },
+    getScaleComponent: function() {
       var viewport = this.scene.graph.viewport;
       
       var canvasWidth = this.element.width;
@@ -13225,14 +13259,11 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
            
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
-     
-      x /= scalex;
-      y /= scaley;    
       
-      x += (viewport.left);
-      y += (viewport.top); 
-            
-      return  Coords.isometricToWorld(x,y);   
+      return {
+        x: scalex,
+        y: scaley
+      };
     },
     onResourcesLoaded: function() { 
       var self = this;
