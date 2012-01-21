@@ -94,6 +94,8 @@ define(function(require) {
         
       if(this.animationFrame < 0)
         this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '.png');
+ //     else if(this.animationFrame === 0)
+   //     this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '/static-' + textureSuffix + '.png');
       else
         this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '-' + this.animationFrame + '.png'); 
     },

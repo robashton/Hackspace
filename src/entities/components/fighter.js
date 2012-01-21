@@ -31,6 +31,10 @@ define(function(require) {
       this.currentTargetId = targetId;
     },
     
+    onKilledTarget: function() {
+      this.currentTargetId = null;
+    },
+    
     onTick: function() {
       if(this.frameCount % 30 === 0 && this.currentTargetId !== null) 
         this.performAttackStep();
@@ -51,6 +55,7 @@ define(function(require) {
     
     performAttackStep: function() {
       var self = this;
+      this.parent.raise('PunchedTarget');
       this.scene.withEntity(this.currentTargetId, function(target) {
         target.dispatch('applyDamage', [{
           dealer: self.parent.id,

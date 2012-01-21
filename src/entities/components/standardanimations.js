@@ -14,6 +14,9 @@ define(function(require) {
       if(!this.walking)
         this.startWalking();
     },
+    onPunchedTarget: function() {
+      this.parent.dispatch('playAnimation', [ 'punching', 5 ]);
+    },
     startWalking: function() {
       this.parent.dispatch('startAnimation', [ 'walking', 3 ]);
       this.walking = true;

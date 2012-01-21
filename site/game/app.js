@@ -3249,6 +3249,8 @@ define('entities/components/renderable',['require','../../render/instance','../.
         
       if(this.animationFrame < 0)
         this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '.png');
+ //     else if(this.animationFrame === 0)
+   //     this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '/static-' + textureSuffix + '.png');
       else
         this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '-' + this.animationFrame + '.png'); 
     },
@@ -3956,6 +3958,10 @@ define('entities/components/fighter',['require','underscore'],function(require) 
       this.currentTargetId = targetId;
     },
     
+    onKilledTarget: function() {
+      this.currentTargetId = null;
+    },
+    
     onTick: function() {
       if(this.frameCount % 30 === 0 && this.currentTargetId !== null) 
         this.performAttackStep();
@@ -3976,6 +3982,7 @@ define('entities/components/fighter',['require','underscore'],function(require) 
     
     performAttackStep: function() {
       var self = this;
+      this.parent.raise('PunchedTarget');
       this.scene.withEntity(this.currentTargetId, function(target) {
         target.dispatch('applyDamage', [{
           dealer: self.parent.id,
@@ -4082,6 +4089,7 @@ define('entities/components/animatable',['require','underscore'],function(requir
     this.meta = null;
     this.scene = null;
     this.ticks = 0;
+    this.playOnce = false;
   };
   
   Animatable.prototype = {
@@ -4091,12 +4099,14 @@ define('entities/components/animatable',['require','underscore'],function(requir
     startAnimation: function(animation, rate) {
       this.parent.raise('AnimationChanged', {
         animation: animation,
-        rate: rate || 100
+        rate: rate || 100,
+        playOnce: false
       });
     },
     onAnimationChanged: function(data) {
       this.currentAnimation = data.animation;
       this.currentAnimationRate = data.rate;
+      this.playOnce = data.playOnce;
       this.ticks = 0;
       this.currentMaxFrame = this.meta[this.currentAnimation].frameCount;
       this.setCurrentFrameAt(this.currentMaxFrame === 0 ? -1 : 0);
@@ -4105,10 +4115,22 @@ define('entities/components/animatable',['require','underscore'],function(requir
       var totalFrames = parseInt(this.ticks++ / this.currentAnimationRate);
       var frame = -1; 
       
+      if(totalFrames > this.currentMaxFrame && this.playOnce) {
+        this.cancelAnimations();
+        return;
+      }
+      
       if(this.currentMaxFrame > 0)
         frame = totalFrames % this.currentMaxFrame;
                   
       this.setCurrentFrameAt(frame);
+    },
+    playAnimation: function(animation, rate) {
+      this.parent.raise('AnimationChanged', {
+        animation: animation,
+        rate: rate || 100,
+        playOnce: true
+      });
     },
     setCurrentFrameAt: function(frame) {
       if(frame !== this.currentFrame)
@@ -4141,6 +4163,9 @@ define('entities/components/standardanimations',['require','underscore'],functio
     onDestinationTargetChanged: function() {
       if(!this.walking)
         this.startWalking();
+    },
+    onPunchedTarget: function() {
+      this.parent.dispatch('playAnimation', [ 'punching', 5 ]);
     },
     startWalking: function() {
       this.parent.dispatch('startAnimation', [ 'walking', 3 ]);

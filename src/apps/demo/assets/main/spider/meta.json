@@ -4,5 +4,8 @@
   },
   "walking": {
     "frameCount": 2
+  },
+  "punching": {
+    "frameCount": 1
   }
 }

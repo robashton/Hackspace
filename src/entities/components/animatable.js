@@ -10,6 +10,7 @@ define(function(require) {
     this.meta = null;
     this.scene = null;
     this.ticks = 0;
+    this.playOnce = false;
   };
   
   Animatable.prototype = {
@@ -19,12 +20,14 @@ define(function(require) {
     startAnimation: function(animation, rate) {
       this.parent.raise('AnimationChanged', {
         animation: animation,
-        rate: rate || 100
+        rate: rate || 100,
+        playOnce: false
       });
     },
     onAnimationChanged: function(data) {
       this.currentAnimation = data.animation;
       this.currentAnimationRate = data.rate;
+      this.playOnce = data.playOnce;
       this.ticks = 0;
       this.currentMaxFrame = this.meta[this.currentAnimation].frameCount;
       this.setCurrentFrameAt(this.currentMaxFrame === 0 ? -1 : 0);
@@ -33,10 +36,22 @@ define(function(require) {
       var totalFrames = parseInt(this.ticks++ / this.currentAnimationRate);
       var frame = -1; 
       
+      if(totalFrames > this.currentMaxFrame && this.playOnce) {
+        this.cancelAnimations();
+        return;
+      }
+      
       if(this.currentMaxFrame > 0)
         frame = totalFrames % this.currentMaxFrame;
                   
       this.setCurrentFrameAt(frame);
+    },
+    playAnimation: function(animation, rate) {
+      this.parent.raise('AnimationChanged', {
+        animation: animation,
+        rate: rate || 100,
+        playOnce: true
+      });
     },
     setCurrentFrameAt: function(frame) {
       if(frame !== this.currentFrame)
