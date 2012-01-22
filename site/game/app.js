@@ -1,4 +1,37 @@
 
+define('shared/coords',['require'],function(require) {
+
+  var Coords = {
+  
+    worldToIsometric: function(x, y) {
+   /*   return {
+        x: x,
+        y: y
+      };*/
+      return {
+        x: x - y,
+        y: (x + y) / 2.0
+      };
+    },
+    
+    isometricToWorld: function(x, y) {
+      var ty = (((2.0 * y) - x) / 2.0);
+      var tx = x + ty;
+ /*     return {
+        x: x,
+        y: y
+      };*/
+      return {
+        x: tx,
+        y: ty
+      }
+    }
+  };
+  
+  return Coords;
+
+});
+
 //     Underscore.js 1.2.3
 //     (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
 //     Underscore is freely distributable under the MIT license.
@@ -980,6 +1013,186 @@
   };
 
 }).call(this);
+
+define('shared/eventcontainer',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var EventContainer = function(defaultContext) {
+    this.handlers = [];
+    this.defaultContext = defaultContext;
+  }; 
+  
+  EventContainer.prototype = {
+    raise: function(source, data) {
+     var handlerLength = this.handlers.length;
+     for(var i = 0; i < handlerLength; i++) {
+        var handler = this.handlers[i];
+        handler.method.call(handler.context || this.defaultContext, data, source);   
+     }
+    },
+    add: function(method, context) {
+      this.handlers.push({
+        method: method,
+        context: context      
+      });
+    },
+    remove: function(method, context) {
+      this.handlers = _(this.handlers).filter(function(item) {
+        return item.method !== method || item.context !== context;
+      });
+    }
+  };
+  
+  return EventContainer;
+});
+
+define('shared/eventable',['require','./eventcontainer'],function(require) {
+  var EventContainer = require('./eventcontainer');
+  
+  var Eventable = function() {
+    this.eventListeners = {};
+    this.allContainer = new EventContainer(this);
+    this.eventDepth = 0;
+  };
+  
+  Eventable.prototype = {
+    autoHook: function(container) {
+      for(var key in container) { 
+        if(key.indexOf('on') === 0) {
+          this.on(key.substr(2), container[key], container);
+        }   
+      }
+    },
+    autoUnhook: function(container) {
+      for(var key in container) { 
+        if(key.indexOf('on') === 0) {
+          this.off(key.substr(2), container[key], container);
+        }   
+      }
+    },
+    once: function(eventName, callback, context) {
+      var self = this;
+      var wrappedCallback = function(data, sender) {
+        callback.call(this, data, sender);
+        self.off(eventName, wrappedCallback, context);
+      };
+      this.on(eventName, wrappedCallback, context);
+    },
+    
+    on: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).add(callback, context);
+    },
+    
+    off: function(eventName, callback, context) {
+      this.eventContainerFor(eventName).remove(callback, context);
+    },
+
+    onAny: function(callback, context) {
+      this.allContainer.add(callback, context);
+    },
+
+    raise: function(eventName, data, sender) {
+      this.audit(eventName, data);
+      var container = this.eventListeners[eventName];
+
+      if(container)
+        container.raise(sender || this, data);
+      
+      this.allContainer.raise(sender || this, {
+        event: eventName,
+        data: data
+      });
+    },
+    
+    audit: function(eventName, data) {
+      
+    },
+
+    eventContainerFor: function(eventName) {
+      var container = this.eventListeners[eventName];
+      if(!container) {
+        container =  new EventContainer(this);
+        this.eventListeners[eventName] = container;
+      }
+      return container;
+    }
+  };
+  
+  return Eventable;
+
+});
+
+define('render/canvasrender',['require'],function(require) {
+
+  var CanvasRender = function(context) {
+    this.context = context;
+  };
+  CanvasRender.prototype = {
+    clear: function() {
+      this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
+    },
+    draw: function(graph) {
+      var self = this;
+      
+      this.context.save();
+      graph.uploadTransforms(this.context);
+      
+      graph.pass(function(item) {
+        item.render(self.context);
+      });
+     
+     this.context.restore();    
+    }  
+  };
+  
+  return CanvasRender;
+});
+
+define('resources/texture',['require'],function(require) {
+  var Texture = function(factory, path) {
+    this.img = null;
+    this.path = path;
+    this.factory = factory;
+    this.loaded = false;
+  };
+  
+  Texture.prototype = {
+    get: function() {
+      return this.img;
+    },
+    
+    preload: function(callback) {
+     var data = this.factory.getData(this.path);
+     this.img = new Image();
+     this.img.onload = callback;
+     this.img.src = "data:image/png;base64," + data;
+     this.loaded = true;
+    },
+  };
+  
+  return Texture;
+});
+
+define('resources/jsondata',['require'],function(require) {
+  var JsonData = function(factory, path) {
+    this.path = path;
+    this.factory = factory;
+    this.data = null;
+  };
+  
+  JsonData.prototype = {
+    get: function() {
+      return this.data;
+    },
+    
+    preload: function(callback) {
+     this.data = this.factory.getData(this.path);
+     callback();
+    },
+  };
+  
+  return JsonData;
+});
 
 define('glmatrix',['require','exports','module'],function(require, exports, module) {
 
@@ -2824,36 +3037,771 @@ return {
 };
 });
 
-define('shared/coords',['require'],function(require) {
+define('scene/camera',['require','glmatrix','../shared/coords'],function(require) {
+  var vec3 = require('glmatrix').vec3;
+  var Coords = require('../shared/coords');
 
-  var Coords = {
-  
-    worldToIsometric: function(x, y) {
-   /*   return {
-        x: x,
-        y: y
-      };*/
-      return {
-        x: x - y,
-        y: (x + y) / 2.0
-      };
-    },
+  var Camera = function(aspectRatio, fieldOfView) {
+    this.aspectRatio = aspectRatio;
+    this.fieldOfView = fieldOfView;
+    this.centre = vec3.create([0,0,0]);
+    this.distance = 256.0;
     
-    isometricToWorld: function(x, y) {
-      var ty = (((2.0 * y) - x) / 2.0);
-      var tx = x + ty;
- /*     return {
-        x: x,
-        y: y
-      };*/
-      return {
-        x: tx,
-        y: ty
-      }
+    this.width = 0;
+    this.height = 0;
+  };
+  
+  Camera.prototype = {
+    lookAt: function(x, y, z) {
+      this.centre[0] = x || 0;
+      this.centre[1] = y || 0;
+      this.centre[2] = z || 0;
+    },
+    move: function(x, y, z) {
+      this.lookAt(this.centre[0] + x, this.centre[1] + y, this.centre[2] + z);
+    },
+    updateViewport: function(graph) {
+      this.calculateDimensions();
+            
+      var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
+           
+      var left = isometric.x - (this.width / 2.0);
+      var top = isometric.y - (this.height / 2.0);
+            
+      var right = left + this.width;
+      var bottom = top + this.height;
+            
+      graph.updateViewport(left, right, top, bottom);
+    
+    },
+    calculateDimensions: function() {
+      this.width = this.distance * Math.tan(this.fieldOfView);
+      this.height = this.width / this.aspectRatio;
     }
   };
   
-  return Coords;
+  return Camera; 
+});
+
+define('render/rendergraph',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var RenderGraph = function() {
+    this.viewport = {
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+    };
+  };
+  
+  RenderGraph.prototype = {
+    items: [],
+       
+    width: function() {
+      return this.viewport.right - this.viewport.left;
+    },
+    
+    height: function() {
+      return this.viewport.bottom - this.viewport.top;
+    },
+    
+    updateViewport: function(left, right, top, bottom) {
+      this.viewport = {
+        left: left,
+        right: right,
+        top: top,
+        bottom: bottom
+      };
+    },
+    
+    add: function(item) {
+      this.items.push(item);
+    },
+    
+    remove: function(item) {
+      this.items = _.without(this.items, [item]);
+    },    
+    
+    clear: function() {
+      this.items = [];
+    },
+        
+    uploadTransforms: function(context) {
+      this.applyScale(context);
+      this.applyTranslate(context);
+    },
+    
+    applyTranslate: function(context) {
+      context.translate(-this.viewport.left, - this.viewport.top);
+    },
+    
+    applyScale: function(context) {
+      var canvas = context.canvas;
+      var canvasWidth = canvas.width;
+      var canvasHeight = canvas.height;
+      
+      var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
+      var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
+      
+      context.scale(scalex, scaley);
+    },
+    
+    pass: function(callback) {
+      var self = this;
+      _(this.items).chain()
+       .filter(function(item) { return item.visible(self.viewport); })
+       .each(callback);
+    },
+  };
+  
+  return RenderGraph;
+});
+
+define('scene/scene',['require','underscore','../render/rendergraph','../shared/eventable'],function(require) {
+
+  var _ = require('underscore');
+  var RenderGraph = require('../render/rendergraph');
+  var Eventable = require('../shared/eventable');
+  
+  var Scene = function(resources, renderer, camera) {
+    Eventable.call(this);
+    this.entities = [];
+    this.entitiesById = {};
+    this.camera = camera;
+    this.renderer = renderer;
+    this.graph = new RenderGraph();
+    this.resources = resources;
+  };
+  
+  Scene.prototype = {
+    tick: function() {
+      _(this.entities).each(function(entity){
+        if(entity.tick) 
+          entity.tick();
+      });
+      this.raise('PostTick');
+    },
+    withEntity: function(id, callback) {
+      var entity = this.entitiesById[id];
+      if(entity) callback(entity);
+    },
+    fromEntity: function(id, query, params, defaultValue) {
+      var entity = this.entitiesById[id];
+      if(!entity) return defaultValue;
+      return entity.get(query, params, defaultValue);
+    },
+    crossEach: function(callback, context) {
+      for(var i = 0 ; i < this.entities.length; i++) {
+        for(var j = (i+1) ; j < this.entities.length; j++) {
+          callback.call(context || this, i, j, this.entities[i], this.entities[j]);
+        }
+      }
+    },
+    get: function(id) {
+      return this.entitiesById[id];
+    },
+    entityAtMouse: function(x, y, filter) {
+      return _(this.entities).find(function(entity){
+        if(filter && !filter(entity)) return false;
+        return entity.get('intersectWithMouse', [x, y], false);
+      });
+    },
+    render: function() {
+      this.camera.updateViewport(this.graph);
+      this.renderer.clear();
+      this.renderer.draw(this.graph);
+      this.raise('PostRender');
+    },
+    add: function(entity) {
+      if(!entity.id) throw "Attempt to add entity without id: " + entity;
+      this.entities.push(entity);
+      this.entitiesById[entity.id] = entity;
+      entity.setScene(this);
+    },
+    remove: function(entity) {
+      this.entities = _(this.entities).without(entity);
+      delete this.entitiesById[entity.id];
+      entity.setScene(null);
+    },
+    dispatch: function(id, command, data) {
+      var entity = this.entitiesById[id];
+      entity.dispatch(command, data);
+    },
+    broadcast: function(event, data, sender) {
+      this.raise(event, data, sender || this);
+    }
+  };
+  _.extend(Scene.prototype, Eventable.prototype);
+  
+  return Scene;  
+});
+
+define('render/color',['require'],function(require) {
+  var Color = function(a, r, g, b) {
+    this.a = a;
+    this.r = r;
+    this.g = g;
+    this.b = b;
+  };
+
+  Color.prototype = {
+    str: function() {
+      
+    }
+  };
+  return Color;
+});
+
+
+define('render/material',['require','./color'],function(require) {
+  var Color = require('./color');
+
+  var Material = function() {
+   
+  };
+  
+  Material.prototype = {
+    diffuse: new Color(255,255,255, 255),  
+    diffuseTexture: null
+  };
+  return Material;
+  
+});
+
+define('render/quad',['require','../shared/coords'],function(require) {
+
+  var Coords = require('../shared/coords');
+
+  var Quad = function(material) {
+    this.material = material;
+  };
+  
+  Quad.prototype = {
+    upload: function(context) {
+    //  this.material.upload(context);
+    },
+    render: function(canvas, instance) {
+      if(this.material.diffuseTexture)
+        this.drawTexturedQuad(canvas, instance);
+      else
+        this.drawPlainQuad(canvas, instance);      
+    },
+    drawTexturedQuad: function(canvas, instance) {
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      var width = instance.size[0] + instance.size[1];
+      var height = instance.size[2];
+      
+      canvas.drawImage(
+        this.image('diffuseTexture'),
+        bottomLeft.x,
+        bottomLeft.y - height,
+        width,
+        height);
+        
+      this.drawFloor(canvas, instance);
+    },
+    drawPlainQuad: function(canvas, instance) {
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      var width = instance.size[0] + instance.size[1];
+      var height = instance.size[2];
+          
+      canvas.fillRect(
+        bottomLeft.x,
+        bottomLeft.y - height,
+        width,
+        height);
+    },
+    image: function(name) {
+       return this.material[name].get()
+    },
+    drawFloor: function(canvas, instance) {
+      var topLeft = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+      var topRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1]);
+      var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      canvas.strokeStyle = 'rgba(100, 100, 100, 0.5)';
+      canvas.lineWidth = 0.25;
+      canvas.beginPath();
+      canvas.moveTo(topLeft.x, topLeft.y);
+      canvas.lineTo(topRight.x, topRight.y);
+      canvas.lineTo(bottomRight.x, bottomRight.y);
+      canvas.lineTo(bottomLeft.x, bottomLeft.y);
+      canvas.lineTo(topLeft.x, topLeft.y);
+      canvas.stroke();
+    }
+  }; 
+  
+  return Quad;
+});
+
+define('render/instance',['require','glmatrix'],function(require) {
+  var vec3 = require('glmatrix').vec3;
+
+  var Instance = function(model) {
+    this.model = model;
+    this.position = vec3.create([0,0,0]);
+    this.size = vec3.create([0,0,0]);
+    this.rotation = 0;
+  };
+  
+  Instance.prototype = {
+    visible: function(viewport) {
+      return true;
+    },
+    scale: function(x, y, z) {
+      this.size[0] = x || 0;
+      this.size[1] = y || 0;
+      this.size[2] = z || 0;
+    },
+    translate: function(x, y, z) {
+      this.position[0] = x || 0;
+      this.position[1] = y || 0;
+      this.position[2] = z || 0;
+    },
+    rotate: function(x) {
+      this.rotation = x;
+    },
+    render: function(context) {     
+      this.model.upload(context);
+      this.model.render(context, this);
+    }
+  };
+  
+  return Instance;
+});
+
+define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
+  var _ = require('underscore');
+  var Eventable = require('../shared/eventable');
+  
+  var ComponentBag = function() {
+    Eventable.call(this);
+   
+    this.components = [];
+    this.eventHandlers = {};
+    this.commandHandlers = {};
+    this.queuedCommands = [];
+    this.on('EventHandled', this.onEventHandled);
+    this.currentCommandDepth = 0;
+  };
+  
+  ComponentBag.prototype = {
+     
+    attach: function(component) {
+      this.components.push(component);
+      this.registerHandlers(component);
+      component.parent = this;
+    },
+    
+    component: function(type) {
+      for(var i in this.components) {
+        var component = this.components[i];
+        if(component instanceof type)
+          return component;      
+      }
+      throw "Couldn't find component";
+    },
+    
+    registerHandlers: function(component) {
+      for(var key in component) {
+        var item = component[key];
+        if(item && item.call)
+          this.tryRegisterHandler(component, key, item);
+      }
+    },
+    
+    tryRegisterHandler: function(component, key, handler) {
+      if(key.indexOf('on') === 0)
+        this.registerEventHandler(component, key, handler);
+      else
+        this.registerCommandHandler(component, key, handler);
+    },
+    
+    registerEventHandler: function(component, key, handler) {
+      this.on(key.substr(2), handler, component);
+    },
+    
+    registerCommandHandler: function(component, key, handler) {      
+      this.commandHandlers[key] = {
+        component: component,
+        method: handler
+      };
+    },
+    
+    isCurrentlyHandlingCommand: function() {
+      return this.currentCommandDepth > 0;
+    },
+          
+    dispatch: function(command, data) {
+      if(this.isCurrentlyHandlingCommand())
+        this.queueCommand(command, data);
+      else
+        this.dispatchCommand(command, data);
+    },
+    
+    queueCommand: function(command, data) {
+      this.queuedCommands.push({command: command, data: data});
+    },
+
+    dispatchCommand: function(command, data) {
+      this.currentCommandDepth++;
+      var handler = this.findCommandHandler(command);
+      if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
+      handler.method.apply(handler.component, data);
+      this.currentCommandDepth--;
+      if(this.currentCommandDepth === 0)
+        this.pumpPendingCommands();
+    },
+    
+    pumpPendingCommands: function() {
+      if(this.queuedCommands.length > 0) {
+        var item = this.queuedCommands.shift();
+        this.dispatchCommand(item.command, item.data);
+      }
+    },
+    
+    get: function(query, data, defaultValue) {
+      var handler = this.findCommandHandler(query);
+      if(!handler) {
+         return defaultValue;
+      }
+      return handler.method.apply(handler.component, data); 
+    },
+    
+    findCommandHandler: function(key) {
+      return this.commandHandlers[key];
+    }
+  };
+  _.extend(ComponentBag.prototype, Eventable.prototype);
+  return ComponentBag;
+});
+
+define('scene/entity',['require','./componentbag','underscore'],function(require) {
+
+  var ComponentBag = require('./componentbag');
+  var _ = require('underscore');
+
+  var Entity = function(id) {
+    ComponentBag.call(this);    
+    this.id = id;
+    
+    this.onAny(this.propogateEventToScene);
+  };
+  
+  Entity.prototype = {
+    setScene: function(scene) {
+      this.scene = scene;
+      if(scene)
+        this.raise('AddedToScene', scene);
+      else
+        this.raise('RemovedFromScene');
+    },
+    tick: function() {
+      this.raise('Tick');
+    },
+    propogateEventToScene: function(data) {
+      if(this.scene)
+        this.scene.broadcast(data.event, data.data, this);
+    },
+  };
+  _.extend(Entity.prototype, ComponentBag.prototype);
+ 
+  return Entity;
+  
+});
+
+define('static/tile',['require','../render/instance'],function(require) {
+
+  var Instance = require('../render/instance');
+  
+  var Tile = function(map, items, x, y) {
+    this.map = map;
+    this.items = items;
+    this.instances = [];
+    this.x = x;
+    this.y = y;
+  };
+  
+  Tile.prototype = {
+    addInstancesToGraph: function(graph) {
+      for(var i in this.instances) {
+        graph.add(this.instances[i]);
+      }
+    },
+    createInstances: function() {    
+      for(var i = 0; i < this.items.length ; i++) {
+        this.createInstanceForItem(i);
+      }
+    },
+    createInstanceForItem: function(i) {
+      var item = this.items[i];        
+      var model = this.map.models[item.template];
+      var template = this.map.templates[item.template];
+      var instance = new Instance(model);
+      instance.scale(template.size[0], template.size[1], template.size[2]);
+      instance.translate(this.x + item.x, this.y + item.y);
+      this.instances[i] = instance;
+    },
+    addItem: function(x, y, template) {
+      var i = this.items.length;
+      this.items.push({
+        x: x,
+        y: y,
+        template: template
+      });
+      this.createInstanceForItem(i);      
+    }
+  };
+  
+  return Tile;  
+});
+
+define('shared/bitfield',['require'],function(require) {
+
+  var BitField = function(size) {
+    this.values = new Array((size / 32) | 0);
+  };
+
+  BitField.prototype = {
+    get: function(i) {
+      var index = (i / 32) | 0;
+      var bit = i % 32;
+      return (this.values[index] & (1 << bit)) !== 0;
+    },
+
+    set: function(i) {
+      var index = (i / 32) | 0;
+      var bit = i % 32;
+      this.values[index] |= 1 << bit;
+    },
+    unset: function(i) {
+      var index = (i / 32) | 0;
+      var bit = i % 32;
+      this.values[index] &= ~(1 << bit);
+    },
+    zero: function() {
+      for(var i = 0; i < this.values.length; i++)
+        this.values[i] = 0;
+    }
+  };
+  
+  return BitField;
+});
+
+define('static/collisionmap',['require','../shared/bitfield'],function(require) {
+
+  var BitField = require('../shared/bitfield');
+
+  var CollisionMap = function(data) {
+    this.bitfield = new BitField();
+    this.width = data.width;
+    this.height = data.height;
+    this.bitfield.values = data.collision;  
+  };
+  
+  CollisionMap.prototype = {
+    solidAt: function(x, y) {
+      var index = x + y * this.width;
+      return this.bitfield.get(index);
+    }
+  };
+  
+  return CollisionMap;
+});
+
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords'],function(require) {
+
+  var _ = require('underscore');
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var Instance = require('../render/instance');
+  var Entity = require('../scene/entity');
+  var RenderGraph = require('../render/rendergraph');
+  var CanvasRender = require('../render/canvasrender');
+  var Tile = require('./tile');
+  var CollisionMap = require('./collisionmap');
+  var Coords = require('../shared/coords');
+
+
+  var Map = function(data) {
+    Entity.call(this, "map");
+    
+    this.width = data.width;
+    this.height = data.height;
+    this.tilewidth = data.tilewidth;
+    this.tileheight = data.tileheight;
+    this.templates = data.templates;
+    this.tiledata = data.tiledata;
+    this.tilecountwidth = data.tilecountwidth;
+    this.tilecountheight = data.tilecountheight;
+    
+    this.tiles = new Array(this.tilecountwidth * this.tilecountheight);
+    this.models = {};  
+    this.scene = null;
+    this.instanceTiles = null;
+    this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
+    this.context = this.canvas.getContext('2d');
+    this.graph = new RenderGraph();
+    this.renderer = new CanvasRender(this.context);  
+    
+    this.tileleft = -1;
+    this.tiletop = -1;
+    this.tilebottom = -1;
+    this.tileright = -1;
+    this.collision = new CollisionMap(data);
+    
+    this.on('AddedToScene', this.onAddedToScene);
+  };
+  
+  Map.prototype = {
+  
+    onAddedToScene: function(scene) {
+      this.scene = scene; 
+      this.createModels(scene.resources);
+      this.createInstances();
+      this.scene.graph.add(this);   
+    },
+    
+    visible: function() { 
+      return true; 
+    },
+    
+    render: function(context) {
+      
+      if(this.canvas.width !== context.canvas.width || this.canvas.height !== context.canvas.height) {
+          this.canvas.width = context.canvas.width;
+          this.canvas.height = context.canvas.height;
+      };
+
+      this.evaluateStatus();
+
+      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
+      
+      context.save();
+      context.setTransform(1,0,0,1,0,0);          
+                
+      context.drawImage(this.canvas, 0, 0, context.canvas.width, context.canvas.height);
+      
+      context.restore();
+    },
+        
+    forEachVisibleTile: function(callback) {
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          var left = i * this.tilewidth;
+          var right = left + this.tilewidth;
+          var top = j * this.tileheight;
+          var bottom = top + this.tileheight;
+          callback(left, top, right, bottom);          
+        }      
+      }
+    },
+    
+    evaluateStatus: function() {
+    
+      var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
+      var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
+      var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
+      var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
+      
+      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
+      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
+      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) + 1;
+      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) + 1;
+      
+      tileleft = Math.max(tileleft, 0);
+      tiletop = Math.max(tiletop, 0);
+      tileright = Math.min(tileright, this.tilecountwidth-1);
+      tilebottom = Math.min(tilebottom, this.tilecountheight-1);
+      
+      if(tileleft !== this.tileleft || 
+         tiletop  !== this.tiletop || 
+         tileright !== this.tileright ||
+         tilebottom !== this.tilebottom) {
+         
+        this.tileleft = tileleft;
+        this.tileright = tileright;
+        this.tiletop = tiletop;
+        this.tilebottom = tilebottom;
+      }
+      this.redrawBackground();
+    },
+    
+    redrawBackground: function() { 
+     
+      this.graph.updateViewport(
+        this.scene.graph.viewport.left,
+        this.scene.graph.viewport.right,
+        this.scene.graph.viewport.top,
+        this.scene.graph.viewport.bottom      
+      );
+        
+      this.populateGraph();      
+      this.renderer.clear();
+      this.renderer.draw(this.graph);      
+    },
+  
+    populateGraph: function() {             
+      this.graph.clear();
+      
+      for(var x = 0; x < this.tilecountwidth; x++) {
+        for(var y = 0; y < this.tilecountheight ; y++) {
+          var index = this.index(x, y);
+          var tile = this.tiles[index];
+          tile.addInstancesToGraph(this.graph);
+        }
+      }
+    },
+    
+    createModels: function(resources) {
+      this.models = {};
+      for(var t in this.templates) {
+        var template = this.templates[t];
+        this.createModelForTemplate(template);     
+      }
+    },
+    
+    createInstances: function() {    
+      for(var x = 0; x < this.tilecountwidth; x++) {
+        for(var y = 0; y < this.tilecountheight ; y++) {
+          var index = this.index(x, y);
+          var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
+          this.tiles[index] = tile;
+          tile.createInstances();
+        }
+      }
+    },
+    
+    tileAtCoords: function(x, y) {
+      var tileX = parseInt(x / this.tilewidth);
+      var tileY = parseInt(y / this.tileheight);
+      var index = this.index(tileX, tileY);
+      return this.tiles[index];
+    },
+          
+    createModelForTemplate: function(template) {
+      var material = new Material();
+      material.diffuseTexture = this.scene.resources.get(template.texture);
+      this.models[template.id] = new Quad(material);
+      return this.models[template.id];
+    },    
+    
+    index: function(x, y) {
+      return x + y * this.tilecountwidth;
+    },
+    
+    solidAt: function(x, y) {
+      return this.collision.solidAt(parseInt(x), parseInt(y));
+    }
+  };
+  
+  _.extend(Map.prototype, Entity.prototype);
+  
+  return Map;
 
 });
 
@@ -2996,143 +3944,6 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
   
   return Physical;
   
-});
-
-define('render/instance',['require','glmatrix'],function(require) {
-  var vec3 = require('glmatrix').vec3;
-
-  var Instance = function(model) {
-    this.model = model;
-    this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([0,0,0]);
-    this.rotation = 0;
-  };
-  
-  Instance.prototype = {
-    visible: function(viewport) {
-      return true;
-    },
-    scale: function(x, y, z) {
-      this.size[0] = x || 0;
-      this.size[1] = y || 0;
-      this.size[2] = z || 0;
-    },
-    translate: function(x, y, z) {
-      this.position[0] = x || 0;
-      this.position[1] = y || 0;
-      this.position[2] = z || 0;
-    },
-    rotate: function(x) {
-      this.rotation = x;
-    },
-    render: function(context) {     
-      this.model.upload(context);
-      this.model.render(context, this);
-    }
-  };
-  
-  return Instance;
-});
-
-define('render/color',['require'],function(require) {
-  var Color = function(a, r, g, b) {
-    this.a = a;
-    this.r = r;
-    this.g = g;
-    this.b = b;
-  };
-
-  Color.prototype = {
-    str: function() {
-      
-    }
-  };
-  return Color;
-});
-
-
-define('render/material',['require','./color'],function(require) {
-  var Color = require('./color');
-
-  var Material = function() {
-   
-  };
-  
-  Material.prototype = {
-    diffuse: new Color(255,255,255, 255),  
-    diffuseTexture: null
-  };
-  return Material;
-  
-});
-
-define('render/quad',['require','../shared/coords'],function(require) {
-
-  var Coords = require('../shared/coords');
-
-  var Quad = function(material) {
-    this.material = material;
-  };
-  
-  Quad.prototype = {
-    upload: function(context) {
-    //  this.material.upload(context);
-    },
-    render: function(canvas, instance) {
-      if(this.material.diffuseTexture)
-        this.drawTexturedQuad(canvas, instance);
-      else
-        this.drawPlainQuad(canvas, instance);      
-    },
-    drawTexturedQuad: function(canvas, instance) {
-      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
-      
-      var width = instance.size[0] + instance.size[1];
-      var height = instance.size[2];
-      
-      canvas.drawImage(
-        this.image('diffuseTexture'),
-        bottomLeft.x,
-        bottomLeft.y - height,
-        width,
-        height);
-        
-      this.drawFloor(canvas, instance);
-    },
-    drawPlainQuad: function(canvas, instance) {
-      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
-      
-      var width = instance.size[0] + instance.size[1];
-      var height = instance.size[2];
-          
-      canvas.fillRect(
-        bottomLeft.x,
-        bottomLeft.y - height,
-        width,
-        height);
-    },
-    image: function(name) {
-       return this.material[name].get()
-    },
-    drawFloor: function(canvas, instance) {
-      var topLeft = Coords.worldToIsometric(instance.position[0], instance.position[1]);
-      var topRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1]);
-      var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
-      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
-      
-      canvas.strokeStyle = 'rgba(100, 100, 100, 0.5)';
-      canvas.lineWidth = 0.25;
-      canvas.beginPath();
-      canvas.moveTo(topLeft.x, topLeft.y);
-      canvas.lineTo(topRight.x, topRight.y);
-      canvas.lineTo(bottomRight.x, bottomRight.y);
-      canvas.lineTo(bottomLeft.x, bottomLeft.y);
-      canvas.lineTo(topLeft.x, topLeft.y);
-      canvas.stroke();
-    }
-  }; 
-  
-  return Quad;
 });
 
 define('shared/extramath',['require'],function(require) {
@@ -3539,254 +4350,6 @@ define('entities/components/actionable',['require'],function(require) {
   };
   
   return Actionable;
-});
-
-define('shared/eventcontainer',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var EventContainer = function(defaultContext) {
-    this.handlers = [];
-    this.defaultContext = defaultContext;
-  }; 
-  
-  EventContainer.prototype = {
-    raise: function(source, data) {
-     var handlerLength = this.handlers.length;
-     for(var i = 0; i < handlerLength; i++) {
-        var handler = this.handlers[i];
-        handler.method.call(handler.context || this.defaultContext, data, source);   
-     }
-    },
-    add: function(method, context) {
-      this.handlers.push({
-        method: method,
-        context: context      
-      });
-    },
-    remove: function(method, context) {
-      this.handlers = _(this.handlers).filter(function(item) {
-        return item.method !== method || item.context !== context;
-      });
-    }
-  };
-  
-  return EventContainer;
-});
-
-define('shared/eventable',['require','./eventcontainer'],function(require) {
-  var EventContainer = require('./eventcontainer');
-  
-  var Eventable = function() {
-    this.eventListeners = {};
-    this.allContainer = new EventContainer(this);
-    this.eventDepth = 0;
-  };
-  
-  Eventable.prototype = {
-    autoHook: function(container) {
-      for(var key in container) { 
-        if(key.indexOf('on') === 0) {
-          this.on(key.substr(2), container[key], container);
-        }   
-      }
-    },
-    autoUnhook: function(container) {
-      for(var key in container) { 
-        if(key.indexOf('on') === 0) {
-          this.off(key.substr(2), container[key], container);
-        }   
-      }
-    },
-    once: function(eventName, callback, context) {
-      var self = this;
-      var wrappedCallback = function(data, sender) {
-        callback.call(this, data, sender);
-        self.off(eventName, wrappedCallback, context);
-      };
-      this.on(eventName, wrappedCallback, context);
-    },
-    
-    on: function(eventName, callback, context) {
-      this.eventContainerFor(eventName).add(callback, context);
-    },
-    
-    off: function(eventName, callback, context) {
-      this.eventContainerFor(eventName).remove(callback, context);
-    },
-
-    onAny: function(callback, context) {
-      this.allContainer.add(callback, context);
-    },
-
-    raise: function(eventName, data, sender) {
-      this.audit(eventName, data);
-      var container = this.eventListeners[eventName];
-
-      if(container)
-        container.raise(sender || this, data);
-      
-      this.allContainer.raise(sender || this, {
-        event: eventName,
-        data: data
-      });
-    },
-    
-    audit: function(eventName, data) {
-      
-    },
-
-    eventContainerFor: function(eventName) {
-      var container = this.eventListeners[eventName];
-      if(!container) {
-        container =  new EventContainer(this);
-        this.eventListeners[eventName] = container;
-      }
-      return container;
-    }
-  };
-  
-  return Eventable;
-
-});
-
-define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
-  var _ = require('underscore');
-  var Eventable = require('../shared/eventable');
-  
-  var ComponentBag = function() {
-    Eventable.call(this);
-   
-    this.components = [];
-    this.eventHandlers = {};
-    this.commandHandlers = {};
-    this.queuedCommands = [];
-    this.on('EventHandled', this.onEventHandled);
-    this.currentCommandDepth = 0;
-  };
-  
-  ComponentBag.prototype = {
-     
-    attach: function(component) {
-      this.components.push(component);
-      this.registerHandlers(component);
-      component.parent = this;
-    },
-    
-    component: function(type) {
-      for(var i in this.components) {
-        var component = this.components[i];
-        if(component instanceof type)
-          return component;      
-      }
-      throw "Couldn't find component";
-    },
-    
-    registerHandlers: function(component) {
-      for(var key in component) {
-        var item = component[key];
-        if(item && item.call)
-          this.tryRegisterHandler(component, key, item);
-      }
-    },
-    
-    tryRegisterHandler: function(component, key, handler) {
-      if(key.indexOf('on') === 0)
-        this.registerEventHandler(component, key, handler);
-      else
-        this.registerCommandHandler(component, key, handler);
-    },
-    
-    registerEventHandler: function(component, key, handler) {
-      this.on(key.substr(2), handler, component);
-    },
-    
-    registerCommandHandler: function(component, key, handler) {      
-      this.commandHandlers[key] = {
-        component: component,
-        method: handler
-      };
-    },
-    
-    isCurrentlyHandlingCommand: function() {
-      return this.currentCommandDepth > 0;
-    },
-          
-    dispatch: function(command, data) {
-      if(this.isCurrentlyHandlingCommand())
-        this.queueCommand(command, data);
-      else
-        this.dispatchCommand(command, data);
-    },
-    
-    queueCommand: function(command, data) {
-      this.queuedCommands.push({command: command, data: data});
-    },
-
-    dispatchCommand: function(command, data) {
-      this.currentCommandDepth++;
-      var handler = this.findCommandHandler(command);
-      if(!handler) throw "Could not find handler for command '" + command + "' on entity " + this.id;
-      handler.method.apply(handler.component, data);
-      this.currentCommandDepth--;
-      if(this.currentCommandDepth === 0)
-        this.pumpPendingCommands();
-    },
-    
-    pumpPendingCommands: function() {
-      if(this.queuedCommands.length > 0) {
-        var item = this.queuedCommands.shift();
-        this.dispatchCommand(item.command, item.data);
-      }
-    },
-    
-    get: function(query, data, defaultValue) {
-      var handler = this.findCommandHandler(query);
-      if(!handler) {
-         return defaultValue;
-      }
-      return handler.method.apply(handler.component, data); 
-    },
-    
-    findCommandHandler: function(key) {
-      return this.commandHandlers[key];
-    }
-  };
-  _.extend(ComponentBag.prototype, Eventable.prototype);
-  return ComponentBag;
-});
-
-define('scene/entity',['require','./componentbag','underscore'],function(require) {
-
-  var ComponentBag = require('./componentbag');
-  var _ = require('underscore');
-
-  var Entity = function(id) {
-    ComponentBag.call(this);    
-    this.id = id;
-    
-    this.onAny(this.propogateEventToScene);
-  };
-  
-  Entity.prototype = {
-    setScene: function(scene) {
-      this.scene = scene;
-      if(scene)
-        this.raise('AddedToScene', scene);
-      else
-        this.raise('RemovedFromScene');
-    },
-    tick: function() {
-      this.raise('Tick');
-    },
-    propogateEventToScene: function(data) {
-      if(this.scene)
-        this.scene.broadcast(data.event, data.data, this);
-    },
-  };
-  _.extend(Entity.prototype, ComponentBag.prototype);
- 
-  return Entity;
-  
 });
 
 define('entities/components/carrier',['require','underscore'],function(require) {
@@ -4227,6 +4790,209 @@ define('entities/character',['require','underscore','./components/physical','./c
   return Character;
 });
 
+define('entities/characterfactory',['require','underscore','./character'],function(require) {
+  var _ = require('underscore');
+  var Character = require('./character');
+
+  var CharacterFactory = function() {
+    
+  };
+  
+  CharacterFactory.prototype = {
+    create: function(id, data) {
+      return new Character(id, data);
+    }
+  };
+  
+  return CharacterFactory;
+});
+
+define('entities/components/roamable',['require','glmatrix'],function(require) {
+
+  var vec3 = require('glmatrix').vec3;
+
+  var Directable = function(startx, starty, minx, miny, maxx, maxy) {
+    this.startx = startx;
+    this.starty = starty;
+    this.minx = minx;
+    this.miny = miny;
+    this.maxx = maxx;
+    this.maxy = maxy;
+    this.wandering = false;
+  };
+  
+  Directable.prototype = {    
+    createNewDestination: function() {
+      this.parent.dispatch('updateDestination', [ 
+        Math.random() * (this.maxx - this.minx) + this.minx + this.startx, 
+        Math.random() * (this.maxy - this.miny) + this.miny + this.starty, 
+        0]);
+    },
+    onDestinationReached: function() {
+      if(this.wandering)
+        this.createNewDestination();
+    },
+    onStateChanged: function(state) {
+      if(state === 'Wandering') {
+        this.wandering = true;
+        this.createNewDestination();
+      }
+      else
+        this.wandering = false;
+    }
+  };  
+  
+  return Directable;
+  
+});
+
+define('entities/components/seeker',['require','underscore','glmatrix'],function(require) {
+  var _ = require('underscore');
+  var vec3 = require('glmatrix').vec3;
+  
+  var Seeker = function(targetId) {
+    this.targetId = targetId;
+    this.scene = null;
+    this.seeking = false;
+    this.found = false;
+    this.buffer = vec3.create([0,0,0]);
+    this.position = vec3.create([0,0,0]);
+    this.targetPosition = null;
+    this.viewingDistance = 30;
+  };
+  
+  Seeker.prototype = {
+    onTick: function() {   
+      this.updateTargetPosition();  
+      this.determineTargetProximity();        
+    },
+    
+    updateTargetPosition: function() {
+      var self = this;
+      this.scene.withEntity(this.targetId, function(target) {
+        self.targetPosition = target.get('getPosition');          
+      });
+    },
+    
+    onPositionChanged: function(data) {
+      this.position[0] = data.x;
+      this.position[1] = data.y;
+      this.position[2] = data.z;
+    },
+    
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    
+    onDestinationTargetChanged: function() {
+      this.seeking = true;
+      this.found = false;
+    },
+    
+    onDestinationReached: function() {
+      if(this.seeking) {
+       this.found = true;
+       this.seeking = false;
+      }
+    },
+     
+    determineTargetProximity: function() {
+      vec3.subtract(this.position, this.targetPosition, this.buffer);
+      var distance = vec3.length(this.buffer);
+      if(distance < 128 && !this.found) {
+        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
+      }
+      else if(distance > 30 && this.found) {
+        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
+      }
+    }
+  };
+  
+  return Seeker;
+});
+
+define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/standardanimations','./components/animatable'],function(require) {
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  
+  var Physical = require('./components/physical');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Roamable = require('./components/roamable');
+  var Directable = require('./components/directable');
+  var Seeker = require('./components/seeker');
+  var Fighter = require('./components/fighter');
+  var Factionable = require('./components/factionable');
+  var Damageable = require('./components/damageable');
+  var HasHealth = require('./components/hashealth');
+  var StandardAnimations = require('./components/standardanimations');
+  var Animatable = require('./components/animatable');
+  
+  var Monster = function(id, data) {
+    Entity.call(this, id);
+    
+    this.attach(new Physical());
+    this.attach(new Renderable(data.texture, true));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
+    this.attach(new Directable(1.5));
+    this.attach(new Roamable(data.x, data.y, -100, -100, 100, 100));
+    this.attach(new Seeker('player'));
+    this.attach(new Fighter());
+    this.attach(new Factionable('monster'));
+    this.attach(new Damageable());
+    this.attach(new HasHealth(2));
+    this.attach(new Animatable(data.texture));
+    this.attach(new StandardAnimations());
+       
+    this.on('AddedToScene', this.onMonsterAddedToScene);
+    this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
+    this.on('DestinationReached', this.onMonsterDestinationReached);
+    this.on('StateChanged', this.onMonsterStateChanged);
+    this.on('Tick', this.onMonsterTick);
+    this.state = '';
+  };
+  
+  Monster.prototype = {
+    onMonsterAddedToScene: function() {
+      this.raise('StateChanged', 'Wandering');
+    },
+    onMonsterDestinationTargetChanged: function() {
+      this.raise('StateChanged', 'Seeking');
+    },
+    onMonsterDestinationReached: function() {
+      if(this.state === 'Seeking')
+        this.raise('StateChanged', 'Fighting');
+    },
+    onMonsterStateChanged: function(state) {
+      this.state = state;
+    },
+    onMonsterTick: function() {
+     if(this.state === 'Fighting')
+        this.dispatch('attack', [ 'player' ]);
+    }
+  };
+  _.extend(Monster.prototype, Entity.prototype);
+  
+  return Monster;
+});
+
+define('entities/monsterfactory',['require','underscore','./monster'],function(require) {
+  var _ = require('underscore');
+  var Monster = require('./monster');
+  
+  var MonsterFactory = function() {
+  
+  };
+  
+  MonsterFactory.prototype = {
+    create: function(id, data) {
+      return new Monster(id, data);
+    }
+  };
+  
+  return MonsterFactory;
+});
+
 define('entities/components/questgiver',['require','underscore','../../scripting/quest'],function(require) {
   var _ = require('underscore');
   
@@ -4248,6 +5014,21 @@ define('entities/components/questgiver',['require','underscore','../../scripting
   };
   
   return QuestGiver;
+});
+
+define('scripting/item',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Item = function(id, template) {
+    _.extend(this, template);
+    this.id = id;    
+  };
+  
+  Item.prototype = {
+    
+  };
+  
+  return Item;
 });
 
 define('scripting/items/duck',['require'],function(require) {
@@ -4306,678 +5087,138 @@ define('entities/pickup',['require','underscore','../scene/entity','./components
   
 });
 
-define('render/rendergraph',['require','underscore'],function(require) {
-  var _ = require('underscore');
+define('scripting/quests/fetchducks',['require','underscore','../item','../items/duck','../../entities/pickup'],function(require) {
 
-  var RenderGraph = function() {
-    this.viewport = {
-      left: 0,
-      right: 0,
-      top: 0,
-      bottom: 0,
+  var _ = require('underscore');
+  var Item = require('../item');
+  var DuckTemplate = require('../items/duck');
+  var Pickup = require('../../entities/pickup');
+
+  FetchDucks = {
+    init: function() {
+      this.itemCount = 0;
+    },
+    onItemPickedUp: function() {
+      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
+      this.markUpdated();
+      console.log('Item count: ' + this.itemCount);
+    },
+    onItemRemoved: function() {
+      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
+      this.markUpdated();
+      console.log('Item count: ' + this.itemCount);
+    },
+    onDiscussion: function(entityId) {
+      if(entityId === 'quest-giver') {
+        this.determineIfQuestFinished();      
+      }
+    },
+    onKilledTarget: function(targetId) {
+      var self = this;
+      console.log('Genning item for ' + targetId);
+      this.scene.withEntity(targetId, function(target) {
+        // Check some value         
+        var targetPosition = target.get('getPosition');        
+        // TODO: This needs to come via item generation       
+        var duck = new Item('duck-' + (Math.random() * 100000) , DuckTemplate);
+        self.scene.add(new Pickup(targetPosition[0], targetPosition[1], duck));
+      });
+    },
+    determineIfQuestFinished: function() {
+      if(this.itemCount === 5) {
+        this.talk('Thanks for finding all my ducks');
+        this.removeDucksFromPlayer();
+        this.markComplete();
+      } else {
+       this.talk('Please find my ducks, I miss my ducks');
+      }
+    },
+    removeDucksFromPlayer: function() {
+      this.entity.dispatch('removeItemsOfType', [ 'duck' ]);
+    },
+    talk: function(text) {
+      this.entity.raise('TalkTo', {
+        id: "quest-giver",
+        text: text        
+      });
+    },
+    meta: {
+      askText: "Help, please fetch my ducks for me",
+      description: "You've been asked to fetch five ducks"
+    }
+  };
+  
+  return FetchDucks;    
+});
+
+define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/questgiver','../scene/entity','../scripting/quests/fetchducks'],function(require) {
+
+  var _ = require('underscore');
+  
+  var Physical = require('./components/physical');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Directable = require('./components/directable');
+  var Trackable = require('./components/trackable');
+  var QuestGiver = require('./components/questgiver');
+  var Entity = require('../scene/entity');
+  
+  var FetchDucks = require('../scripting/quests/fetchducks');
+
+  var Npc = function(id, data) {
+    Entity.call(this, id);
+    
+    this.attach(new Physical());
+    this.attach(new Renderable('character', true));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
+    this.attach(new Directable(3.0));
+    this.attach(new QuestGiver(FetchDucks));
+
+  };  
+  Npc.prototype = {};  
+  _.extend(Npc.prototype, Entity.prototype);
+  
+  return Npc;
+});
+
+define('entities/npcfactory',['require','underscore','./npc'],function(require) {
+  var _ = require('underscore');
+  var Npc = require('./npc');
+  
+  var NpcFactory = function() {
+    
+  };
+  
+  NpcFactory.prototype = {
+    create: function(id, data) {
+      return new Npc(id, data);
+    }
+  };
+  
+  return NpcFactory;
+});
+
+define('entities/entityfactory',['require','underscore','./characterfactory','./monsterfactory','./npcfactory'],function(require) {
+  var _ = require('underscore');
+  var CharacterFactory = require('./characterfactory');
+  var MonsterFactory = require('./monsterfactory');
+  var NpcFactory = require('./npcfactory');
+
+  var EntityFactory = function() {
+    this.factories = {
+      "character": new CharacterFactory(),
+      "monster": new MonsterFactory(),
+      "npc": new NpcFactory()
     };
   };
   
-  RenderGraph.prototype = {
-    items: [],
-       
-    width: function() {
-      return this.viewport.right - this.viewport.left;
-    },
-    
-    height: function() {
-      return this.viewport.bottom - this.viewport.top;
-    },
-    
-    updateViewport: function(left, right, top, bottom) {
-      this.viewport = {
-        left: left,
-        right: right,
-        top: top,
-        bottom: bottom
-      };
-    },
-    
-    add: function(item) {
-      this.items.push(item);
-    },
-    
-    remove: function(item) {
-      this.items = _.without(this.items, [item]);
-    },    
-    
-    clear: function() {
-      this.items = [];
-    },
-        
-    uploadTransforms: function(context) {
-      this.applyScale(context);
-      this.applyTranslate(context);
-    },
-    
-    applyTranslate: function(context) {
-      context.translate(-this.viewport.left, - this.viewport.top);
-    },
-    
-    applyScale: function(context) {
-      var canvas = context.canvas;
-      var canvasWidth = canvas.width;
-      var canvasHeight = canvas.height;
-      
-      var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
-      var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
-      
-      context.scale(scalex, scaley);
-    },
-    
-    pass: function(callback) {
-      var self = this;
-      _(this.items).chain()
-       .filter(function(item) { return item.visible(self.viewport); })
-       .each(callback);
-    },
-  };
-  
-  return RenderGraph;
-});
-
-define('scene/scene',['require','underscore','../render/rendergraph','../shared/eventable'],function(require) {
-
-  var _ = require('underscore');
-  var RenderGraph = require('../render/rendergraph');
-  var Eventable = require('../shared/eventable');
-  
-  var Scene = function(resources, renderer, camera) {
-    Eventable.call(this);
-    this.entities = [];
-    this.entitiesById = {};
-    this.camera = camera;
-    this.renderer = renderer;
-    this.graph = new RenderGraph();
-    this.resources = resources;
-  };
-  
-  Scene.prototype = {
-    tick: function() {
-      _(this.entities).each(function(entity){
-        if(entity.tick) 
-          entity.tick();
-      });
-      this.raise('PostTick');
-    },
-    withEntity: function(id, callback) {
-      var entity = this.entitiesById[id];
-      if(entity) callback(entity);
-    },
-    fromEntity: function(id, query, params, defaultValue) {
-      var entity = this.entitiesById[id];
-      if(!entity) return defaultValue;
-      return entity.get(query, params, defaultValue);
-    },
-    crossEach: function(callback, context) {
-      for(var i = 0 ; i < this.entities.length; i++) {
-        for(var j = (i+1) ; j < this.entities.length; j++) {
-          callback.call(context || this, i, j, this.entities[i], this.entities[j]);
-        }
-      }
-    },
-    get: function(id) {
-      return this.entitiesById[id];
-    },
-    entityAtMouse: function(x, y, filter) {
-      return _(this.entities).find(function(entity){
-        if(filter && !filter(entity)) return false;
-        return entity.get('intersectWithMouse', [x, y], false);
-      });
-    },
-    render: function() {
-      this.camera.updateViewport(this.graph);
-      this.renderer.clear();
-      this.renderer.draw(this.graph);
-      this.raise('PostRender');
-    },
-    add: function(entity) {
-      if(!entity.id) throw "Attempt to add entity without id: " + entity;
-      this.entities.push(entity);
-      this.entitiesById[entity.id] = entity;
-      entity.setScene(this);
-    },
-    remove: function(entity) {
-      this.entities = _(this.entities).without(entity);
-      delete this.entitiesById[entity.id];
-      entity.setScene(null);
-    },
-    dispatch: function(id, command, data) {
-      var entity = this.entitiesById[id];
-      entity.dispatch(command, data);
-    },
-    broadcast: function(event, data, sender) {
-      this.raise(event, data, sender || this);
-    }
-  };
-  _.extend(Scene.prototype, Eventable.prototype);
-  
-  return Scene;  
-});
-
-define('entities/controller',['require','underscore','../scene/entity','../shared/coords'],function(require) {
-
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-  var Coords = require('../shared/coords');
-
-  var Controller = function() {
-    Entity.call(this, "controller");   
-    this.scene = null;        
-    this.on('AddedToScene', this.hookSceneEvents);
-    this.x = 0;
-    this.y = 0;   
-  };  
-  
-  Controller.prototype = {
-    hookSceneEvents: function(scene) {
-      var self = this;
-      scene.on('PrimaryAction', this.determineWherePrimaryActionRequested, this);
-      scene.on('Hover', this.onHover, this);
-      setInterval(function() {
-        self.determineWhatMouseIsOver();
-      }, 200);
-    },
-  
-    determineWhatMouseIsOver: function() {
-      var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
-      if(selectedEntity) {
-      //  console.log(selectedEntity.id);
-      } else {
-      
-      }    
-    },
-    
-    
-    onHover: function(data) {
-      this.x = data.x;
-      this.y = data.y;
-    },
-    
-    determineWherePrimaryActionRequested: function(data) {
-      var x = data.x,
-          y = data.y;
-      
-      var selectedEntity = this.scene.entityAtMouse(x, y);
-      if(selectedEntity)
-        this.determineWhatToDoWithSelectedEntity(selectedEntity, x, y);
-      else
-        this.issueMovementCommandToPlayer(x,y);
-      
-    },
-    
-    determineWhatToDoWithSelectedEntity: function(entity, x, y) {
-      this.scene.dispatch('player', "primaryAction", [entity.id]);
-    },
-    
-    issueMovementCommandToPlayer: function(x,y) {
-      this.scene.dispatch('player', 'updateDestination', [x, y]);
-    }
-  };  
-  _.extend(Controller.prototype, Entity.prototype);
-  
-  return Controller;
-});
-
-define('entities/debug',['require','underscore','../scene/entity'],function(require) {
-
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-
-  var Debug = function() {
-    Entity.call(this, "debug");   
-    this.scene = null;
-        
-    this.on('Tick', this.clearDebug);
-    this.on('AddedToScene', this.hookSceneEvents);
-  };  
-  Debug.prototype = {
-    hookSceneEvents: function(scene) {
-      scene.on('Debug', this.addDebugMessage, this);
-    },
-    clearDebug: function() {
-      $('#debug').html('');
-    },
-    addDebugMessage: function(data) {
-       var msg = $('<p/>');
-       msg.text(data.toString());
-       $('#debug').append(msg);
-    }
-  };  
-  _.extend(Debug.prototype, Entity.prototype);
-  
-  return Debug;
-});
-
-define('render/canvasrender',['require'],function(require) {
-
-  var CanvasRender = function(context) {
-    this.context = context;
-  };
-  CanvasRender.prototype = {
-    clear: function() {
-      this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
-    },
-    draw: function(graph) {
-      var self = this;
-      
-      this.context.save();
-      graph.uploadTransforms(this.context);
-      
-      graph.pass(function(item) {
-        item.render(self.context);
-      });
-     
-     this.context.restore();    
-    }  
-  };
-  
-  return CanvasRender;
-});
-
-define('static/tile',['require','../render/instance'],function(require) {
-
-  var Instance = require('../render/instance');
-  
-  var Tile = function(map, items, x, y) {
-    this.map = map;
-    this.items = items;
-    this.instances = [];
-    this.x = x;
-    this.y = y;
-  };
-  
-  Tile.prototype = {
-    addInstancesToGraph: function(graph) {
-      for(var i in this.instances) {
-        graph.add(this.instances[i]);
-      }
-    },
-    createInstances: function() {    
-      for(var i = 0; i < this.items.length ; i++) {
-        this.createInstanceForItem(i);
-      }
-    },
-    createInstanceForItem: function(i) {
-      var item = this.items[i];        
-      var model = this.map.models[item.template];
-      var template = this.map.templates[item.template];
-      var instance = new Instance(model);
-      instance.scale(template.size[0], template.size[1], template.size[2]);
-      instance.translate(this.x + item.x, this.y + item.y);
-      this.instances[i] = instance;
-    },
-    addItem: function(x, y, template) {
-      var i = this.items.length;
-      this.items.push({
-        x: x,
-        y: y,
-        template: template
-      });
-      this.createInstanceForItem(i);      
+  EntityFactory.prototype = {
+    create: function(type, id, data) {
+      return this.factories[type].create(id, data);
     }
   };
   
-  return Tile;  
-});
-
-define('shared/bitfield',['require'],function(require) {
-
-  var BitField = function(size) {
-    this.values = new Array((size / 32) | 0);
-  };
-
-  BitField.prototype = {
-    get: function(i) {
-      var index = (i / 32) | 0;
-      var bit = i % 32;
-      return (this.values[index] & (1 << bit)) !== 0;
-    },
-
-    set: function(i) {
-      var index = (i / 32) | 0;
-      var bit = i % 32;
-      this.values[index] |= 1 << bit;
-    },
-    unset: function(i) {
-      var index = (i / 32) | 0;
-      var bit = i % 32;
-      this.values[index] &= ~(1 << bit);
-    },
-    zero: function() {
-      for(var i = 0; i < this.values.length; i++)
-        this.values[i] = 0;
-    }
-  };
-  
-  return BitField;
-});
-
-define('static/collisionmap',['require','../shared/bitfield'],function(require) {
-
-  var BitField = require('../shared/bitfield');
-
-  var CollisionMap = function(data) {
-    this.bitfield = new BitField();
-    this.width = data.width;
-    this.height = data.height;
-    this.bitfield.values = data.collision;  
-  };
-  
-  CollisionMap.prototype = {
-    solidAt: function(x, y) {
-      var index = x + y * this.width;
-      return this.bitfield.get(index);
-    }
-  };
-  
-  return CollisionMap;
-});
-
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords'],function(require) {
-
-  var _ = require('underscore');
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  var Instance = require('../render/instance');
-  var Entity = require('../scene/entity');
-  var RenderGraph = require('../render/rendergraph');
-  var CanvasRender = require('../render/canvasrender');
-  var Tile = require('./tile');
-  var CollisionMap = require('./collisionmap');
-  var Coords = require('../shared/coords');
-
-
-  var Map = function(data) {
-    Entity.call(this, "map");
-    
-    this.width = data.width;
-    this.height = data.height;
-    this.tilewidth = data.tilewidth;
-    this.tileheight = data.tileheight;
-    this.templates = data.templates;
-    this.tiledata = data.tiledata;
-    this.tilecountwidth = data.tilecountwidth;
-    this.tilecountheight = data.tilecountheight;
-    
-    this.tiles = new Array(this.tilecountwidth * this.tilecountheight);
-    this.models = {};  
-    this.scene = null;
-    this.instanceTiles = null;
-    this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
-    this.context = this.canvas.getContext('2d');
-    this.graph = new RenderGraph();
-    this.renderer = new CanvasRender(this.context);  
-    
-    this.tileleft = -1;
-    this.tiletop = -1;
-    this.tilebottom = -1;
-    this.tileright = -1;
-    this.collision = new CollisionMap(data);
-    
-    this.on('AddedToScene', this.onAddedToScene);
-  };
-  
-  Map.prototype = {
-  
-    onAddedToScene: function(scene) {
-      this.scene = scene; 
-      this.createModels(scene.resources);
-      this.createInstances();
-      this.scene.graph.add(this);   
-    },
-    
-    visible: function() { 
-      return true; 
-    },
-    
-    render: function(context) {
-      
-      if(this.canvas.width !== context.canvas.width || this.canvas.height !== context.canvas.height) {
-          this.canvas.width = context.canvas.width;
-          this.canvas.height = context.canvas.height;
-      };
-
-      this.evaluateStatus();
-
-      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
-      
-      context.save();
-      context.setTransform(1,0,0,1,0,0);          
-                
-      context.drawImage(this.canvas, 0, 0, context.canvas.width, context.canvas.height);
-      
-      context.restore();
-    },
-        
-    forEachVisibleTile: function(callback) {
-      for(var i = this.tileleft ; i <= this.tileright; i++) {
-        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-          var left = i * this.tilewidth;
-          var right = left + this.tilewidth;
-          var top = j * this.tileheight;
-          var bottom = top + this.tileheight;
-          callback(left, top, right, bottom);          
-        }      
-      }
-    },
-    
-    evaluateStatus: function() {
-    
-      var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
-      var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
-      var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
-      var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
-      
-      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
-      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
-      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) + 1;
-      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) + 1;
-      
-      tileleft = Math.max(tileleft, 0);
-      tiletop = Math.max(tiletop, 0);
-      tileright = Math.min(tileright, this.tilecountwidth-1);
-      tilebottom = Math.min(tilebottom, this.tilecountheight-1);
-      
-      if(tileleft !== this.tileleft || 
-         tiletop  !== this.tiletop || 
-         tileright !== this.tileright ||
-         tilebottom !== this.tilebottom) {
-         
-        this.tileleft = tileleft;
-        this.tileright = tileright;
-        this.tiletop = tiletop;
-        this.tilebottom = tilebottom;
-      }
-      this.redrawBackground();
-    },
-    
-    redrawBackground: function() { 
-     
-      this.graph.updateViewport(
-        this.scene.graph.viewport.left,
-        this.scene.graph.viewport.right,
-        this.scene.graph.viewport.top,
-        this.scene.graph.viewport.bottom      
-      );
-        
-      this.populateGraph();      
-      this.renderer.clear();
-      this.renderer.draw(this.graph);      
-    },
-  
-    populateGraph: function() {             
-      this.graph.clear();
-      
-      for(var x = 0; x < this.tilecountwidth; x++) {
-        for(var y = 0; y < this.tilecountheight ; y++) {
-          var index = this.index(x, y);
-          var tile = this.tiles[index];
-          tile.addInstancesToGraph(this.graph);
-        }
-      }
-    },
-    
-    createModels: function(resources) {
-      this.models = {};
-      for(var t in this.templates) {
-        var template = this.templates[t];
-        this.createModelForTemplate(template);     
-      }
-    },
-    
-    createInstances: function() {    
-      for(var x = 0; x < this.tilecountwidth; x++) {
-        for(var y = 0; y < this.tilecountheight ; y++) {
-          var index = this.index(x, y);
-          var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
-          this.tiles[index] = tile;
-          tile.createInstances();
-        }
-      }
-    },
-    
-    tileAtCoords: function(x, y) {
-      var tileX = parseInt(x / this.tilewidth);
-      var tileY = parseInt(y / this.tileheight);
-      var index = this.index(tileX, tileY);
-      return this.tiles[index];
-    },
-          
-    createModelForTemplate: function(template) {
-      var material = new Material();
-      material.diffuseTexture = this.scene.resources.get(template.texture);
-      this.models[template.id] = new Quad(material);
-      return this.models[template.id];
-    },    
-    
-    index: function(x, y) {
-      return x + y * this.tilecountwidth;
-    },
-    
-    solidAt: function(x, y) {
-      return this.collision.solidAt(parseInt(x), parseInt(y));
-    }
-  };
-  
-  _.extend(Map.prototype, Entity.prototype);
-  
-  return Map;
-
-});
-
-define('resources/texture',['require'],function(require) {
-  var Texture = function(factory, path) {
-    this.img = null;
-    this.path = path;
-    this.factory = factory;
-    this.loaded = false;
-  };
-  
-  Texture.prototype = {
-    get: function() {
-      return this.img;
-    },
-    
-    preload: function(callback) {
-     var data = this.factory.getData(this.path);
-     this.img = new Image();
-     this.img.onload = callback;
-     this.img.src = "data:image/png;base64," + data;
-     this.loaded = true;
-    },
-  };
-  
-  return Texture;
-});
-
-define('resources/jsondata',['require'],function(require) {
-  var JsonData = function(factory, path) {
-    this.path = path;
-    this.factory = factory;
-    this.data = null;
-  };
-  
-  JsonData.prototype = {
-    get: function() {
-      return this.data;
-    },
-    
-    preload: function(callback) {
-     this.data = this.factory.getData(this.path);
-     callback();
-    },
-  };
-  
-  return JsonData;
-});
-
-define('scene/camera',['require','glmatrix','../shared/coords'],function(require) {
-  var vec3 = require('glmatrix').vec3;
-  var Coords = require('../shared/coords');
-
-  var Camera = function(aspectRatio, fieldOfView) {
-    this.aspectRatio = aspectRatio;
-    this.fieldOfView = fieldOfView;
-    this.centre = vec3.create([0,0,0]);
-    this.distance = 256.0;
-    
-    this.width = 0;
-    this.height = 0;
-  };
-  
-  Camera.prototype = {
-    lookAt: function(x, y, z) {
-      this.centre[0] = x || 0;
-      this.centre[1] = y || 0;
-      this.centre[2] = z || 0;
-    },
-    move: function(x, y, z) {
-      this.lookAt(this.centre[0] + x, this.centre[1] + y, this.centre[2] + z);
-    },
-    updateViewport: function(graph) {
-      this.calculateDimensions();
-            
-      var isometric = Coords.worldToIsometric(this.centre[0], this.centre[1]);
-           
-      var left = isometric.x - (this.width / 2.0);
-      var top = isometric.y - (this.height / 2.0);
-            
-      var right = left + this.width;
-      var bottom = top + this.height;
-            
-      graph.updateViewport(left, right, top, bottom);
-    
-    },
-    calculateDimensions: function() {
-      this.width = this.distance * Math.tan(this.fieldOfView);
-      this.height = this.width / this.aspectRatio;
-    }
-  };
-  
-  return Camera; 
-});
-
-define('entities/characterfactory',['require','underscore','./character'],function(require) {
-  var _ = require('underscore');
-  var Character = require('./character');
-
-  var CharacterFactory = function() {
-    
-  };
-  
-  CharacterFactory.prototype = {
-    create: function(id, data) {
-      return new Character(id, data);
-    }
-  };
-  
-  return CharacterFactory;
+  return EntityFactory;
 });
 
 /*!
@@ -14448,500 +14689,6 @@ define('resources/packagedresources',['require','./package','../shared/eventable
   return PackagedResources;
 });
 
-define('editor/grid',['require','underscore','../scene/entity','../shared/coords'],function(require) {
-  
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-  var Coords = require('../shared/coords');
-
-  var Grid = function(map) {
-    Entity.call(this);
-    
-    this.map = map;
-    this.id = 'grid';
-    this.on('AddedToScene', this.addGridRenderable);
-  };
-  
-  Grid.prototype = {
-    addGridRenderable: function(scene) {
-      this.scene = scene;
-      this.scene.graph.add(this);
-    },
-    visible: function() {
-      return true;
-    },
-    render: function(context) {
-      context.save(); 
-      
-      context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
-      context.lineWidth = 0.25;
-          
-      context.beginPath();
-      this.map.forEachVisibleTile(function(left, top, right, bottom) {
-      
-        var topleft = Coords.worldToIsometric(left, top);
-        var topright = Coords.worldToIsometric(right, top);        
-        var bottomright = Coords.worldToIsometric(right, bottom);
-        var bottomleft = Coords.worldToIsometric(left, bottom);
-         
-        context.moveTo(topleft.x, topleft.y);
-        context.lineTo(topright.x, topright.y);
-        context.lineTo(bottomright.x, bottomright.y);
-        context.lineTo(bottomleft.x, bottomleft.y);
-        context.lineTo(topleft.x, topleft.y);
-      });
-      context.stroke();
-      context.restore();
-    }
-  };
-  
-  _.extend(Grid.prototype, Entity.prototype);
-  
-  return Grid;
-
-});
-
-define('scripting/item',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var Item = function(id, template) {
-    _.extend(this, template);
-    this.id = id;    
-  };
-  
-  Item.prototype = {
-    
-  };
-  
-  return Item;
-});
-
-define('scripting/quests/fetchducks',['require','underscore','../item','../items/duck','../../entities/pickup'],function(require) {
-
-  var _ = require('underscore');
-  var Item = require('../item');
-  var DuckTemplate = require('../items/duck');
-  var Pickup = require('../../entities/pickup');
-
-  FetchDucks = {
-    init: function() {
-      this.itemCount = 0;
-    },
-    onItemPickedUp: function() {
-      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
-      this.markUpdated();
-      console.log('Item count: ' + this.itemCount);
-    },
-    onItemRemoved: function() {
-      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
-      this.markUpdated();
-      console.log('Item count: ' + this.itemCount);
-    },
-    onDiscussion: function(entityId) {
-      if(entityId === 'quest-giver') {
-        this.determineIfQuestFinished();      
-      }
-    },
-    onKilledTarget: function(targetId) {
-      var self = this;
-      console.log('Genning item for ' + targetId);
-      this.scene.withEntity(targetId, function(target) {
-        // Check some value         
-        var targetPosition = target.get('getPosition');        
-        // TODO: This needs to come via item generation       
-        var duck = new Item('duck-' + (Math.random() * 100000) , DuckTemplate);
-        self.scene.add(new Pickup(targetPosition[0], targetPosition[1], duck));
-      });
-    },
-    determineIfQuestFinished: function() {
-      if(this.itemCount === 5) {
-        this.talk('Thanks for finding all my ducks');
-        this.removeDucksFromPlayer();
-        this.markComplete();
-      } else {
-       this.talk('Please find my ducks, I miss my ducks');
-      }
-    },
-    removeDucksFromPlayer: function() {
-      this.entity.dispatch('removeItemsOfType', [ 'duck' ]);
-    },
-    talk: function(text) {
-      this.entity.raise('TalkTo', {
-        id: "quest-giver",
-        text: text        
-      });
-    },
-    meta: {
-      askText: "Help, please fetch my ducks for me",
-      description: "You've been asked to fetch five ducks"
-    }
-  };
-  
-  return FetchDucks;    
-});
-
-define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/questgiver','../scene/entity','../scripting/quests/fetchducks'],function(require) {
-
-  var _ = require('underscore');
-  
-  var Physical = require('./components/physical');
-  var Renderable = require('./components/renderable');
-  var Tangible = require('./components/tangible');
-  var Directable = require('./components/directable');
-  var Trackable = require('./components/trackable');
-  var QuestGiver = require('./components/questgiver');
-  var Entity = require('../scene/entity');
-  
-  var FetchDucks = require('../scripting/quests/fetchducks');
-
-  var Npc = function(id, data) {
-    Entity.call(this, id);
-    
-    this.attach(new Physical());
-    this.attach(new Renderable('character', true));
-    this.attach(new Tangible(data.x, data.y, 12, 18));
-    this.attach(new Directable(3.0));
-    this.attach(new QuestGiver(FetchDucks));
-
-  };  
-  Npc.prototype = {};  
-  _.extend(Npc.prototype, Entity.prototype);
-  
-  return Npc;
-});
-
-define('entities/npcfactory',['require','underscore','./npc'],function(require) {
-  var _ = require('underscore');
-  var Npc = require('./npc');
-  
-  var NpcFactory = function() {
-    
-  };
-  
-  NpcFactory.prototype = {
-    create: function(id, data) {
-      return new Npc(id, data);
-    }
-  };
-  
-  return NpcFactory;
-});
-
-define('ui/questasker',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var QuestAsker = function(scene, element) {
-    this.scene = scene;
-    this.scene.autoHook(this);
-    this.element = element;
-    this.element.hide();
-    this.element.find('#quest-started-accept').on({
-      click: function() {
-       element.hide();
-      }
-    });
-  };
-  
-  QuestAsker.prototype = {
-    onQuestStarted: function(questTemplate) {
-      this.element.find('#quest-started-text').text(questTemplate.meta.askText);
-      this.element.show();
-    },
-    onTalkTo: function(data) {
-      this.element.find('#quest-started-text').text(data.text);
-      this.element.show();
-    }
-  };
-  
-  return QuestAsker;
-});
-
-define('ui/healthbars',['require','underscore','jquery','../shared/coords'],function(require) {
-  var _ = require('underscore');
-  var $ = require('jquery');
-  var Coords = require('../shared/coords');
-   
-
-  var Healthbars = function(context) {
-    this.context = context;
-    this.scene = context.scene;
-    this.healthbars = {};
-    this.scene.autoHook(this);
-  };
-  
-  Healthbars.prototype = {
-    onHealthLost: function(amount, sender) {
-      this.registerHealthBar(sender.id);
-    },
-    onPostRender: function() {
-      for(var i in this.healthbars)
-        this.updateHealthBar(i);  
-    },
-    onDeath: function(data, sender) {
-      this.removeHealthBar(sender.id);
-    },
-    registerHealthBar: function(id) {
-      if(this.healthbars[id])
-        this.updateHealthBar(id);
-      else
-        this.createHealthBar(id);
-    },
-    updateHealthBar: function(id) {
-      var entity = this.scene.get(id);
-      if(!entity) {
-        this.removeHealthBar(id);
-        return;
-      }
-      var currentHealth = entity.get('getCurrentHealth');
-      var maxHealth = entity.get('getMaxHealth');
-      var percentage = (currentHealth / maxHealth);
-      var bounds = entity.get('getBounds');
-      var screen = this.context.worldCoordsToPageCoords(bounds.x - bounds.width / 4.0, bounds.y + bounds.height / 4.0);
-      var size = this.context.worldScaleToPage(bounds.width, bounds.height);
-      var colour = ''
-      
-      if(percentage > 0.75)
-        colour = '#00FF00';
-      else if (percentage > 0.30)
-        colour = '#FFFF00';
-      else
-        colour = '#FF0000';            
-      
-      var bar = this.healthbars[id];
-      bar.css('left', screen.x)
-         .css('top', screen.y + 2)
-         .css('width', size.width * percentage)
-         .css('background-color', colour);
-      
-    },
-    removeHealthBar: function(id) {
-      var bar = this.healthbars[id];
-      bar.remove();
-      delete this.healthbars[id];
-    },
-    createHealthBar: function(id) {
-      var bar = $('<div/>')
-                  .addClass('healthbar')
-                  .attr('id', 'healthbar-' + id)
-                  .appendTo('#container');
-                  
-      this.healthbars[id] = bar;
-      this.updateHealthBar(id);
-    }
-  };
-  
-  return Healthbars;
-});
-
-define('entities/components/roamable',['require','glmatrix'],function(require) {
-
-  var vec3 = require('glmatrix').vec3;
-
-  var Directable = function(startx, starty, minx, miny, maxx, maxy) {
-    this.startx = startx;
-    this.starty = starty;
-    this.minx = minx;
-    this.miny = miny;
-    this.maxx = maxx;
-    this.maxy = maxy;
-    this.wandering = false;
-  };
-  
-  Directable.prototype = {    
-    createNewDestination: function() {
-      this.parent.dispatch('updateDestination', [ 
-        Math.random() * (this.maxx - this.minx) + this.minx + this.startx, 
-        Math.random() * (this.maxy - this.miny) + this.miny + this.starty, 
-        0]);
-    },
-    onDestinationReached: function() {
-      if(this.wandering)
-        this.createNewDestination();
-    },
-    onStateChanged: function(state) {
-      if(state === 'Wandering') {
-        this.wandering = true;
-        this.createNewDestination();
-      }
-      else
-        this.wandering = false;
-    }
-  };  
-  
-  return Directable;
-  
-});
-
-define('entities/components/seeker',['require','underscore','glmatrix'],function(require) {
-  var _ = require('underscore');
-  var vec3 = require('glmatrix').vec3;
-  
-  var Seeker = function(targetId) {
-    this.targetId = targetId;
-    this.scene = null;
-    this.seeking = false;
-    this.found = false;
-    this.buffer = vec3.create([0,0,0]);
-    this.position = vec3.create([0,0,0]);
-    this.targetPosition = null;
-    this.viewingDistance = 30;
-  };
-  
-  Seeker.prototype = {
-    onTick: function() {   
-      this.updateTargetPosition();  
-      this.determineTargetProximity();        
-    },
-    
-    updateTargetPosition: function() {
-      var self = this;
-      this.scene.withEntity(this.targetId, function(target) {
-        self.targetPosition = target.get('getPosition');          
-      });
-    },
-    
-    onPositionChanged: function(data) {
-      this.position[0] = data.x;
-      this.position[1] = data.y;
-      this.position[2] = data.z;
-    },
-    
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-    },
-    
-    onDestinationTargetChanged: function() {
-      this.seeking = true;
-      this.found = false;
-    },
-    
-    onDestinationReached: function() {
-      if(this.seeking) {
-       this.found = true;
-       this.seeking = false;
-      }
-    },
-     
-    determineTargetProximity: function() {
-      vec3.subtract(this.position, this.targetPosition, this.buffer);
-      var distance = vec3.length(this.buffer);
-      if(distance < 128 && !this.found) {
-        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
-      }
-      else if(distance > 30 && this.found) {
-        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
-      }
-    }
-  };
-  
-  return Seeker;
-});
-
-define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/standardanimations','./components/animatable'],function(require) {
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-  
-  var Physical = require('./components/physical');
-  var Renderable = require('./components/renderable');
-  var Tangible = require('./components/tangible');
-  var Roamable = require('./components/roamable');
-  var Directable = require('./components/directable');
-  var Seeker = require('./components/seeker');
-  var Fighter = require('./components/fighter');
-  var Factionable = require('./components/factionable');
-  var Damageable = require('./components/damageable');
-  var HasHealth = require('./components/hashealth');
-  var StandardAnimations = require('./components/standardanimations');
-  var Animatable = require('./components/animatable');
-  
-  var Monster = function(id, data) {
-    Entity.call(this, id);
-    
-    this.attach(new Physical());
-    this.attach(new Renderable(data.texture, true));
-    this.attach(new Tangible(data.x, data.y, 12, 18));
-    this.attach(new Directable(1.5));
-    this.attach(new Roamable(data.x, data.y, -100, -100, 100, 100));
-    this.attach(new Seeker('player'));
-    this.attach(new Fighter());
-    this.attach(new Factionable('monster'));
-    this.attach(new Damageable());
-    this.attach(new HasHealth(2));
-    this.attach(new Animatable(data.texture));
-    this.attach(new StandardAnimations());
-       
-    this.on('AddedToScene', this.onMonsterAddedToScene);
-    this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
-    this.on('DestinationReached', this.onMonsterDestinationReached);
-    this.on('StateChanged', this.onMonsterStateChanged);
-    this.on('Tick', this.onMonsterTick);
-    this.state = '';
-  };
-  
-  Monster.prototype = {
-    onMonsterAddedToScene: function() {
-      this.raise('StateChanged', 'Wandering');
-    },
-    onMonsterDestinationTargetChanged: function() {
-      this.raise('StateChanged', 'Seeking');
-    },
-    onMonsterDestinationReached: function() {
-      if(this.state === 'Seeking')
-        this.raise('StateChanged', 'Fighting');
-    },
-    onMonsterStateChanged: function(state) {
-      this.state = state;
-    },
-    onMonsterTick: function() {
-     if(this.state === 'Fighting')
-        this.dispatch('attack', [ 'player' ]);
-    }
-  };
-  _.extend(Monster.prototype, Entity.prototype);
-  
-  return Monster;
-});
-
-define('entities/monsterfactory',['require','underscore','./monster'],function(require) {
-  var _ = require('underscore');
-  var Monster = require('./monster');
-  
-  var MonsterFactory = function() {
-  
-  };
-  
-  MonsterFactory.prototype = {
-    create: function(id, data) {
-      return new Monster(id, data);
-    }
-  };
-  
-  return MonsterFactory;
-});
-
-define('entities/entityfactory',['require','underscore','./characterfactory','./monsterfactory','./npcfactory'],function(require) {
-  var _ = require('underscore');
-  var CharacterFactory = require('./characterfactory');
-  var MonsterFactory = require('./monsterfactory');
-  var NpcFactory = require('./npcfactory');
-
-  var EntityFactory = function() {
-    this.factories = {
-      "character": new CharacterFactory(),
-      "monster": new MonsterFactory(),
-      "npc": new NpcFactory()
-    };
-  };
-  
-  EntityFactory.prototype = {
-    create: function(type, id, data) {
-      return this.factories[type].create(id, data);
-    }
-  };
-  
-  return EntityFactory;
-});
-
 define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory'],function(require) {
 
   var CanvasRender = require('../render/canvasrender');
@@ -15050,6 +14797,112 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   return Context;
 });
 
+define('ui/questasker',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var QuestAsker = function(scene, element) {
+    this.scene = scene;
+    this.scene.autoHook(this);
+    this.element = element;
+    this.element.hide();
+    this.element.find('#quest-started-accept').on({
+      click: function() {
+       element.hide();
+      }
+    });
+  };
+  
+  QuestAsker.prototype = {
+    onQuestStarted: function(questTemplate) {
+      this.element.find('#quest-started-text').text(questTemplate.meta.askText);
+      this.element.show();
+    },
+    onTalkTo: function(data) {
+      this.element.find('#quest-started-text').text(data.text);
+      this.element.show();
+    }
+  };
+  
+  return QuestAsker;
+});
+
+define('ui/healthbars',['require','underscore','jquery','../shared/coords'],function(require) {
+  var _ = require('underscore');
+  var $ = require('jquery');
+  var Coords = require('../shared/coords');
+   
+
+  var Healthbars = function(context) {
+    this.context = context;
+    this.scene = context.scene;
+    this.healthbars = {};
+    this.scene.autoHook(this);
+  };
+  
+  Healthbars.prototype = {
+    onHealthLost: function(amount, sender) {
+      this.registerHealthBar(sender.id);
+    },
+    onPostRender: function() {
+      for(var i in this.healthbars)
+        this.updateHealthBar(i);  
+    },
+    onDeath: function(data, sender) {
+      this.removeHealthBar(sender.id);
+    },
+    registerHealthBar: function(id) {
+      if(this.healthbars[id])
+        this.updateHealthBar(id);
+      else
+        this.createHealthBar(id);
+    },
+    updateHealthBar: function(id) {
+      var entity = this.scene.get(id);
+      if(!entity) {
+        this.removeHealthBar(id);
+        return;
+      }
+      var currentHealth = entity.get('getCurrentHealth');
+      var maxHealth = entity.get('getMaxHealth');
+      var percentage = (currentHealth / maxHealth);
+      var bounds = entity.get('getBounds');
+      var screen = this.context.worldCoordsToPageCoords(bounds.x - bounds.width / 4.0, bounds.y + bounds.height / 4.0);
+      var size = this.context.worldScaleToPage(bounds.width, bounds.height);
+      var colour = ''
+      
+      if(percentage > 0.75)
+        colour = '#00FF00';
+      else if (percentage > 0.30)
+        colour = '#FFFF00';
+      else
+        colour = '#FF0000';            
+      
+      var bar = this.healthbars[id];
+      bar.css('left', screen.x)
+         .css('top', screen.y + 2)
+         .css('width', size.width * percentage)
+         .css('background-color', colour);
+      
+    },
+    removeHealthBar: function(id) {
+      var bar = this.healthbars[id];
+      bar.remove();
+      delete this.healthbars[id];
+    },
+    createHealthBar: function(id) {
+      var bar = $('<div/>')
+                  .addClass('healthbar')
+                  .attr('id', 'healthbar-' + id)
+                  .appendTo('#container');
+                  
+      this.healthbars[id] = bar;
+      this.updateHealthBar(id);
+    }
+  };
+  
+  return Healthbars;
+});
+
 define('entities/death',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -15155,26 +15008,182 @@ define('entities/collider',['require','underscore','../scene/entity'],function(r
   return Collider;
 });
 
-define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/item','../../ui/questasker','../../ui/healthbars','../../entities/monster','../../entities/death','../../entities/collider'],function(require) {
+define('entities/controller',['require','underscore','../scene/entity','../shared/coords'],function(require) {
 
-  var Character = require('../../entities/character');
-  var Npc = require('../../entities/npc');
-  var Scene = require('../../scene/scene');
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  var Coords = require('../shared/coords');
+
+  var Controller = function() {
+    Entity.call(this, "controller");   
+    this.scene = null;        
+    this.on('AddedToScene', this.hookSceneEvents);
+    this.x = 0;
+    this.y = 0;   
+  };  
+  
+  Controller.prototype = {
+    hookSceneEvents: function(scene) {
+      var self = this;
+      scene.on('PrimaryAction', this.determineWherePrimaryActionRequested, this);
+      scene.on('Hover', this.onHover, this);
+      setInterval(function() {
+        self.determineWhatMouseIsOver();
+      }, 200);
+    },
+  
+    determineWhatMouseIsOver: function() {
+      var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
+      if(selectedEntity) {
+      //  console.log(selectedEntity.id);
+      } else {
+      
+      }    
+    },
+    
+    
+    onHover: function(data) {
+      this.x = data.x;
+      this.y = data.y;
+    },
+    
+    determineWherePrimaryActionRequested: function(data) {
+      var x = data.x,
+          y = data.y;
+      
+      var selectedEntity = this.scene.entityAtMouse(x, y);
+      if(selectedEntity)
+        this.determineWhatToDoWithSelectedEntity(selectedEntity, x, y);
+      else
+        this.issueMovementCommandToPlayer(x,y);
+      
+    },
+    
+    determineWhatToDoWithSelectedEntity: function(entity, x, y) {
+      this.scene.dispatch('player', "primaryAction", [entity.id]);
+    },
+    
+    issueMovementCommandToPlayer: function(x,y) {
+      this.scene.dispatch('player', 'updateDestination', [x, y]);
+    }
+  };  
+  _.extend(Controller.prototype, Entity.prototype);
+  
+  return Controller;
+});
+
+define('editor/grid',['require','underscore','../scene/entity','../shared/coords'],function(require) {
+  
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  var Coords = require('../shared/coords');
+
+  var Grid = function(map) {
+    Entity.call(this);
+    
+    this.map = map;
+    this.id = 'grid';
+    this.on('AddedToScene', this.addGridRenderable);
+  };
+  
+  Grid.prototype = {
+    addGridRenderable: function(scene) {
+      this.scene = scene;
+      this.scene.graph.add(this);
+    },
+    visible: function() {
+      return true;
+    },
+    render: function(context) {
+      context.save(); 
+      
+      context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
+      context.lineWidth = 0.25;
+          
+      context.beginPath();
+      this.map.forEachVisibleTile(function(left, top, right, bottom) {
+      
+        var topleft = Coords.worldToIsometric(left, top);
+        var topright = Coords.worldToIsometric(right, top);        
+        var bottomright = Coords.worldToIsometric(right, bottom);
+        var bottomleft = Coords.worldToIsometric(left, bottom);
+         
+        context.moveTo(topleft.x, topleft.y);
+        context.lineTo(topright.x, topright.y);
+        context.lineTo(bottomright.x, bottomright.y);
+        context.lineTo(bottomleft.x, bottomleft.y);
+        context.lineTo(topleft.x, topleft.y);
+      });
+      context.stroke();
+      context.restore();
+    }
+  };
+  
+  _.extend(Grid.prototype, Entity.prototype);
+  
+  return Grid;
+
+});
+
+define('network/clientconnector',['require','underscore','../entities/controller','../static/map','../editor/grid','../shared/eventable'],function(require) {
+  var _ = require('underscore');
+  var Controller = require('../entities/controller');
+  var Map = require('../static/map');
+  var Grid = require('../editor/grid');
+  var Eventable = require('../shared/eventable');
+  
+  var ClientConnector = function(context) {
+    Eventable.call(this);
+    this.context = context;
+    this.connectToServer();
+  };
+  
+  ClientConnector.prototype = {
+    connectToServer: function() {
+      this.socket = io.connect();
+      var self = this;
+      this.socket.on('init', function(data) {
+        self.populateSceneFromMessage(data);
+      });
+    },
+    populateSceneFromMessage: function(data) {   
+    
+      for(var id in data.entities) {
+        var item = data.entities[id];
+        var entity = this.context.createEntity(item.type, id, item.data);
+        this.context.scene.add(entity);       
+      }    
+    
+      var controller = new Controller();
+      this.context.scene.add(controller);
+      this.loadMap(data.map);
+      this.raise('GameStarted'); 
+    },
+    loadMap: function(path) {
+      var mapResource = this.context.resources.get(path);
+      var map = new Map(mapResource.get());
+      this.context.scene.add(map);
+      this.grid = new Grid(map);
+      this.context.scene.add(this.grid); 
+    }
+  };
+  _.extend(ClientConnector.prototype, Eventable.prototype);
+  
+  return ClientConnector;
+});
+
+define('apps/demo/app',['require','../../input/inputemitter','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/death','../../entities/collider','../../network/clientconnector'],function(require) {
+
+
   var InputEmitter = require('../../input/inputemitter');
-  var Controller = require('../../entities/controller');
-  var Debug = require('../../entities/debug');
-  var Map = require('../../static/map');
   var Context = require('../../harness/context');
   var $ = require('jquery');
-  var Grid = require('../../editor/grid');
-  var Item = require('../../scripting/item');
   
   var QuestAsker = require('../../ui/questasker');
   var HealthBars = require('../../ui/healthbars');
-  var Monster = require('../../entities/monster');
   var Death = require('../../entities/death');
   var Collider = require('../../entities/collider');
-  
+  var ClientConnector = require('../../network/clientconnector');
  
   var Demo = function(element) {
     this.element = element;
@@ -15182,54 +15191,15 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
 
   Demo.prototype = {
     start: function(context) {          
-      this.context = context;
-      
-      // TODO: This will come from the server
-      var character = context.createEntity('character', 'player', {
-        x: 0,
-        y: 0
-      });
-      var questGiver = context.createEntity('npc', 'quest-giver', {
-        x: 150,
-        y: 100
-      });
-
-      var monsters = [];
-      
-      for(var i = 0; i < 20; i++) {      
-        var monster = context.createEntity('monster', 'monster-' + i, {
-          x: Math.random() * 1000 + 200,
-          y: Math.random() * 1000 + 200,
-          texture: 'spider'
-        });
-        monsters.push(monster);
-      }
-      
-      var controller = new Controller();
+      this.context = context;      
       var collider = new Collider();
       var healthbars = new HealthBars(this.context);
-      
-      var mapResource = context.resources.get('/main/world.json');
-      var map = new Map(mapResource.get());
-      
-      context.scene.add(character);
-      context.scene.add(map);
-      context.scene.add(questGiver);
-     
-      for(var i in monsters)
-        context.scene.add(monsters[i]);
-      
       context.scene.add(collider);
-      context.scene.add(controller);
-      
-      // Until I have textures
-      this.grid = new Grid(map);
-      this.context.scene.add(this.grid); 
       var input = new InputEmitter(context);
-        
-      // Until I have a UI manager
       this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
       this.death = new Death(context.scene);
+      
+      this.connector = new ClientConnector(this.context);
     }
   }
 
