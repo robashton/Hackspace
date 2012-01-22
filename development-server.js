@@ -5,11 +5,11 @@ var exec = require('child_process').exec;
 var build = require('./src/build');
 var tooling = require('./src/tooling');
 var jshint = require('jshint');
+var FrontEnd = require('./src/frontend');
 
 WEBROOT = path.join(path.dirname(__filename), 'site');
 
-http.createServer(function(req, res) {
-
+var server = http.createServer(function(req, res) {
   if(tooling
     .handle(req, res)) return;
     
@@ -19,9 +19,11 @@ http.createServer(function(req, res) {
     .otherwise(function(err) {
       res.writeHead(404, {'Content-Type': 'text/plain'});
       res.end("Error 404: File not found");
-    });
-    
-}).listen(8000);
+    });    
+});
+server.listen(8000);
+
+var frontendServer = new FrontEnd(server);
 
 try {
   build('demo');

@@ -12,12 +12,12 @@ define(function(require) {
   
   var FetchDucks = require('../scripting/quests/fetchducks');
 
-  var Npc = function(id, x ,y) {
+  var Npc = function(id, data) {
     Entity.call(this, id);
     
     this.attach(new Physical());
     this.attach(new Renderable('character', true));
-    this.attach(new Tangible(x, y, 12, 18));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(3.0));
     this.attach(new QuestGiver(FetchDucks));
 

@@ -6,6 +6,7 @@ define(function(require) {
   var Scene = require('../scene/scene');
   var Map = require('../static/map');
   var Coords = require('../shared/coords');
+  var EntityFactory = require('../entities/entityfactory');
   
   var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
@@ -26,6 +27,7 @@ define(function(require) {
     this.app = app;
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
+    this.entityFactory = new EntityFactory();
   };
   
   Context.prototype = {    
@@ -95,7 +97,10 @@ define(function(require) {
         renderAnimFrame(render);
       };      
       render();      
-    }  
+    },
+    createEntity: function(type, id, data) {
+      return this.entityFactory.create(type, id, data);
+    }
   };
   
   return Context;

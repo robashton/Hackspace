@@ -15,20 +15,20 @@ define(function(require) {
   var StandardAnimations = require('./components/standardanimations');
   var Animatable = require('./components/animatable');
   
-  var Monster = function(id, x, y, texture) {
+  var Monster = function(id, data) {
     Entity.call(this, id);
     
     this.attach(new Physical());
-    this.attach(new Renderable(texture, true));
-    this.attach(new Tangible(x, y, 12, 18));
+    this.attach(new Renderable(data.texture, true));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(1.5));
-    this.attach(new Roamable(x, y, -100, -100, 100, 100));
+    this.attach(new Roamable(data.x, data.y, -100, -100, 100, 100));
     this.attach(new Seeker('player'));
     this.attach(new Fighter());
     this.attach(new Factionable('monster'));
     this.attach(new Damageable());
     this.attach(new HasHealth(2));
-    this.attach(new Animatable(texture));
+    this.attach(new Animatable(data.texture));
     this.attach(new StandardAnimations());
        
     this.on('AddedToScene', this.onMonsterAddedToScene);

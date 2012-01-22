@@ -1,12 +1,4 @@
-var requirejs = require('requirejs');
-
-requirejs.config({
-  baseUrl: __dirname,
-  nodeRequire: require,
-  paths: {
-    'glmatrix': './libs/glmatrix'
-  }
-});
+var requirejs = require('./bootstrap');
 
 var when = require('when').when;
 

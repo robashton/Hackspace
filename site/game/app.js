@@ -4201,12 +4201,12 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Animatable = require('./components/animatable');
   var StandardAnimations = require('./components/standardanimations');
   
-  var Character = function(id, x ,y) {
+  var Character = function(id, data) {
     Entity.call(this, id);
     
     this.attach(new Physical());
     this.attach(new Renderable('character', true));
-    this.attach(new Tangible(x, y, 12, 18));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
     this.attach(new Actionable());
@@ -4219,7 +4219,8 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new HasHealth(100));
     this.attach(new Animatable('character'));
     this.attach(new StandardAnimations());
-  };  
+  };
+  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);
   
@@ -4247,6 +4248,62 @@ define('entities/components/questgiver',['require','underscore','../../scripting
   };
   
   return QuestGiver;
+});
+
+define('scripting/items/duck',['require'],function(require) {
+
+  return {
+    type: 'duck',
+    pickupWidth: 5,
+    pickupHeight: 8,
+    pickupTexture: 'duck'
+  };
+    
+});
+
+define('entities/pickup',['require','underscore','../scene/entity','./components/renderable','./components/tangible','./components/physical'],function(require) {
+
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Physical = require('./components/physical');
+  
+  var Pickup = function(x, y, item) {
+    Entity.call(this, 'pickup-' + item.id);
+    this.item = item;
+    
+    this.attach(new Renderable(item.pickupTexture));
+    this.attach(new Tangible(x, y, item.pickupWidth, item.pickupHeight));
+    this.attach(new Physical());
+    this.attachSelf();
+  };
+  
+  Pickup.prototype = {
+    attachSelf: function() {
+      var self = this;
+      this.attach({
+        giveItemTo: function(entityId) {
+          self.putItemInEntity(entityId);
+        },
+        hasPickup: function() {
+          return true;
+        }    
+      });
+    },
+    putItemInEntity: function(entityId) {
+      var self = this;
+      this.scene.withEntity(entityId, function(entity) {
+        entity.dispatch('add', [self.item]); 
+        self.scene.remove(self);
+      })
+    } 
+  };
+  
+  _.extend(Pickup.prototype, Entity.prototype);
+  
+  return Pickup;
+  
 });
 
 define('render/rendergraph',['require','underscore'],function(require) {
@@ -4637,7 +4694,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
 
 
   var Map = function(data) {
-    Entity.call(this, 'map');
+    Entity.call(this, "map");
     
     this.width = data.width;
     this.height = data.height;
@@ -4904,6 +4961,23 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
   };
   
   return Camera; 
+});
+
+define('entities/characterfactory',['require','underscore','./character'],function(require) {
+  var _ = require('underscore');
+  var Character = require('./character');
+
+  var CharacterFactory = function() {
+    
+  };
+  
+  CharacterFactory.prototype = {
+    create: function(id, data) {
+      return new Character(id, data);
+    }
+  };
+  
+  return CharacterFactory;
 });
 
 /*!
@@ -14374,109 +14448,6 @@ define('resources/packagedresources',['require','./package','../shared/eventable
   return PackagedResources;
 });
 
-define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map','../shared/coords'],function(require) {
-
-  var CanvasRender = require('../render/canvasrender');
-  var PackagedResources = require('../resources/packagedresources'); 
-  var Camera = require('../scene/camera');
-  var Scene = require('../scene/scene');
-  var Map = require('../static/map');
-  var Coords = require('../shared/coords');
-  
-  var findRequestAnimationFrame = function() {
-    return window.requestAnimationFrame        || 
-      window.webkitRequestAnimationFrame  || 
-      window.mozRequestAnimationFrame     || 
-      window.oRequestAnimationFrame       || 
-      window.msRequestAnimationFrame      ||
-      function(callback, element){
-        window.setTimeout(callback, 1000 / 30);
-      };
-  };  
-
-  var Context = function(element, app) {
-    this.resources = new PackagedResources();
-    this.element = element;
-    this.wrappedElement = $(this.element); 
-    this.context = element.getContext('2d');
-    this.app = app;
-    this.resources.on('loaded', this.onResourcesLoaded, this); 
-    this.resources.loadPackage('game/assets.json');
-  };
-  
-  Context.prototype = {    
-  
-    pageCoordsToWorldCoords: function(x, y) {
-      var viewport = this.scene.graph.viewport;
-      var scale = this.getScaleComponent();
-     
-      x /= scale.x;
-      y /= scale.y;    
-      
-      x += (viewport.left);
-      y += (viewport.top); 
-            
-      return  Coords.isometricToWorld(x,y);   
-    },
-    worldCoordsToPageCoords: function(x, y) {
-      var viewport = this.scene.graph.viewport;
-      var scale = this.getScaleComponent();
-      
-      var screen = Coords.worldToIsometric(x, y);
-      
-      screen.x -= (viewport.left);
-      screen.y -= (viewport.top);
-      
-      screen.x *= scale.x;
-      screen.y *= scale.y;
-      
-      return screen;    
-    },
-    worldScaleToPage: function(width, height) {
-      var scale = this.getScaleComponent();
-      return {
-        width: width *= scale.x,
-        height: height *= scale.y
-      };
-    },
-    getScaleComponent: function() {
-      var viewport = this.scene.graph.viewport;
-      
-      var canvasWidth = this.element.width;
-      var canvasHeight = this.element.height;
-           
-      var scalex = canvasWidth / (viewport.right - viewport.left);
-      var scaley = canvasHeight / (viewport.bottom - viewport.top);
-      
-      return {
-        x: scalex,
-        y: scaley
-      };
-    },
-    onResourcesLoaded: function() { 
-      var self = this;
-      this.renderer = new CanvasRender(this.context);
-      this.camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
-      this.scene = new Scene(this.resources, this.renderer, this.camera);
-      
-      this.app.start(this);
-      
-      setInterval(function() {    
-        self.scene.tick();
-      }, 1000 / 30);
-      
-      var renderAnimFrame = findRequestAnimationFrame();
-      var render = function() {
-        self.scene.render();
-        renderAnimFrame(render);
-      };      
-      render();      
-    }  
-  };
-  
-  return Context;
-});
-
 define('editor/grid',['require','underscore','../scene/entity','../shared/coords'],function(require) {
   
   var _ = require('underscore');
@@ -14530,17 +14501,6 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
 
 });
 
-define('scripting/items/duck',['require'],function(require) {
-
-  return {
-    type: 'duck',
-    pickupWidth: 5,
-    pickupHeight: 8,
-    pickupTexture: 'duck'
-  };
-    
-});
-
 define('scripting/item',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -14554,51 +14514,6 @@ define('scripting/item',['require','underscore'],function(require) {
   };
   
   return Item;
-});
-
-define('entities/pickup',['require','underscore','../scene/entity','./components/renderable','./components/tangible','./components/physical'],function(require) {
-
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-  var Renderable = require('./components/renderable');
-  var Tangible = require('./components/tangible');
-  var Physical = require('./components/physical');
-  
-  var Pickup = function(x, y, item) {
-    Entity.call(this, 'pickup-' + item.id);
-    this.item = item;
-    
-    this.attach(new Renderable(item.pickupTexture));
-    this.attach(new Tangible(x, y, item.pickupWidth, item.pickupHeight));
-    this.attach(new Physical());
-    this.attachSelf();
-  };
-  
-  Pickup.prototype = {
-    attachSelf: function() {
-      var self = this;
-      this.attach({
-        giveItemTo: function(entityId) {
-          self.putItemInEntity(entityId);
-        },
-        hasPickup: function() {
-          return true;
-        }    
-      });
-    },
-    putItemInEntity: function(entityId) {
-      var self = this;
-      this.scene.withEntity(entityId, function(entity) {
-        entity.dispatch('add', [self.item]); 
-        self.scene.remove(self);
-      })
-    } 
-  };
-  
-  _.extend(Pickup.prototype, Entity.prototype);
-  
-  return Pickup;
-  
 });
 
 define('scripting/quests/fetchducks',['require','underscore','../item','../items/duck','../../entities/pickup'],function(require) {
@@ -14679,12 +14594,12 @@ define('entities/npc',['require','underscore','./components/physical','./compone
   
   var FetchDucks = require('../scripting/quests/fetchducks');
 
-  var Npc = function(id, x ,y) {
+  var Npc = function(id, data) {
     Entity.call(this, id);
     
     this.attach(new Physical());
     this.attach(new Renderable('character', true));
-    this.attach(new Tangible(x, y, 12, 18));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(3.0));
     this.attach(new QuestGiver(FetchDucks));
 
@@ -14693,6 +14608,23 @@ define('entities/npc',['require','underscore','./components/physical','./compone
   _.extend(Npc.prototype, Entity.prototype);
   
   return Npc;
+});
+
+define('entities/npcfactory',['require','underscore','./npc'],function(require) {
+  var _ = require('underscore');
+  var Npc = require('./npc');
+  
+  var NpcFactory = function() {
+    
+  };
+  
+  NpcFactory.prototype = {
+    create: function(id, data) {
+      return new Npc(id, data);
+    }
+  };
+  
+  return NpcFactory;
 });
 
 define('ui/questasker',['require','underscore'],function(require) {
@@ -14922,20 +14854,20 @@ define('entities/monster',['require','underscore','../scene/entity','./component
   var StandardAnimations = require('./components/standardanimations');
   var Animatable = require('./components/animatable');
   
-  var Monster = function(id, x, y, texture) {
+  var Monster = function(id, data) {
     Entity.call(this, id);
     
     this.attach(new Physical());
-    this.attach(new Renderable(texture, true));
-    this.attach(new Tangible(x, y, 12, 18));
+    this.attach(new Renderable(data.texture, true));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(1.5));
-    this.attach(new Roamable(x, y, -100, -100, 100, 100));
+    this.attach(new Roamable(data.x, data.y, -100, -100, 100, 100));
     this.attach(new Seeker('player'));
     this.attach(new Fighter());
     this.attach(new Factionable('monster'));
     this.attach(new Damageable());
     this.attach(new HasHealth(2));
-    this.attach(new Animatable(texture));
+    this.attach(new Animatable(data.texture));
     this.attach(new StandardAnimations());
        
     this.on('AddedToScene', this.onMonsterAddedToScene);
@@ -14968,6 +14900,154 @@ define('entities/monster',['require','underscore','../scene/entity','./component
   _.extend(Monster.prototype, Entity.prototype);
   
   return Monster;
+});
+
+define('entities/monsterfactory',['require','underscore','./monster'],function(require) {
+  var _ = require('underscore');
+  var Monster = require('./monster');
+  
+  var MonsterFactory = function() {
+  
+  };
+  
+  MonsterFactory.prototype = {
+    create: function(id, data) {
+      return new Monster(id, data);
+    }
+  };
+  
+  return MonsterFactory;
+});
+
+define('entities/entityfactory',['require','underscore','./characterfactory','./monsterfactory','./npcfactory'],function(require) {
+  var _ = require('underscore');
+  var CharacterFactory = require('./characterfactory');
+  var MonsterFactory = require('./monsterfactory');
+  var NpcFactory = require('./npcfactory');
+
+  var EntityFactory = function() {
+    this.factories = {
+      "character": new CharacterFactory(),
+      "monster": new MonsterFactory(),
+      "npc": new NpcFactory()
+    };
+  };
+  
+  EntityFactory.prototype = {
+    create: function(type, id, data) {
+      return this.factories[type].create(id, data);
+    }
+  };
+  
+  return EntityFactory;
+});
+
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory'],function(require) {
+
+  var CanvasRender = require('../render/canvasrender');
+  var PackagedResources = require('../resources/packagedresources'); 
+  var Camera = require('../scene/camera');
+  var Scene = require('../scene/scene');
+  var Map = require('../static/map');
+  var Coords = require('../shared/coords');
+  var EntityFactory = require('../entities/entityfactory');
+  
+  var findRequestAnimationFrame = function() {
+    return window.requestAnimationFrame        || 
+      window.webkitRequestAnimationFrame  || 
+      window.mozRequestAnimationFrame     || 
+      window.oRequestAnimationFrame       || 
+      window.msRequestAnimationFrame      ||
+      function(callback, element){
+        window.setTimeout(callback, 1000 / 30);
+      };
+  };  
+
+  var Context = function(element, app) {
+    this.resources = new PackagedResources();
+    this.element = element;
+    this.wrappedElement = $(this.element); 
+    this.context = element.getContext('2d');
+    this.app = app;
+    this.resources.on('loaded', this.onResourcesLoaded, this); 
+    this.resources.loadPackage('game/assets.json');
+    this.entityFactory = new EntityFactory();
+  };
+  
+  Context.prototype = {    
+  
+    pageCoordsToWorldCoords: function(x, y) {
+      var viewport = this.scene.graph.viewport;
+      var scale = this.getScaleComponent();
+     
+      x /= scale.x;
+      y /= scale.y;    
+      
+      x += (viewport.left);
+      y += (viewport.top); 
+            
+      return  Coords.isometricToWorld(x,y);   
+    },
+    worldCoordsToPageCoords: function(x, y) {
+      var viewport = this.scene.graph.viewport;
+      var scale = this.getScaleComponent();
+      
+      var screen = Coords.worldToIsometric(x, y);
+      
+      screen.x -= (viewport.left);
+      screen.y -= (viewport.top);
+      
+      screen.x *= scale.x;
+      screen.y *= scale.y;
+      
+      return screen;    
+    },
+    worldScaleToPage: function(width, height) {
+      var scale = this.getScaleComponent();
+      return {
+        width: width *= scale.x,
+        height: height *= scale.y
+      };
+    },
+    getScaleComponent: function() {
+      var viewport = this.scene.graph.viewport;
+      
+      var canvasWidth = this.element.width;
+      var canvasHeight = this.element.height;
+           
+      var scalex = canvasWidth / (viewport.right - viewport.left);
+      var scaley = canvasHeight / (viewport.bottom - viewport.top);
+      
+      return {
+        x: scalex,
+        y: scaley
+      };
+    },
+    onResourcesLoaded: function() { 
+      var self = this;
+      this.renderer = new CanvasRender(this.context);
+      this.camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
+      this.scene = new Scene(this.resources, this.renderer, this.camera);
+      
+      this.app.start(this);
+      
+      setInterval(function() {    
+        self.scene.tick();
+      }, 1000 / 30);
+      
+      var renderAnimFrame = findRequestAnimationFrame();
+      var render = function() {
+        self.scene.render();
+        renderAnimFrame(render);
+      };      
+      render();      
+    },
+    createEntity: function(type, id, data) {
+      return this.entityFactory.create(type, id, data);
+    }
+  };
+  
+  return Context;
 });
 
 define('entities/death',['require','underscore'],function(require) {
@@ -15075,7 +15155,7 @@ define('entities/collider',['require','underscore','../scene/entity'],function(r
   return Collider;
 });
 
-define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/items/duck','../../scripting/item','../../entities/pickup','../../ui/questasker','../../ui/healthbars','../../entities/monster','../../entities/death','../../entities/collider'],function(require) {
+define('apps/demo/app',['require','../../entities/character','../../entities/npc','../../scene/scene','../../input/inputemitter','../../entities/controller','../../entities/debug','../../static/map','../../harness/context','jquery','../../editor/grid','../../scripting/item','../../ui/questasker','../../ui/healthbars','../../entities/monster','../../entities/death','../../entities/collider'],function(require) {
 
   var Character = require('../../entities/character');
   var Npc = require('../../entities/npc');
@@ -15087,15 +15167,15 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
   var Context = require('../../harness/context');
   var $ = require('jquery');
   var Grid = require('../../editor/grid');
-  var DuckTemplate = require('../../scripting/items/duck');
   var Item = require('../../scripting/item');
-  var Pickup = require('../../entities/pickup');
+  
   var QuestAsker = require('../../ui/questasker');
   var HealthBars = require('../../ui/healthbars');
   var Monster = require('../../entities/monster');
   var Death = require('../../entities/death');
   var Collider = require('../../entities/collider');
-    
+  
+ 
   var Demo = function(element) {
     this.element = element;
   };
@@ -15103,9 +15183,28 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
   Demo.prototype = {
     start: function(context) {          
       this.context = context;
-            
-      var character = new Character("player", 0, 0);
-      var questGiver = new Npc("quest-giver", 150, 100);
+      
+      // TODO: This will come from the server
+      var character = context.createEntity('character', 'player', {
+        x: 0,
+        y: 0
+      });
+      var questGiver = context.createEntity('npc', 'quest-giver', {
+        x: 150,
+        y: 100
+      });
+
+      var monsters = [];
+      
+      for(var i = 0; i < 20; i++) {      
+        var monster = context.createEntity('monster', 'monster-' + i, {
+          x: Math.random() * 1000 + 200,
+          y: Math.random() * 1000 + 200,
+          texture: 'spider'
+        });
+        monsters.push(monster);
+      }
+      
       var controller = new Controller();
       var collider = new Collider();
       var healthbars = new HealthBars(this.context);
@@ -15114,20 +15213,20 @@ define('apps/demo/app',['require','../../entities/character','../../entities/npc
       var map = new Map(mapResource.get());
       
       context.scene.add(character);
-      context.scene.add(controller);
       context.scene.add(map);
       context.scene.add(questGiver);
+     
+      for(var i in monsters)
+        context.scene.add(monsters[i]);
+      
       context.scene.add(collider);
+      context.scene.add(controller);
       
       // Until I have textures
       this.grid = new Grid(map);
       this.context.scene.add(this.grid); 
       var input = new InputEmitter(context);
-
-      for(var i = 0; i < 20; i++) {      
-        context.scene.add(new Monster('monster-' + i, Math.random() * 1000 + 200, Math.random() * 1000 + 20, 'spider'));
-      }
-  
+        
       // Until I have a UI manager
       this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
       this.death = new Death(context.scene);

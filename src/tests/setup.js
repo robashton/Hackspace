@@ -26,9 +26,9 @@ define(function(require) {
   
   var withACharacterAndMonster = function(callback) {
     withEmptyScene(function(scene) {        
-      var character = new Character("player", 0, 0);
+      var character = new Character("player", {x: 0, y: 0});
       scene.add(character);
-      var monster = new Monster('monster', 10, 10, 'spider');
+      var monster = new Monster('monster', {x: 10, y: 10, texture: 'spider'});
       scene.add(monster);
       callback(scene, character, monster);    
     });

@@ -13,7 +13,7 @@ define(function(require) {
 
 
   var Map = function(data) {
-    Entity.call(this, 'map');
+    Entity.call(this, "map");
     
     this.width = data.width;
     this.height = data.height;

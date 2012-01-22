@@ -19,12 +19,12 @@ define(function(require) {
   var Animatable = require('./components/animatable');
   var StandardAnimations = require('./components/standardanimations');
   
-  var Character = function(id, x ,y) {
+  var Character = function(id, data) {
     Entity.call(this, id);
     
     this.attach(new Physical());
     this.attach(new Renderable('character', true));
-    this.attach(new Tangible(x, y, 12, 18));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(3.0));
     this.attach(new Trackable());
     this.attach(new Actionable());
@@ -37,7 +37,8 @@ define(function(require) {
     this.attach(new HasHealth(100));
     this.attach(new Animatable('character'));
     this.attach(new StandardAnimations());
-  };  
+  };
+  
   Character.prototype = {};  
   _.extend(Character.prototype, Entity.prototype);
   
