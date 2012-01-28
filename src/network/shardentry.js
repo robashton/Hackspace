@@ -17,8 +17,15 @@ define(function(require) {
     setupScene: function() {
       var self = this;
       this.context = new ServerContext({
-        start: function() {
-          self.raise('SceneLoaded');
+        start: function(context) {
+          self.context = context;
+          var entities = self.getDefaultSceneData();
+          for(var id in entities) {
+            var item = entities[id];
+            var entity = context.createEntity(item.type, id, item.data);
+            context.scene.add(entity);       
+          }
+          self.raise('SceneLoaded');  
         }
       });
     },
@@ -35,24 +42,35 @@ define(function(require) {
       
       var data = {
         playerid: 'player',
-        map: this.map,
-        entities: {
-          'player': {
-            type: 'character',
-            data: { x: 0, y: 0 }
-          },
-          'quest-giver': {
-            type: 'npc',
-            data: {
-              x: 150,
-              y: 100
-            }
-          }    
-        }
+        map: this.map
+      };
+      
+      var entities = _.clone(this.getDefaultSceneData());
+      data.entities = entities;
+      data.entities['player'] = {
+        type: 'character',
+        data: {
+          x: 0,
+          y: 0
+        }      
+      };                  
+      
+      socket.emit('init', data);
+    },
+    getDefaultSceneData: function() {
+
+     var entities = {
+        'quest-giver': {
+          type: 'npc',
+          data: {
+            x: 150,
+            y: 100
+          }
+        }    
       };
                   
       for(var i = 0; i < 20; i++) {     
-        data.entities['monster-' + i] = {
+        entities['monster-' + i] = {
           type: 'monster',
           data: {
             x: Math.random() * 1000 + 200,
@@ -60,10 +78,9 @@ define(function(require) {
             texture: 'spider'
           }        
         };
-      }   
-      
-      socket.emit('init', data);
-    }
+      }
+      return entities;   
+    },
   };
   _.extend(ShardEntry.prototype, Eventable.prototype);
   

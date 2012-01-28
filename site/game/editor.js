@@ -13539,7 +13539,8 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   Seeker.prototype = {
     onTick: function() {   
       this.updateTargetPosition();  
-      this.determineTargetProximity();        
+      if(this.targetPosition)
+        this.determineTargetProximity();        
     },
     
     updateTargetPosition: function() {
@@ -13571,7 +13572,7 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
       }
     },
      
-    determineTargetProximity: function() {
+    determineTargetProximity: function() {      
       vec3.subtract(this.position, this.targetPosition, this.buffer);
       var distance = vec3.length(this.buffer);
       if(distance < 128 && !this.found) {
