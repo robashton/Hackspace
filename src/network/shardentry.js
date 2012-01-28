@@ -40,22 +40,22 @@ define(function(require) {
     handleNewSocket: function(socket) {
       this.sockets.push(socket);
       
-      var data = {
+      this.addPlayerToScene('player');
+        
+     var data = {
         playerid: 'player',
-        map: this.map
-      };
-      
-      var entities = _.clone(this.getDefaultSceneData());
-      data.entities = entities;
-      data.entities['player'] = {
-        type: 'character',
-        data: {
-          x: 0,
-          y: 0
-        }      
-      };                  
+        map: this.map,
+        entities: this.context.getSerializedEntities()
+      };              
       
       socket.emit('init', data);
+    },
+    addPlayerToScene: function(id) {
+      var entity = this.context.createEntity('character', 'id', {
+        x: 0,
+        y: 0
+      });
+      this.context.scene.add(entity);
     },
     getDefaultSceneData: function() {
 
