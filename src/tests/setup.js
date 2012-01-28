@@ -13,7 +13,7 @@ define(function(require) {
     var renderer = new FakeRenderer();
     var resources = new FakeResources();
     var camera = new Camera();
-    var scene = new Scene(resources, renderer, camera);
+    var scene = new Scene(resources, camera,  renderer);
     scene.addEntityWith = function(id, components) {
       var entity = new Entity(id);
       for(var i in components)

@@ -1194,6 +1194,31 @@ define('resources/jsondata',['require'],function(require) {
   return JsonData;
 });
 
+define('resources/animation',['require'],function(require) {
+  var Animation = function(factory, path) {
+    this.path = path;
+    this.factory = factory;
+    this.data = null;
+  };
+  
+  Animation.prototype = {
+    get: function() {
+      return this.data;
+    },
+    
+    frameCountForAnimation: function(animation) {
+      return this.data[animation].frameCount;
+    },
+    
+    preload: function(callback) {
+     this.data = this.factory.getData(this.path);
+     callback();
+    },
+  };
+  
+  return Animation;
+});
+
 define('glmatrix',['require','exports','module'],function(require, exports, module) {
 
 /* 
@@ -3164,7 +3189,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
   var RenderGraph = require('../render/rendergraph');
   var Eventable = require('../shared/eventable');
   
-  var Scene = function(resources, renderer, camera) {
+  var Scene = function(resources, camera, renderer) {
     Eventable.call(this);
     this.entities = [];
     this.entitiesById = {};
@@ -4671,7 +4696,7 @@ define('entities/components/animatable',['require','underscore'],function(requir
       this.currentAnimationRate = data.rate;
       this.playOnce = data.playOnce;
       this.ticks = 0;
-      this.currentMaxFrame = this.meta[this.currentAnimation].frameCount;
+      this.currentMaxFrame = this.meta.frameCountForAnimation(this.currentAnimation);
       this.setCurrentFrameAt(this.currentMaxFrame === 0 ? -1 : 0);
     },
     onTick: function() {
@@ -4704,7 +4729,7 @@ define('entities/components/animatable',['require','underscore'],function(requir
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
-      this.meta = scene.resources.get('/main/' + this.textureName + '/meta.json').get();
+      this.meta = scene.resources.get('/main/' + this.textureName + '/meta.json');
     }
   };
   
@@ -14608,12 +14633,13 @@ define('resources/package',['require','jquery'],function(require) {
 
 });
 
-define('resources/packagedresources',['require','./package','../shared/eventable','underscore','./texture','./jsondata'],function(require) {
+define('resources/packagedresources',['require','./package','../shared/eventable','underscore','./texture','./jsondata','./animation'],function(require) {
   var Package = require('./package');
   var Eventable = require('../shared/eventable');
   var _ = require('underscore');
   var Texture = require('./texture');
   var JsonData = require('./jsondata');
+  var Animation = require('./animation');
 
   var PackagedResources = function() {  
     Eventable.call(this);
@@ -14651,7 +14677,10 @@ define('resources/packagedresources',['require','./package','../shared/eventable
       });
     },
     createResource: function(path) {
-      if(path.indexOf('.json') > 0) {
+      if(path.indexOf('meta.json') > 0) {
+        return new Animation(this, path);
+      }
+      else if(path.indexOf('.json') > 0) {
         return new JsonData(this, path);
       } else if(path.indexOf('.png') > 0) {
         return new Texture(this, path);
@@ -14774,7 +14803,7 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
       var self = this;
       this.renderer = new CanvasRender(this.context);
       this.camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
-      this.scene = new Scene(this.resources, this.renderer, this.camera);
+      this.scene = new Scene(this.resources, this.camera, this.renderer);
       
       this.app.start(this);
       

@@ -4,6 +4,7 @@ define(function(require) {
   var _ = require('underscore');
   var Texture = require('./texture');
   var JsonData = require('./jsondata');
+  var Animation = require('./animation');
 
   var PackagedResources = function() {  
     Eventable.call(this);
@@ -41,7 +42,10 @@ define(function(require) {
       });
     },
     createResource: function(path) {
-      if(path.indexOf('.json') > 0) {
+      if(path.indexOf('meta.json') > 0) {
+        return new Animation(this, path);
+      }
+      else if(path.indexOf('.json') > 0) {
         return new JsonData(this, path);
       } else if(path.indexOf('.png') > 0) {
         return new Texture(this, path);

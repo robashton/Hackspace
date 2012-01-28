@@ -4,7 +4,7 @@ define(function(require) {
   var RenderGraph = require('../render/rendergraph');
   var Eventable = require('../shared/eventable');
   
-  var Scene = function(resources, renderer, camera) {
+  var Scene = function(resources, camera, renderer) {
     Eventable.call(this);
     this.entities = [];
     this.entitiesById = {};

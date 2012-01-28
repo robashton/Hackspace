@@ -1,14 +1,20 @@
 define(function(require) {
   var _ = require('underscore');
-
+  var Eventable = require('../shared/eventable');
+  
   var ShardEntry = function(io, map) {
+    Eventable.call(this);
     this.io = io;
     this.sockets = [];
-    this.startListening();
+    this.on('SceneLoaded', this.startListening, this);
+    this.setupScene();
     this.map = map;
   };
   
   ShardEntry.prototype = {
+    setupScene: function() {
+      this.raise('SceneLoaded');
+    },
     startListening: function() {
       var self = this;
       
@@ -16,6 +22,7 @@ define(function(require) {
         self.handleNewSocket(socket);
       });
     },
+    
     handleNewSocket: function(socket) {
       this.sockets.push(socket);
       
@@ -36,7 +43,7 @@ define(function(require) {
           }    
         }
       };
-            
+                  
       for(var i = 0; i < 20; i++) {     
         data.entities['monster-' + i] = {
           type: 'monster',
@@ -51,6 +58,7 @@ define(function(require) {
       socket.emit('init', data);
     }
   };
+  _.extend(ShardEntry.prototype, Eventable.prototype);
   
   return ShardEntry;
 });

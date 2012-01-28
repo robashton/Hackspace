@@ -29,7 +29,7 @@ define(function(require) {
       this.currentAnimationRate = data.rate;
       this.playOnce = data.playOnce;
       this.ticks = 0;
-      this.currentMaxFrame = this.meta[this.currentAnimation].frameCount;
+      this.currentMaxFrame = this.meta.frameCountForAnimation(this.currentAnimation);
       this.setCurrentFrameAt(this.currentMaxFrame === 0 ? -1 : 0);
     },
     onTick: function() {
@@ -62,7 +62,7 @@ define(function(require) {
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
-      this.meta = scene.resources.get('/main/' + this.textureName + '/meta.json').get();
+      this.meta = scene.resources.get('/main/' + this.textureName + '/meta.json');
     }
   };
   

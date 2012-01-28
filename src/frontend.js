@@ -13,7 +13,7 @@
   FrontendServer.prototype = {
     startListening: function() {
       this.io = socketio.listen(this.server);
-      this.shard = new ShardEntry(this.io);
+      this.shard = new ShardEntry(this.io, '/main/world.json');
     }
   };
   

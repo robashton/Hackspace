@@ -83,7 +83,7 @@ define(function(require) {
       var self = this;
       this.renderer = new CanvasRender(this.context);
       this.camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
-      this.scene = new Scene(this.resources, this.renderer, this.camera);
+      this.scene = new Scene(this.resources, this.camera, this.renderer);
       
       this.app.start(this);
       
