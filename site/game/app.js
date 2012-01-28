@@ -1148,11 +1148,87 @@ define('render/canvasrender',['require'],function(require) {
   return CanvasRender;
 });
 
+define('resources/packagedresources',['require','../shared/eventable','underscore'],function(require) {
+  var Eventable = require('../shared/eventable');
+  var _ = require('underscore');
+
+  var PackagedResources = function(packageFactory) {  
+    Eventable.call(this);
+    this.loadedResources = {};
+    this.loadedPackages = [];
+    this.pendingPackageCount = 0;  
+    this.pendingResourceCount = 0;
+    this.packageFactory = packageFactory;
+  };
+  
+  PackagedResources.prototype = {
+    loadPackage: function(uri) {
+      var self = this
+      ,   pkg = this.packageFactory();
+
+      this.loadedPackages.push(pkg);
+      self.notifyPackageLoading();
+      pkg.loadFrom(uri, function() {
+        self.initializePackage(pkg);
+      });
+    },
+    initializePackage: function(pkg) {
+      var self = this;
+      pkg.each(function(k) {
+        self.preload(k, pkg);
+      });
+      self.notifyPackageLoaded();
+    },
+    preload: function(k, pkg) {
+      var self = this;
+      this.notifyResourceLoading();
+      var resource = pkg.createResource(k);
+      this.loadedResources[k] = resource;
+      resource.preload(function() {
+        self.notifyResourceLoaded();
+      });
+    },
+    notifyResourceLoading: function() {
+      this.pendingResourceCount++;
+    },
+    notifyResourceLoaded: function() {
+      this.pendingResourceCount--;
+      this.checkIfLoaded();
+    },
+    notifyPackageLoading: function() {
+      this.raise('loading');
+      this.pendingPackageCount++;
+    },
+    notifyPackageLoaded: function() {
+      this.pendingPackageCount--;
+      this.checkIfLoaded();
+    },
+    checkIfLoaded: function() {
+      if(this.pendingPackageCount === 0 && this.pendingResourceCount === 0)
+        this.raise('loaded');
+    },
+    get: function(path) {
+      var loadedResource = this.loadedResources[path];
+      if(!loadedResource) {
+        console.log('Resource requested that does not exist: ' + path);
+      }
+      return loadedResource;
+    },
+    getData: function(path) {
+      var pkg = _(this.loadedPackages).find(function(pkg) { return pkg.has(path); });
+      return pkg.getData(path);
+    }
+  };
+  _.extend(PackagedResources.prototype, Eventable.prototype);
+
+  return PackagedResources;
+});
+
 define('resources/texture',['require'],function(require) {
-  var Texture = function(factory, path) {
+  var Texture = function(pkg, path) {
     this.img = null;
     this.path = path;
-    this.factory = factory;
+    this.pkg = pkg;
     this.loaded = false;
   };
   
@@ -1162,7 +1238,7 @@ define('resources/texture',['require'],function(require) {
     },
     
     preload: function(callback) {
-     var data = this.factory.getData(this.path);
+     var data = this.pkg.getData(this.path);
      this.img = new Image();
      this.img.onload = callback;
      this.img.src = "data:image/png;base64," + data;
@@ -1174,9 +1250,9 @@ define('resources/texture',['require'],function(require) {
 });
 
 define('resources/jsondata',['require'],function(require) {
-  var JsonData = function(factory, path) {
+  var JsonData = function(pkg, path) {
     this.path = path;
-    this.factory = factory;
+    this.pkg = pkg;
     this.data = null;
   };
   
@@ -1186,7 +1262,7 @@ define('resources/jsondata',['require'],function(require) {
     },
     
     preload: function(callback) {
-     this.data = this.factory.getData(this.path);
+     this.data = this.pkg.getData(this.path);
      callback();
     },
   };
@@ -1195,9 +1271,9 @@ define('resources/jsondata',['require'],function(require) {
 });
 
 define('resources/animation',['require'],function(require) {
-  var Animation = function(factory, path) {
+  var Animation = function(pkg, path) {
     this.path = path;
-    this.factory = factory;
+    this.pkg = pkg;
     this.data = null;
   };
   
@@ -1211,7 +1287,7 @@ define('resources/animation',['require'],function(require) {
     },
     
     preload: function(callback) {
-     this.data = this.factory.getData(this.path);
+     this.data = this.pkg.getData(this.path);
      callback();
     },
   };
@@ -14600,9 +14676,11 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
 
 });
 
-define('resources/package',['require','jquery'],function(require) {
+define('resources/package',['require','jquery','./texture','./jsondata','./animation'],function(require) {
   var $ = require('jquery');
-  
+  var Texture = require('./texture');
+  var JsonData = require('./jsondata');
+  var Animation = require('./animation');
 
   var Package = function() {
     this.data = null;
@@ -14626,55 +14704,6 @@ define('resources/package',['require','jquery'],function(require) {
     },
     getData: function(path) {
       return this.data[path];
-    }
-  };
-  
-  return Package;    
-
-});
-
-define('resources/packagedresources',['require','./package','../shared/eventable','underscore','./texture','./jsondata','./animation'],function(require) {
-  var Package = require('./package');
-  var Eventable = require('../shared/eventable');
-  var _ = require('underscore');
-  var Texture = require('./texture');
-  var JsonData = require('./jsondata');
-  var Animation = require('./animation');
-
-  var PackagedResources = function() {  
-    Eventable.call(this);
-    this.loadedResources = {};
-    this.loadedPackages = [];
-    this.pendingPackageCount = 0;  
-    this.pendingResourceCount = 0;
-  };
-  
-  PackagedResources.prototype = {
-    loadPackage: function(uri) {
-      var self = this
-      ,   pkg = new Package();
-
-      this.loadedPackages.push(pkg);
-      self.notifyPackageLoading();
-      pkg.loadFrom(uri, function() {
-        self.initializePackage(pkg);
-      });
-    },
-    initializePackage: function(pkg) {
-      var self = this;
-      pkg.each(function(k) {
-        self.preload(k);
-      });
-      self.notifyPackageLoaded();
-    },
-    preload: function(k) {
-      var self = this;
-      this.notifyResourceLoading();
-      var resource = this.createResource(k);
-      this.loadedResources[k] = resource;
-      resource.preload(function() {
-        self.notifyResourceLoaded();
-      });
     },
     createResource: function(path) {
       if(path.indexOf('meta.json') > 0) {
@@ -14685,43 +14714,18 @@ define('resources/packagedresources',['require','./package','../shared/eventable
       } else if(path.indexOf('.png') > 0) {
         return new Texture(this, path);
       }
-    },
-    notifyResourceLoading: function() {
-      this.pendingResourceCount++;
-    },
-    notifyResourceLoaded: function() {
-      this.pendingResourceCount--;
-      if(this.pendingPackageCount === 0 && this.pendingResourceCount === 0)
-        this.raise('loaded');
-    },
-    notifyPackageLoading: function() {
-      this.raise('loading');
-      this.pendingPackageCount++;
-    },
-    notifyPackageLoaded: function() {
-      this.pendingPackageCount--;
-    },
-    get: function(path) {
-      var loadedResource = this.loadedResources[path];
-      if(!loadedResource) {
-        console.log('Resource requested that does not exist: ' + path);
-      }
-      return loadedResource;
-    },
-    getData: function(path) {
-      var pkg = _(this.loadedPackages).find(function(pkg) { return pkg.has(path); });
-      return pkg.getData(path);
     }
   };
-  _.extend(PackagedResources.prototype, Eventable.prototype);
+  
+  return Package;    
 
-  return PackagedResources;
 });
 
-define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory'],function(require) {
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../resources/package','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory'],function(require) {
 
   var CanvasRender = require('../render/canvasrender');
-  var PackagedResources = require('../resources/packagedresources'); 
+  var PackagedResources = require('../resources/packagedresources');
+  var Package = require('../resources/package');
   var Camera = require('../scene/camera');
   var Scene = require('../scene/scene');
   var Map = require('../static/map');
@@ -14740,7 +14744,7 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   };  
 
   var Context = function(element, app) {
-    this.resources = new PackagedResources();
+    this.resources = new PackagedResources(function() { return new Package(); });
     this.element = element;
     this.wrappedElement = $(this.element); 
     this.context = element.getContext('2d');

@@ -1,7 +1,8 @@
 define(function(require) {
 
   var CanvasRender = require('../render/canvasrender');
-  var PackagedResources = require('../resources/packagedresources'); 
+  var PackagedResources = require('../resources/packagedresources');
+  var Package = require('../resources/package');
   var Camera = require('../scene/camera');
   var Scene = require('../scene/scene');
   var Map = require('../static/map');
@@ -20,7 +21,7 @@ define(function(require) {
   };  
 
   var Context = function(element, app) {
-    this.resources = new PackagedResources();
+    this.resources = new PackagedResources(function() { return new Package(); });
     this.element = element;
     this.wrappedElement = $(this.element); 
     this.context = element.getContext('2d');

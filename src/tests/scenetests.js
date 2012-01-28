@@ -4,7 +4,7 @@ define(function(require) {
   var Monster = require('../entities/monster');
   var when = require('when').when;
   
-  when("An entity is requested from the scene", function(then) {
+  when("An entity is 'picked' from the scene", function(then) {
     setup.withEmptyScene(function(scene) {
       var character = new Character("player", 0, 0);
       scene.add(character);
@@ -15,7 +15,7 @@ define(function(require) {
     });
   });
   
-  when("An entity is requested from the scene and there are two entities at that point", function(then) {
+  when("An entity is 'picked' from the scene and there are two entities at that point", function(then) {
     setup.withEmptyScene(function(scene) {
       var character1 = new Character("player", 0, 0);
       scene.add(character1);
@@ -27,7 +27,7 @@ define(function(require) {
     });
   });
   
-  when("An entity is requested from the scene and a filter is applied", function(then) {
+  when("An entity is requested from the scene by position and a filter is applied", function(then) {
     setup.withEmptyScene(function(scene) {
       var character1 = new Character("player", 0, 0);
       scene.add(character1);

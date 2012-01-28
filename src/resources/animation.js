@@ -1,7 +1,7 @@
 define(function(require) {
-  var Animation = function(factory, path) {
+  var Animation = function(pkg, path) {
     this.path = path;
-    this.factory = factory;
+    this.pkg = pkg;
     this.data = null;
   };
   
@@ -15,7 +15,7 @@ define(function(require) {
     },
     
     preload: function(callback) {
-     this.data = this.factory.getData(this.path);
+     this.data = this.pkg.getData(this.path);
      callback();
     },
   };

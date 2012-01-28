@@ -1,19 +1,26 @@
 define(function(require) {
   var _ = require('underscore');
   var Eventable = require('../shared/eventable');
+  var ServerContext = require('../harness/servercontext');
   
   var ShardEntry = function(io, map) {
     Eventable.call(this);
     this.io = io;
     this.sockets = [];
     this.on('SceneLoaded', this.startListening, this);
-    this.setupScene();
     this.map = map;
+    this.context = null;
+    this.setupScene();
   };
   
   ShardEntry.prototype = {
     setupScene: function() {
-      this.raise('SceneLoaded');
+      var self = this;
+      this.context = new ServerContext({
+        start: function() {
+          self.raise('SceneLoaded');
+        }
+      });
     },
     startListening: function() {
       var self = this;

@@ -7,7 +7,7 @@ define(function(require) {
   
   FakeAnimation.prototype = {
     frameCountForAnimation: function() {
-      return 2;
+      return 2; 
     }
   };
   

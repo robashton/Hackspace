@@ -1,18 +1,18 @@
 define(function(require) {
-  var $ = require('jquery');
-  var Texture = require('./texture');
+  var fs = require('fs');
+  var IgnoredResource = require('./ignoredresource');
   var JsonData = require('./jsondata');
   var Animation = require('./animation');
-
-  var Package = function() {
+  
+  var ServerPackage = function() {
     this.data = null;
   };
   
-  Package.prototype = {
+  ServerPackage.prototype = {
     loadFrom: function(uri, callback) {
       var self = this;
-      $.getJSON(uri, function(data) {
-        self.data = data;
+      fs.readFile(uri, function(err, data) {
+        self.data = JSON.parse(data);
         callback();
       });
     },
@@ -34,11 +34,11 @@ define(function(require) {
       else if(path.indexOf('.json') > 0) {
         return new JsonData(this, path);
       } else if(path.indexOf('.png') > 0) {
-        return new Texture(this, path);
+        return new IgnoredResource(this, path);
       }
     }
   };
   
-  return Package;    
+  return ServerPackage;    
 
 });

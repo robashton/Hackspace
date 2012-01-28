@@ -1,23 +1,20 @@
 define(function(require) {
-  var Package = require('./package');
   var Eventable = require('../shared/eventable');
   var _ = require('underscore');
-  var Texture = require('./texture');
-  var JsonData = require('./jsondata');
-  var Animation = require('./animation');
 
-  var PackagedResources = function() {  
+  var PackagedResources = function(packageFactory) {  
     Eventable.call(this);
     this.loadedResources = {};
     this.loadedPackages = [];
     this.pendingPackageCount = 0;  
     this.pendingResourceCount = 0;
+    this.packageFactory = packageFactory;
   };
   
   PackagedResources.prototype = {
     loadPackage: function(uri) {
       var self = this
-      ,   pkg = new Package();
+      ,   pkg = this.packageFactory();
 
       this.loadedPackages.push(pkg);
       self.notifyPackageLoading();
@@ -28,36 +25,25 @@ define(function(require) {
     initializePackage: function(pkg) {
       var self = this;
       pkg.each(function(k) {
-        self.preload(k);
+        self.preload(k, pkg);
       });
       self.notifyPackageLoaded();
     },
-    preload: function(k) {
+    preload: function(k, pkg) {
       var self = this;
       this.notifyResourceLoading();
-      var resource = this.createResource(k);
+      var resource = pkg.createResource(k);
       this.loadedResources[k] = resource;
       resource.preload(function() {
         self.notifyResourceLoaded();
       });
-    },
-    createResource: function(path) {
-      if(path.indexOf('meta.json') > 0) {
-        return new Animation(this, path);
-      }
-      else if(path.indexOf('.json') > 0) {
-        return new JsonData(this, path);
-      } else if(path.indexOf('.png') > 0) {
-        return new Texture(this, path);
-      }
     },
     notifyResourceLoading: function() {
       this.pendingResourceCount++;
     },
     notifyResourceLoaded: function() {
       this.pendingResourceCount--;
-      if(this.pendingPackageCount === 0 && this.pendingResourceCount === 0)
-        this.raise('loaded');
+      this.checkIfLoaded();
     },
     notifyPackageLoading: function() {
       this.raise('loading');
@@ -65,6 +51,11 @@ define(function(require) {
     },
     notifyPackageLoaded: function() {
       this.pendingPackageCount--;
+      this.checkIfLoaded();
+    },
+    checkIfLoaded: function() {
+      if(this.pendingPackageCount === 0 && this.pendingResourceCount === 0)
+        this.raise('loaded');
     },
     get: function(path) {
       var loadedResource = this.loadedResources[path];
