@@ -27,7 +27,22 @@ define(function(require) {
       }, 1000 / 30);   
     },
     createEntity: function(type, id, data) {
-      return this.entityFactory.create(type, id, data);
+      var entity = this.entityFactory.create(type, id, data);
+      entity.$CreationData = data;
+      entity.$Type = type;
+      return entity;
+    },
+    getSerializedEntities: function() {
+      var data = {};
+      this.scene.each(function(entity) {
+        data[entity.id] = {
+          data: entity.$CreationData,
+          type: entity.$Type,
+          sync: {}
+        };
+        entity._out(data[entity.id].sync);
+      });
+      return data;
     }
   };
   

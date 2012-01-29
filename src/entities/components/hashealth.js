@@ -23,6 +23,12 @@ define(function(require) {
     },
     raiseDeath: function() {
       this.parent.raise('Death');
+    },
+    _out: function(data) {
+      data.health = this.amount;
+    },
+    _in: function(data) {
+      this.amount = data.health;
     }
   };
   

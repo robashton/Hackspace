@@ -98,6 +98,14 @@ define(function(require) {
     
     findCommandHandler: function(key) {
       return this.commandHandlers[key];
+    },
+    _in: function(data) {
+      for(var i = 0; i < this.components.length; i++)
+        if(this.components[i]._in) this.components[i]._in(data);
+    },
+    _out: function(data) {
+      for(var i = 0; i < this.components.length; i++)
+        if(this.components[i]._out) this.components[i]._out(data);
     }
   };
   _.extend(ComponentBag.prototype, Eventable.prototype);

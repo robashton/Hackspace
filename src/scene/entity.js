@@ -24,7 +24,7 @@ define(function(require) {
     propogateEventToScene: function(data) {
       if(this.scene)
         this.scene.broadcast(data.event, data.data, this);
-    },
+    }
   };
   _.extend(Entity.prototype, ComponentBag.prototype);
  

@@ -31,6 +31,11 @@ define(function(require) {
       if(!entity) return defaultValue;
       return entity.get(query, params, defaultValue);
     },
+    each:  function(callback, context) {
+      for(var i = 0 ; i < this.entities.length; i++) {
+        callback.call(context || this, this.entities[i]);
+      }
+    },
     crossEach: function(callback, context) {
       for(var i = 0 ; i < this.entities.length; i++) {
         for(var j = (i+1) ; j < this.entities.length; j++) {

@@ -60,6 +60,16 @@ define(function(require) {
     
     onRotationChanged: function(data) {
       this.rotation = data.x;
+    },
+    _out: function(data) {
+      data.rotation = this.rotation;
+      data.x = this.position[0];
+      data.y = this.position[1];
+    },
+    _in: function(data) {
+      this.rotation = data.rotation;
+      this.position[0] = data.x;
+      this.position[1] = data.y;
     }
   };
   

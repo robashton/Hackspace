@@ -46,12 +46,12 @@ define(function(require) {
         playerid: 'player',
         map: this.map,
         entities: this.context.getSerializedEntities()
-      };              
+      };    
       
       socket.emit('init', data);
     },
     addPlayerToScene: function(id) {
-      var entity = this.context.createEntity('character', 'id', {
+      var entity = this.context.createEntity('character', id, {
         x: 0,
         y: 0
       });

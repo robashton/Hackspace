@@ -3292,6 +3292,11 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       if(!entity) return defaultValue;
       return entity.get(query, params, defaultValue);
     },
+    each:  function(callback, context) {
+      for(var i = 0 ; i < this.entities.length; i++) {
+        callback.call(context || this, this.entities[i]);
+      }
+    },
     crossEach: function(callback, context) {
       for(var i = 0 ; i < this.entities.length; i++) {
         for(var j = (i+1) ; j < this.entities.length; j++) {
@@ -3575,6 +3580,14 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
     
     findCommandHandler: function(key) {
       return this.commandHandlers[key];
+    },
+    _in: function(data) {
+      for(var i = 0; i < this.components.length; i++)
+        if(this.components[i]._in) this.components[i]._in(data);
+    },
+    _out: function(data) {
+      for(var i = 0; i < this.components.length; i++)
+        if(this.components[i]._out) this.components[i]._out(data);
     }
   };
   _.extend(ComponentBag.prototype, Eventable.prototype);
@@ -3607,7 +3620,7 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
     propogateEventToScene: function(data) {
       if(this.scene)
         this.scene.broadcast(data.event, data.data, this);
-    },
+    }
   };
   _.extend(Entity.prototype, ComponentBag.prototype);
  
@@ -4245,6 +4258,16 @@ define('entities/components/tangible',['require','glmatrix'],function(require) {
     
     onRotationChanged: function(data) {
       this.rotation = data.x;
+    },
+    _out: function(data) {
+      data.rotation = this.rotation;
+      data.x = this.position[0];
+      data.y = this.position[1];
+    },
+    _in: function(data) {
+      this.rotation = data.rotation;
+      this.position[0] = data.x;
+      this.position[1] = data.y;
     }
   };
   
@@ -4735,6 +4758,12 @@ define('entities/components/hashealth',['require','underscore'],function(require
     },
     raiseDeath: function() {
       this.parent.raise('Death');
+    },
+    _out: function(data) {
+      data.health = this.amount;
+    },
+    _in: function(data) {
+      this.amount = data.health;
     }
   };
   
@@ -15185,6 +15214,7 @@ define('network/clientconnector',['require','underscore','../entities/controller
       for(var id in data.entities) {
         var item = data.entities[id];
         var entity = this.context.createEntity(item.type, id, item.data);
+        entity._in(item.sync);
         this.context.scene.add(entity);       
       }    
     

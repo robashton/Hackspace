@@ -24,6 +24,7 @@ define(function(require) {
       for(var id in data.entities) {
         var item = data.entities[id];
         var entity = this.context.createEntity(item.type, id, item.data);
+        entity._in(item.sync);
         this.context.scene.add(entity);       
       }    
     
