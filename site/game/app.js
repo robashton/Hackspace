@@ -15077,12 +15077,13 @@ define('entities/controller',['require','underscore','../scene/entity','../share
   var Entity = require('../scene/entity');
   var Coords = require('../shared/coords');
 
-  var Controller = function() {
+  var Controller = function(playerId) {
     Entity.call(this, "controller");   
     this.scene = null;        
     this.on('AddedToScene', this.hookSceneEvents);
     this.x = 0;
     this.y = 0;   
+    this.playerId = playerId;
   };  
   
   Controller.prototype = {
@@ -15104,7 +15105,6 @@ define('entities/controller',['require','underscore','../scene/entity','../share
       }    
     },
     
-    
     onHover: function(data) {
       this.x = data.x;
       this.y = data.y;
@@ -15123,11 +15123,11 @@ define('entities/controller',['require','underscore','../scene/entity','../share
     },
     
     determineWhatToDoWithSelectedEntity: function(entity, x, y) {
-      this.scene.dispatch('player', "primaryAction", [entity.id]);
+      this.scene.dispatch(this.playerId, "primaryAction", [entity.id]);
     },
     
     issueMovementCommandToPlayer: function(x,y) {
-      this.scene.dispatch('player', 'updateDestination', [x, y]);
+      this.scene.dispatch(this.playerId, 'updateDestination', [x, y]);
     }
   };  
   _.extend(Controller.prototype, Entity.prototype);
@@ -15218,7 +15218,7 @@ define('network/clientconnector',['require','underscore','../entities/controller
         this.context.scene.add(entity);       
       }    
     
-      var controller = new Controller();
+      var controller = new Controller(data.playerid);
       this.context.scene.add(controller);
       this.loadMap(data.map);
       this.raise('GameStarted'); 

@@ -34,16 +34,28 @@ define(function(require) {
       
       this.io.sockets.on('connection', function(socket) {
         self.handleNewSocket(socket);
+        socket.on('disconnect', function() {
+          self.handleDisconnectedSocket(socket);
+        });
+      });
+      
+    },
+    
+    handleDisconnectedSocket: function(socket) {
+      this.sockets = _(this.sockets).without(socket);
+      var self = this;
+      this.context.scene.withEntity(socket.id, function(entity) {
+        self.context.scene.remove(entity);
       });
     },
     
     handleNewSocket: function(socket) {
       this.sockets.push(socket);
       
-      this.addPlayerToScene('player');
+      this.addPlayerToScene(socket.id);
         
      var data = {
-        playerid: 'player',
+        playerid: socket.id,
         map: this.map,
         entities: this.context.getSerializedEntities()
       };    

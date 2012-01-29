@@ -28,7 +28,7 @@ define(function(require) {
         this.context.scene.add(entity);       
       }    
     
-      var controller = new Controller();
+      var controller = new Controller(data.playerid);
       this.context.scene.add(controller);
       this.loadMap(data.map);
       this.raise('GameStarted'); 
