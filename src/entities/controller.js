@@ -4,13 +4,13 @@ define(function(require) {
   var Entity = require('../scene/entity');
   var Coords = require('../shared/coords');
 
-  var Controller = function(playerId) {
+  var Controller = function(commander) {
     Entity.call(this, "controller");   
     this.scene = null;        
     this.on('AddedToScene', this.hookSceneEvents);
     this.x = 0;
     this.y = 0;   
-    this.playerId = playerId;
+    this.commander = commander;
   };  
   
   Controller.prototype = {
@@ -50,11 +50,11 @@ define(function(require) {
     },
     
     determineWhatToDoWithSelectedEntity: function(entity, x, y) {
-      this.scene.dispatch(this.playerId, "primaryAction", [entity.id]);
+      this.commander.dispatch("primaryAction", [entity.id]);
     },
     
     issueMovementCommandToPlayer: function(x,y) {
-      this.scene.dispatch(this.playerId, 'updateDestination', [x, y]);
+      this.commander.dispatch('updateDestination', [x, y]);
     }
   };  
   _.extend(Controller.prototype, Entity.prototype);

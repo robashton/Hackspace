@@ -13831,6 +13831,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
   
   Scene.prototype = {
     tick: function() {
+      this.raise('PreTick');
       _(this.entities).each(function(entity){
         if(entity.tick) 
           entity.tick();
@@ -13868,6 +13869,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       });
     },
     render: function() {
+      this.raise('PreRender');
       this.camera.updateViewport(this.graph);
       this.renderer.clear();
       this.renderer.draw(this.graph);
@@ -14715,7 +14717,6 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Renderable('character', true));
     this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(3.0));
-    this.attach(new Trackable());
     this.attach(new Actionable());
     this.attach(new Carrier());
     this.attach(new Quester());

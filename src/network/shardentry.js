@@ -34,6 +34,20 @@ define(function(require) {
       
       this.io.sockets.on('connection', function(socket) {
         self.handleNewSocket(socket);
+        
+        socket.on('CommandDispatch', function(data) {
+        
+          // Broadcast to other clients
+          socket.broadcast.emit('CommandDispatch', {
+            targetId: socket.id,
+            command: data.command,
+            args: data.args
+          });
+          
+          // Dispatch to scene internally
+          self.context.scene.dispatch(socket.id, data.command, data.args);
+        });
+        
         socket.on('disconnect', function() {
           self.handleDisconnectedSocket(socket);
         });
@@ -47,6 +61,7 @@ define(function(require) {
       this.context.scene.withEntity(socket.id, function(entity) {
         self.context.scene.remove(entity);
       });
+      socket.broadcast.emit('PlayerLeft', socket.id);
     },
     
     handleNewSocket: function(socket) {
@@ -60,7 +75,8 @@ define(function(require) {
         entities: this.context.getSerializedEntities()
       };    
       
-      socket.emit('init', data);
+      socket.emit('Init', data);
+      socket.broadcast.emit('PlayerJoined', this.context.getSerialisedEntity(socket.id));
     },
     addPlayerToScene: function(id) {
       var entity = this.context.createEntity('character', id, {

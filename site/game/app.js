@@ -3277,6 +3277,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
   
   Scene.prototype = {
     tick: function() {
+      this.raise('PreTick');
       _(this.entities).each(function(entity){
         if(entity.tick) 
           entity.tick();
@@ -3314,6 +3315,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       });
     },
     render: function() {
+      this.raise('PreRender');
       this.camera.updateViewport(this.graph);
       this.renderer.clear();
       this.renderer.draw(this.graph);
@@ -4901,7 +4903,6 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Renderable('character', true));
     this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(3.0));
-    this.attach(new Trackable());
     this.attach(new Actionable());
     this.attach(new Carrier());
     this.attach(new Quester());
@@ -15077,13 +15078,13 @@ define('entities/controller',['require','underscore','../scene/entity','../share
   var Entity = require('../scene/entity');
   var Coords = require('../shared/coords');
 
-  var Controller = function(playerId) {
+  var Controller = function(commander) {
     Entity.call(this, "controller");   
     this.scene = null;        
     this.on('AddedToScene', this.hookSceneEvents);
     this.x = 0;
     this.y = 0;   
-    this.playerId = playerId;
+    this.commander = commander;
   };  
   
   Controller.prototype = {
@@ -15123,16 +15124,70 @@ define('entities/controller',['require','underscore','../scene/entity','../share
     },
     
     determineWhatToDoWithSelectedEntity: function(entity, x, y) {
-      this.scene.dispatch(this.playerId, "primaryAction", [entity.id]);
+      this.commander.dispatch("primaryAction", [entity.id]);
     },
     
     issueMovementCommandToPlayer: function(x,y) {
-      this.scene.dispatch(this.playerId, 'updateDestination', [x, y]);
+      this.commander.dispatch('updateDestination', [x, y]);
     }
   };  
   _.extend(Controller.prototype, Entity.prototype);
   
   return Controller;
+});
+
+define('entities/chasecamera',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var ChaseCamera = function(scene, targetId) {
+    this.scene = scene;
+    this.targetId = targetId;
+    this.scene.on('PreRender', this.onScenePreRender, this);
+  };
+  
+  ChaseCamera.prototype = {
+    onScenePreRender: function() {
+      var self = this;
+      this.scene.withEntity(this.targetId, function(target) {
+        var position = target.get('getPosition');
+        self.scene.camera.lookAt(position[0], position[1], position[2]);
+      });
+
+    }
+  };
+  
+  return ChaseCamera;
+});
+
+define('network/commander',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Commander = function(socket, scene, playerId) {
+    this.playerId = playerId;
+    this.scene = scene;
+    this.socket = socket;
+    this.hookSocketEvents();
+  };
+  
+  Commander.prototype = {
+    dispatch: function(command, args) {
+      // Send to server
+      this.socket.emit('CommandDispatch', {
+        command: command,
+        args: args
+      });
+      // Dispatch locally
+      this.scene.dispatch(this.playerId, command, args);
+    },
+    hookSocketEvents: function() {
+      var self = this;
+      this.socket.on('CommandDispatch', function(data) {
+        self.scene.dispatch(data.targetId, data.command, data.args);
+      });
+    }
+  };
+  
+  return Commander;
 });
 
 define('editor/grid',['require','underscore','../scene/entity','../shared/coords'],function(require) {
@@ -15188,9 +15243,11 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
 
 });
 
-define('network/clientconnector',['require','underscore','../entities/controller','../static/map','../editor/grid','../shared/eventable'],function(require) {
+define('network/clientconnector',['require','underscore','../entities/controller','../entities/chasecamera','./commander','../static/map','../editor/grid','../shared/eventable'],function(require) {
   var _ = require('underscore');
   var Controller = require('../entities/controller');
+  var ChaseCamera = require('../entities/chasecamera');
+  var Commander = require('./commander');
   var Map = require('../static/map');
   var Grid = require('../editor/grid');
   var Eventable = require('../shared/eventable');
@@ -15205,20 +15262,31 @@ define('network/clientconnector',['require','underscore','../entities/controller
     connectToServer: function() {
       this.socket = io.connect();
       var self = this;
-      this.socket.on('init', function(data) {
+      this.socket.on('Init', function(data) {
         self.populateSceneFromMessage(data);
       });
+      this.socket.on('PlayerJoined', function(data) {
+        self.addEntityFromData(data.id, data);
+      });
+      this.socket.on('PlayerLeft', function(id) {
+        self.context.scene.withEntity(id, function(entity) {
+          self.context.scene.remove(entity);
+        });
+      });
     },
-    populateSceneFromMessage: function(data) {   
-    
+    addEntityFromData: function(id, item) {
+      var entity = this.context.createEntity(item.type, id, item.data);
+      entity._in(item.sync);
+      this.context.scene.add(entity);  
+    },
+    populateSceneFromMessage: function(data) {    
       for(var id in data.entities) {
         var item = data.entities[id];
-        var entity = this.context.createEntity(item.type, id, item.data);
-        entity._in(item.sync);
-        this.context.scene.add(entity);       
-      }    
-    
-      var controller = new Controller(data.playerid);
+        this.addEntityFromData(id, item);
+      }      
+      var commander = new Commander(this.socket, this.context.scene, data.playerid);
+      var controller = new Controller(commander);
+      var chase = new ChaseCamera(this.context.scene, data.playerid);
       this.context.scene.add(controller);
       this.loadMap(data.map);
       this.raise('GameStarted'); 

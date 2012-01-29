@@ -1,6 +1,8 @@
 define(function(require) {
   var _ = require('underscore');
   var Controller = require('../entities/controller');
+  var ChaseCamera = require('../entities/chasecamera');
+  var Commander = require('./commander');
   var Map = require('../static/map');
   var Grid = require('../editor/grid');
   var Eventable = require('../shared/eventable');
@@ -15,20 +17,31 @@ define(function(require) {
     connectToServer: function() {
       this.socket = io.connect();
       var self = this;
-      this.socket.on('init', function(data) {
+      this.socket.on('Init', function(data) {
         self.populateSceneFromMessage(data);
       });
+      this.socket.on('PlayerJoined', function(data) {
+        self.addEntityFromData(data.id, data);
+      });
+      this.socket.on('PlayerLeft', function(id) {
+        self.context.scene.withEntity(id, function(entity) {
+          self.context.scene.remove(entity);
+        });
+      });
     },
-    populateSceneFromMessage: function(data) {   
-    
+    addEntityFromData: function(id, item) {
+      var entity = this.context.createEntity(item.type, id, item.data);
+      entity._in(item.sync);
+      this.context.scene.add(entity);  
+    },
+    populateSceneFromMessage: function(data) {    
       for(var id in data.entities) {
         var item = data.entities[id];
-        var entity = this.context.createEntity(item.type, id, item.data);
-        entity._in(item.sync);
-        this.context.scene.add(entity);       
-      }    
-    
-      var controller = new Controller(data.playerid);
+        this.addEntityFromData(id, item);
+      }      
+      var commander = new Commander(this.socket, this.context.scene, data.playerid);
+      var controller = new Controller(commander);
+      var chase = new ChaseCamera(this.context.scene, data.playerid);
       this.context.scene.add(controller);
       this.loadMap(data.map);
       this.raise('GameStarted'); 

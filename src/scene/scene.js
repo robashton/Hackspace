@@ -16,6 +16,7 @@ define(function(require) {
   
   Scene.prototype = {
     tick: function() {
+      this.raise('PreTick');
       _(this.entities).each(function(entity){
         if(entity.tick) 
           entity.tick();
@@ -53,6 +54,7 @@ define(function(require) {
       });
     },
     render: function() {
+      this.raise('PreRender');
       this.camera.updateViewport(this.graph);
       this.renderer.clear();
       this.renderer.draw(this.graph);

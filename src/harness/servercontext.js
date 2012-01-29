@@ -43,7 +43,18 @@ define(function(require) {
         entity._out(data[entity.id].sync);
       });
       return data;
-    }
+    },
+    getSerialisedEntity: function(id) {
+      var entity = this.scene.get(id);
+      var item = {
+        id: id,
+        data: entity.$CreationData,
+        type: entity.$Type,
+        sync: {}
+      };
+      entity._out(item.sync);
+      return item;
+    },
   };
   
   return ServerContext;
