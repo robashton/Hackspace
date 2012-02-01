@@ -25,26 +25,32 @@ define(function(require) {
             var entity = context.createEntity(item.type, id, item.data);
             context.scene.add(entity);       
           }
+          
+          context.scene.on('CommandDispatched', self.onSceneCommandDispatched, self);
+          
           self.raise('SceneLoaded');  
         }
       });
     },
+    
+    onSceneCommandDispatched: function(data) {
+      for(var i = 0; i < this.sockets.length; i++) {
+        var socket = this.sockets[i];
+        socket.emit('CommandDispatch', {
+          id: data.id,
+          command: data.command,
+          args: data.args
+        });
+      }
+    },
+    
     startListening: function() {
       var self = this;
       
       this.io.sockets.on('connection', function(socket) {
         self.handleNewSocket(socket);
         
-        socket.on('CommandDispatch', function(data) {
-        
-          // Broadcast to other clients
-          socket.broadcast.emit('CommandDispatch', {
-            targetId: socket.id,
-            command: data.command,
-            args: data.args
-          });
-          
-          // Dispatch to scene internally
+        socket.on('CommandDispatch', function(data) {          
           self.context.scene.dispatch(socket.id, data.command, data.args);
         });
         

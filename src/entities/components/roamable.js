@@ -10,11 +10,12 @@ define(function(require) {
     this.maxx = maxx;
     this.maxy = maxy;
     this.wandering = false;
+    this.scene = null;
   };
   
   Directable.prototype = {    
     createNewDestination: function() {
-      this.parent.dispatch('updateDestination', [ 
+      this.scene.dispatch(this.parent.id, 'updateDestination', [ 
         Math.random() * (this.maxx - this.minx) + this.minx + this.startx, 
         Math.random() * (this.maxy - this.miny) + this.miny + this.starty, 
         0]);
@@ -30,6 +31,9 @@ define(function(require) {
       }
       else
         this.wandering = false;
+    },
+    onAddedToScene: function(scene) {
+      this.scene = scene;
     }
   };  
   

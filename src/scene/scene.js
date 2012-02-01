@@ -71,9 +71,19 @@ define(function(require) {
       delete this.entitiesById[entity.id];
       entity.setScene(null);
     },
-    dispatch: function(id, command, data) {
+    
+    dispatchDirect: function(id, command, args) {
       var entity = this.entitiesById[id];
-      entity.dispatch(command, data);
+      entity.dispatch(command, args);
+    },
+    
+    dispatch: function(id, command, args) {
+      if(!this.renderer) { // if IsServer (TODO)         
+        this.dispatchDirect(id, command, args);
+        this.raise('CommandDispatched', {
+          id: id, command: command, args: args
+        });
+      }
     },
     broadcast: function(event, data, sender) {
       this.raise(event, data, sender || this);

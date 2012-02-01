@@ -3332,9 +3332,19 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       delete this.entitiesById[entity.id];
       entity.setScene(null);
     },
-    dispatch: function(id, command, data) {
+    
+    dispatchDirect: function(id, command, args) {
       var entity = this.entitiesById[id];
-      entity.dispatch(command, data);
+      entity.dispatch(command, args);
+    },
+    
+    dispatch: function(id, command, args) {
+      if(!this.renderer) { // if IsServer (TODO)         
+        this.dispatchDirect(id, command, args);
+        this.raise('CommandDispatched', {
+          id: id, command: command, args: args
+        });
+      }
     },
     broadcast: function(event, data, sender) {
       this.raise(event, data, sender || this);
@@ -4950,11 +4960,12 @@ define('entities/components/roamable',['require','glmatrix'],function(require) {
     this.maxx = maxx;
     this.maxy = maxy;
     this.wandering = false;
+    this.scene = null;
   };
   
   Directable.prototype = {    
     createNewDestination: function() {
-      this.parent.dispatch('updateDestination', [ 
+      this.scene.dispatch(this.parent.id, 'updateDestination', [ 
         Math.random() * (this.maxx - this.minx) + this.minx + this.startx, 
         Math.random() * (this.maxy - this.miny) + this.miny + this.starty, 
         0]);
@@ -4970,6 +4981,9 @@ define('entities/components/roamable',['require','glmatrix'],function(require) {
       }
       else
         this.wandering = false;
+    },
+    onAddedToScene: function(scene) {
+      this.scene = scene;
     }
   };  
   
@@ -5032,10 +5046,10 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
       vec3.subtract(this.position, this.targetPosition, this.buffer);
       var distance = vec3.length(this.buffer);
       if(distance < 128 && !this.found) {
-        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
+        this.scene.dispatch(this.parent.id, 'updateDestinationTarget', [ this.targetId ]);
       }
       else if(distance > 30 && this.found) {
-        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
+        this.scene.dispatch(this.parent.id, 'updateDestinationTarget', [ this.targetId ]);
       }
     }
   };
@@ -15171,18 +15185,15 @@ define('network/commander',['require','underscore'],function(require) {
   
   Commander.prototype = {
     dispatch: function(command, args) {
-      // Send to server
       this.socket.emit('CommandDispatch', {
         command: command,
         args: args
       });
-      // Dispatch locally
-      this.scene.dispatch(this.playerId, command, args);
     },
     hookSocketEvents: function() {
       var self = this;
       this.socket.on('CommandDispatch', function(data) {
-        self.scene.dispatch(data.targetId, data.command, data.args);
+        self.scene.dispatchDirect(data.id, data.command, data.args);
       });
     }
   };

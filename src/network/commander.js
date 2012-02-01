@@ -10,18 +10,15 @@ define(function(require) {
   
   Commander.prototype = {
     dispatch: function(command, args) {
-      // Send to server
       this.socket.emit('CommandDispatch', {
         command: command,
         args: args
       });
-      // Dispatch locally
-      this.scene.dispatch(this.playerId, command, args);
     },
     hookSocketEvents: function() {
       var self = this;
       this.socket.on('CommandDispatch', function(data) {
-        self.scene.dispatch(data.targetId, data.command, data.args);
+        self.scene.dispatchDirect(data.id, data.command, data.args);
       });
     }
   };

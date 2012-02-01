@@ -53,10 +53,10 @@ define(function(require) {
       vec3.subtract(this.position, this.targetPosition, this.buffer);
       var distance = vec3.length(this.buffer);
       if(distance < 128 && !this.found) {
-        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
+        this.scene.dispatch(this.parent.id, 'updateDestinationTarget', [ this.targetId ]);
       }
       else if(distance > 30 && this.found) {
-        this.parent.dispatch('updateDestinationTarget', [this.targetId]);
+        this.scene.dispatch(this.parent.id, 'updateDestinationTarget', [ this.targetId ]);
       }
     }
   };
