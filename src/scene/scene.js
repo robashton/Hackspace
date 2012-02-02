@@ -3,6 +3,7 @@ define(function(require) {
   var _ = require('underscore');
   var RenderGraph = require('../render/rendergraph');
   var Eventable = require('../shared/eventable');
+  var vec3 = require('glmatrix').vec3;
   
   var Scene = function(resources, camera, renderer) {
     Eventable.call(this);
@@ -12,6 +13,7 @@ define(function(require) {
     this.renderer = renderer;
     this.graph = new RenderGraph();
     this.resources = resources;
+    this.buffer = vec3.create([0,0,0]);
   };
   
   Scene.prototype = {
@@ -52,6 +54,19 @@ define(function(require) {
         if(filter && !filter(entity)) return false;
         return entity.get('intersectWithMouse', [x, y], false);
       });
+    },
+    entitiesWithinRadius: function(centre, radius, filter) {
+      var self = this;
+      return _(this.entities).filter(function(entity){
+        if(filter && !filter(entity)) return false;
+        
+        var entityPosition = entity.get('getPosition');
+        if(!entityPosition) return false;
+        
+        vec3.subtract(entityPosition, centre, self.buffer);
+        var length = vec3.length(self.buffer);
+        return length < radius;
+      }) || [];
     },
     render: function() {
       this.raise('PreRender');

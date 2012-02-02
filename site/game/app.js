@@ -3259,11 +3259,12 @@ define('render/rendergraph',['require','underscore'],function(require) {
   return RenderGraph;
 });
 
-define('scene/scene',['require','underscore','../render/rendergraph','../shared/eventable'],function(require) {
+define('scene/scene',['require','underscore','../render/rendergraph','../shared/eventable','glmatrix'],function(require) {
 
   var _ = require('underscore');
   var RenderGraph = require('../render/rendergraph');
   var Eventable = require('../shared/eventable');
+  var vec3 = require('glmatrix').vec3;
   
   var Scene = function(resources, camera, renderer) {
     Eventable.call(this);
@@ -3273,6 +3274,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
     this.renderer = renderer;
     this.graph = new RenderGraph();
     this.resources = resources;
+    this.buffer = vec3.create([0,0,0]);
   };
   
   Scene.prototype = {
@@ -3313,6 +3315,19 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
         if(filter && !filter(entity)) return false;
         return entity.get('intersectWithMouse', [x, y], false);
       });
+    },
+    entitiesWithinRadius: function(centre, radius, filter) {
+      var self = this;
+      return _(this.entities).filter(function(entity){
+        if(filter && !filter(entity)) return false;
+        
+        var entityPosition = entity.get('getPosition');
+        if(!entityPosition) return false;
+        
+        vec3.subtract(entityPosition, centre, self.buffer);
+        var length = vec3.length(self.buffer);
+        return length < radius;
+      }) || [];
     },
     render: function() {
       this.raise('PreRender');
@@ -4995,31 +5010,25 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   var _ = require('underscore');
   var vec3 = require('glmatrix').vec3;
   
-  var Seeker = function(targetId) {
-    this.targetId = targetId;
+  var Seeker = function() {
+    this.targetId = null;
     this.scene = null;
     this.seeking = false;
     this.found = false;
     this.buffer = vec3.create([0,0,0]);
     this.position = vec3.create([0,0,0]);
-    this.targetPosition = null;
+    this.targetPosition = vec3.create([0,0,0]);
     this.viewingDistance = 30;
   };
   
   Seeker.prototype = {
-    onTick: function() {   
-      this.updateTargetPosition();  
-      if(this.targetPosition)
-        this.determineTargetProximity();        
+  
+    onTick: function() {
+      this.lookForCandidates();
+      this.updateTargetPosition();
+      this.determineTargetProximity(); 
     },
-    
-    updateTargetPosition: function() {
-      var self = this;
-      this.scene.withEntity(this.targetId, function(target) {
-        self.targetPosition = target.get('getPosition');          
-      });
-    },
-    
+   
     onPositionChanged: function(data) {
       this.position[0] = data.x;
       this.position[1] = data.y;
@@ -5040,7 +5049,29 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
        this.found = true;
        this.seeking = false;
       }
+    },    
+    
+    updateTargetPosition: function() {
+      if(!this.targetId) return;
+      var target = this.scene.get(this.targetId);
+      if(target) {
+        var targetPosition = target.get('getPosition');
+        vec3.set( targetPosition, this.targetPosition);
+      } else {
+        this.targetId = null;
+      }
     },
+    
+    lookForCandidates: function() {
+      if(this.targetId) return;
+      var self = this;
+      var availableTargets = this.scene.entitiesWithinRadius(this.position, 100.0, function(entity) {
+        return entity.get('isEnemyWith', [self.parent]);
+      });
+      if(availableTargets.length > 0) {
+        this.targetId = availableTargets[0].id;
+      }
+    },   
      
     determineTargetProximity: function() {      
       vec3.subtract(this.position, this.targetPosition, this.buffer);

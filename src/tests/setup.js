@@ -10,10 +10,9 @@ define(function(require) {
   var Entity = require('../scene/entity');
     
   var withEmptyScene = function(callback) {
-    var renderer = new FakeRenderer();
     var resources = new FakeResources();
     var camera = new Camera();
-    var scene = new Scene(resources, camera,  renderer);
+    var scene = new Scene(resources, camera,  null);
     scene.addEntityWith = function(id, components) {
       var entity = new Entity(id);
       for(var i in components)
