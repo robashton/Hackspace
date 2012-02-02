@@ -4677,6 +4677,7 @@ define('entities/components/fighter',['require','underscore'],function(require) 
     },
     
     onTick: function() {
+      this.verifyTargetIsValid();
       if(this.frameCount % 30 === 0 && this.currentTargetId !== null) 
         this.performAttackStep();
       if(this.frameCount % 30 === 0 && this.currentTargetId === null)
@@ -4690,6 +4691,12 @@ define('entities/components/fighter',['require','underscore'],function(require) 
       this.scene = scene;
     },
     
+    verifyTargetIsValid: function() {
+      var entity = this.scene.get(this.currentTargetId);
+      if(!entity)
+        this.parent.raise('CancelledAttackingTarget');
+    },
+    
     notifyKilledTarget: function(targetid) {
       this.parent.raise('KilledTarget', targetid);
     },
@@ -4697,12 +4704,11 @@ define('entities/components/fighter',['require','underscore'],function(require) 
     performAttackStep: function() {
       var self = this;
       this.parent.raise('PunchedTarget');
-      this.scene.withEntity(this.currentTargetId, function(target) {
-        target.dispatch('applyDamage', [{
-          dealer: self.parent.id,
-          physical: Math.random() * 2
-        }]);
-      });
+      
+      this.scene.dispatch(this.currentTargetId, 'applyDamage', [{
+        dealer: self.parent.id,
+        physical: Math.random() * 2
+      }]);
     }
   };
   
@@ -5049,7 +5055,13 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
        this.found = true;
        this.seeking = false;
       }
-    },    
+    },
+    
+    resetSeekState: function() {
+       this.found = false;
+       this.seeking = false;
+       this.targetId = null;
+    },
     
     updateTargetPosition: function() {
       if(!this.targetId) return;
@@ -5071,7 +5083,7 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
       if(availableTargets.length > 0) {
         this.targetId = availableTargets[0].id;
       }
-    },   
+    },
      
     determineTargetProximity: function() {      
       vec3.subtract(this.position, this.targetPosition, this.buffer);
@@ -5133,7 +5145,12 @@ define('entities/monster',['require','underscore','../scene/entity','./component
     onMonsterAddedToScene: function() {
       this.raise('StateChanged', 'Wandering');
     },
-    onMonsterDestinationTargetChanged: function() {
+    onCancelledAttackingTarget: function() {
+      this.raise('StateChanged', 'Wandering');
+      this.dispatch('resetSeekState');
+    },
+    onMonsterDestinationTargetChanged: function(targetId) {
+      this.targetId = targetId;
       this.raise('StateChanged', 'Seeking');
     },
     onMonsterDestinationReached: function() {
@@ -5145,7 +5162,7 @@ define('entities/monster',['require','underscore','../scene/entity','./component
     },
     onMonsterTick: function() {
      if(this.state === 'Fighting')
-        this.dispatch('attack', [ 'player' ]);
+        this.dispatch('attack', [ this.targetId ]);
     }
   };
   _.extend(Monster.prototype, Entity.prototype);

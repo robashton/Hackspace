@@ -36,6 +36,7 @@ define(function(require) {
     },
     
     onTick: function() {
+      this.verifyTargetIsValid();
       if(this.frameCount % 30 === 0 && this.currentTargetId !== null) 
         this.performAttackStep();
       if(this.frameCount % 30 === 0 && this.currentTargetId === null)
@@ -49,6 +50,12 @@ define(function(require) {
       this.scene = scene;
     },
     
+    verifyTargetIsValid: function() {
+      var entity = this.scene.get(this.currentTargetId);
+      if(!entity)
+        this.parent.raise('CancelledAttackingTarget');
+    },
+    
     notifyKilledTarget: function(targetid) {
       this.parent.raise('KilledTarget', targetid);
     },
@@ -56,12 +63,11 @@ define(function(require) {
     performAttackStep: function() {
       var self = this;
       this.parent.raise('PunchedTarget');
-      this.scene.withEntity(this.currentTargetId, function(target) {
-        target.dispatch('applyDamage', [{
-          dealer: self.parent.id,
-          physical: Math.random() * 2
-        }]);
-      });
+      
+      this.scene.dispatch(this.currentTargetId, 'applyDamage', [{
+        dealer: self.parent.id,
+        physical: Math.random() * 2
+      }]);
     }
   };
   

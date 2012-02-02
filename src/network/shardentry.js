@@ -2,6 +2,8 @@ define(function(require) {
   var _ = require('underscore');
   var Eventable = require('../shared/eventable');
   var ServerContext = require('../harness/servercontext');
+  var Collider = require('../entities/collider');
+  var Death = require('../entities/death');
   
   var ShardEntry = function(io, map) {
     Eventable.call(this);
@@ -19,18 +21,24 @@ define(function(require) {
       this.context = new ServerContext({
         start: function(context) {
           self.context = context;
-          var entities = self.getDefaultSceneData();
-          for(var id in entities) {
-            var item = entities[id];
-            var entity = context.createEntity(item.type, id, item.data);
-            context.scene.add(entity);       
-          }
-          
-          context.scene.on('CommandDispatched', self.onSceneCommandDispatched, self);
-          
-          self.raise('SceneLoaded');  
-        }
-      });
+          self.initializeScene();
+      }});
+    },
+    
+    initializeScene: function() {
+      var entities = this.getDefaultSceneData();
+      for(var id in entities) {
+        var item = entities[id];
+        var entity = this.context.createEntity(item.type, id, item.data);
+        this.context.scene.add(entity);       
+      }
+      
+      this.context.scene.on('CommandDispatched', this.onSceneCommandDispatched, this);
+           
+      var collider = new Collider();
+      this.context.scene.add(collider);
+      this.death = new Death(this.context.scene);         
+      this.raise('SceneLoaded');  
     },
     
     onSceneCommandDispatched: function(data) {
@@ -114,7 +122,7 @@ define(function(require) {
         };
       }
       return entities;   
-    },
+    }
   };
   _.extend(ShardEntry.prototype, Eventable.prototype);
   

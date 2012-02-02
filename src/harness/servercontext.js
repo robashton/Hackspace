@@ -35,6 +35,7 @@ define(function(require) {
     getSerializedEntities: function() {
       var data = {};
       this.scene.each(function(entity) {
+        if(!entity.$Type) return;
         data[entity.id] = {
           data: entity.$CreationData,
           type: entity.$Type,

@@ -41,7 +41,13 @@ define(function(require) {
        this.found = true;
        this.seeking = false;
       }
-    },    
+    },
+    
+    resetSeekState: function() {
+       this.found = false;
+       this.seeking = false;
+       this.targetId = null;
+    },
     
     updateTargetPosition: function() {
       if(!this.targetId) return;
@@ -63,7 +69,7 @@ define(function(require) {
       if(availableTargets.length > 0) {
         this.targetId = availableTargets[0].id;
       }
-    },   
+    },
      
     determineTargetProximity: function() {      
       vec3.subtract(this.position, this.targetPosition, this.buffer);

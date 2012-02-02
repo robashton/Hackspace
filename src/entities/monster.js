@@ -43,7 +43,12 @@ define(function(require) {
     onMonsterAddedToScene: function() {
       this.raise('StateChanged', 'Wandering');
     },
-    onMonsterDestinationTargetChanged: function() {
+    onCancelledAttackingTarget: function() {
+      this.raise('StateChanged', 'Wandering');
+      this.dispatch('resetSeekState');
+    },
+    onMonsterDestinationTargetChanged: function(targetId) {
+      this.targetId = targetId;
       this.raise('StateChanged', 'Seeking');
     },
     onMonsterDestinationReached: function() {
@@ -55,7 +60,7 @@ define(function(require) {
     },
     onMonsterTick: function() {
      if(this.state === 'Fighting')
-        this.dispatch('attack', [ 'player' ]);
+        this.dispatch('attack', [ this.targetId ]);
     }
   };
   _.extend(Monster.prototype, Entity.prototype);
