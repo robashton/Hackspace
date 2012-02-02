@@ -89,15 +89,19 @@ define(function(require) {
     
     dispatchDirect: function(id, command, args) {
       var entity = this.entitiesById[id];
-      entity.dispatch(command, args);
+      if(!entity) {
+        console.warn('Unable to dispatch command to missing entity', id, command, args);
+      } else {
+        entity.dispatch(command, args);
+      }
     },
     
     dispatch: function(id, command, args) {
-      if(!this.renderer) { // if IsServer (TODO)         
-        this.dispatchDirect(id, command, args);
+      if(!this.renderer) { // if IsServer (TODO)
         this.raise('CommandDispatched', {
           id: id, command: command, args: args
-        });
+        });        
+        this.dispatchDirect(id, command, args);
       }
     },
     broadcast: function(event, data, sender) {

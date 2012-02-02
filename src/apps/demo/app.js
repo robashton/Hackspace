@@ -7,8 +7,8 @@ define(function(require) {
   
   var QuestAsker = require('../../ui/questasker');
   var HealthBars = require('../../ui/healthbars');
-  var Death = require('../../entities/death');
   var Collider = require('../../entities/collider');
+  var God = require('../../entities/god');
   var ClientConnector = require('../../network/clientconnector');
  
   var Demo = function(element) {
@@ -23,7 +23,9 @@ define(function(require) {
       var healthbars = new HealthBars(this.context);
       context.scene.add(collider);
       var input = new InputEmitter(context);
-      this.death = new Death(context.scene);
+      
+      var god = new God(context.entityFactory);
+      context.scene.add(god);
       
       this.connector = new ClientConnector(this.context);
       this.connector.on('GameStarted', function(data) {

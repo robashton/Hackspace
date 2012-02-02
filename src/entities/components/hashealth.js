@@ -4,17 +4,22 @@ define(function(require) {
   var HasHealth = function(amount) {
     this.amount = amount;
     this.totalAmount = amount;
+    this.scene = null;
   };
   
   HasHealth.prototype = {
-    removeHealth: function(amount) {
-      this.parent.raise('HealthLost', amount);
-    },
     onHealthLost: function(amount) {
       this.amount -= amount;
       if(this.amount <= 0)
         this.raiseDeath();
     },
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },    
+    removeHealth: function(amount) {
+      this.parent.raise('HealthLost', amount);
+    },
+
     getMaxHealth: function() {
       return this.totalAmount;
     },
@@ -22,7 +27,7 @@ define(function(require) {
       return this.amount;
     },
     raiseDeath: function() {
-      this.parent.raise('Death');
+      this.parent.raise('HealthZeroed');
     },
     _out: function(data) {
       data.health = this.amount;

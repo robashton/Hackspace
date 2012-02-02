@@ -13344,19 +13344,16 @@ define('entities/components/damageable',['require','underscore'],function(requir
   
   Damageable.prototype = {
     applyDamage: function(data) {
-      // Do all the crazy calculations
+      // TODO: Do all the crazy calculations
       this.lastDamagerId = data.dealer;
       this.parent.dispatch('removeHealth', [ data.physical ]);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
     },
-    onDeath: function() {
-      var self = this;
+    onHealthZeroed: function() {
       if(this.lastDamagerId) {
-        this.scene.withEntity(this.lastDamagerId, function(damager) {
-          damager.dispatch('notifyKilledTarget', [self.parent.id]);
-        });
+        this.scene.dispatch(this.lastDamagerId, 'notifyKilledTarget', [this.parent.id]);
       }
     }
   };
@@ -13370,17 +13367,22 @@ define('entities/components/hashealth',['require','underscore'],function(require
   var HasHealth = function(amount) {
     this.amount = amount;
     this.totalAmount = amount;
+    this.scene = null;
   };
   
   HasHealth.prototype = {
-    removeHealth: function(amount) {
-      this.parent.raise('HealthLost', amount);
-    },
     onHealthLost: function(amount) {
       this.amount -= amount;
       if(this.amount <= 0)
         this.raiseDeath();
     },
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },    
+    removeHealth: function(amount) {
+      this.parent.raise('HealthLost', amount);
+    },
+
     getMaxHealth: function() {
       return this.totalAmount;
     },
@@ -13388,7 +13390,7 @@ define('entities/components/hashealth',['require','underscore'],function(require
       return this.amount;
     },
     raiseDeath: function() {
-      this.parent.raise('Death');
+      this.parent.raise('HealthZeroed');
     },
     _out: function(data) {
       data.health = this.amount;
@@ -13936,15 +13938,19 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
     
     dispatchDirect: function(id, command, args) {
       var entity = this.entitiesById[id];
-      entity.dispatch(command, args);
+      if(!entity) {
+        console.warn('Unable to dispatch command to missing entity', id, command, args);
+      } else {
+        entity.dispatch(command, args);
+      }
     },
     
     dispatch: function(id, command, args) {
-      if(!this.renderer) { // if IsServer (TODO)         
-        this.dispatchDirect(id, command, args);
+      if(!this.renderer) { // if IsServer (TODO)
         this.raise('CommandDispatched', {
           id: id, command: command, args: args
-        });
+        });        
+        this.dispatchDirect(id, command, args);
       }
     },
     broadcast: function(event, data, sender) {

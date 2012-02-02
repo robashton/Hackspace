@@ -3,7 +3,8 @@ define(function(require) {
   var Eventable = require('../shared/eventable');
   var ServerContext = require('../harness/servercontext');
   var Collider = require('../entities/collider');
-  var Death = require('../entities/death');
+  var God = require('../entities/god');
+  
   
   var ShardEntry = function(io, map) {
     Eventable.call(this);
@@ -37,7 +38,8 @@ define(function(require) {
            
       var collider = new Collider();
       this.context.scene.add(collider);
-      this.death = new Death(this.context.scene);         
+      var god = new God(this.context.entityFactory);
+      this.context.scene.add(god);       
       this.raise('SceneLoaded');  
     },
     

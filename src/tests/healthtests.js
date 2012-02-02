@@ -1,7 +1,7 @@
 define(function(require) {
   var setup = require('./setup');
   var HasHealth = require('../entities/components/hashealth');
-  var Death = require('../entities/death');
+  var God = require('../entities/god');
   var when = require('when').when;
   var Character = require('../entities/character');
   
@@ -17,11 +17,11 @@ define(function(require) {
   when("an entity has health which is decreased past zero", function(then) {
     sceneWithEntityThatHasHealth(5, function(scene, entity) {
     
-      entity.once('Death', function() {
-        then("The entity dies", true);
+      entity.once('HealthZeroed', function() {
+        then("The entity reaches zero health", true);
       });
       
-      scene.once('Death', function(data, sender) {
+      scene.once('HealthZeroed', function(data, sender) {
         then("The scene is notified of the death", true);
         then("The scene is notified of the death specifically to do with the entity", sender === entity);
       });
@@ -30,9 +30,10 @@ define(function(require) {
     });
   });
   
-  when("an entity dies and there is Death surveying the scene", function(then) {
+  when("an entity dies and God is watching", function(then) {
       sceneWithEntityThatHasHealth(5, function(scene, entity) {  
-        var death = new Death(scene);  
+        var god = new God(null);
+        scene.add(god);  
         entity.dispatch('removeHealth', [ 6 ]);        
         var sceneEntity = scene.get(entity.id);
         then("The entity gets removed from the scene", !sceneEntity);       
@@ -40,7 +41,7 @@ define(function(require) {
   });
   
   
-  when("an entity deals enough damage to kill a target when Death is surveying the scene", function(then) {
+  when("an entity deals enough damage to kill a target when God is watching", function(then) {
     setup.withEmptyScene(function(scene) { 
       var target = new Character('target', 0, 0);
       target.component(HasHealth).amount = 5;
@@ -54,8 +55,9 @@ define(function(require) {
           eventWasRaised = true;
         }
       }]);
-     
-      var death = new Death(scene);  
+   
+      var god = new God(null);
+      scene.add(god);  
       
       target.dispatch('applyDamage', [{
         dealer: 'test',

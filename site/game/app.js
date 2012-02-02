@@ -3350,15 +3350,19 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
     
     dispatchDirect: function(id, command, args) {
       var entity = this.entitiesById[id];
-      entity.dispatch(command, args);
+      if(!entity) {
+        console.warn('Unable to dispatch command to missing entity', id, command, args);
+      } else {
+        entity.dispatch(command, args);
+      }
     },
     
     dispatch: function(id, command, args) {
-      if(!this.renderer) { // if IsServer (TODO)         
-        this.dispatchDirect(id, command, args);
+      if(!this.renderer) { // if IsServer (TODO)
         this.raise('CommandDispatched', {
           id: id, command: command, args: args
-        });
+        });        
+        this.dispatchDirect(id, command, args);
       }
     },
     broadcast: function(event, data, sender) {
@@ -4746,19 +4750,16 @@ define('entities/components/damageable',['require','underscore'],function(requir
   
   Damageable.prototype = {
     applyDamage: function(data) {
-      // Do all the crazy calculations
+      // TODO: Do all the crazy calculations
       this.lastDamagerId = data.dealer;
       this.parent.dispatch('removeHealth', [ data.physical ]);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
     },
-    onDeath: function() {
-      var self = this;
+    onHealthZeroed: function() {
       if(this.lastDamagerId) {
-        this.scene.withEntity(this.lastDamagerId, function(damager) {
-          damager.dispatch('notifyKilledTarget', [self.parent.id]);
-        });
+        this.scene.dispatch(this.lastDamagerId, 'notifyKilledTarget', [this.parent.id]);
       }
     }
   };
@@ -4772,17 +4773,22 @@ define('entities/components/hashealth',['require','underscore'],function(require
   var HasHealth = function(amount) {
     this.amount = amount;
     this.totalAmount = amount;
+    this.scene = null;
   };
   
   HasHealth.prototype = {
-    removeHealth: function(amount) {
-      this.parent.raise('HealthLost', amount);
-    },
     onHealthLost: function(amount) {
       this.amount -= amount;
       if(this.amount <= 0)
         this.raiseDeath();
     },
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },    
+    removeHealth: function(amount) {
+      this.parent.raise('HealthLost', amount);
+    },
+
     getMaxHealth: function() {
       return this.totalAmount;
     },
@@ -4790,7 +4796,7 @@ define('entities/components/hashealth',['require','underscore'],function(require
       return this.amount;
     },
     raiseDeath: function() {
-      this.parent.raise('Death');
+      this.parent.raise('HealthZeroed');
     },
     _out: function(data) {
       data.health = this.amount;
@@ -15032,23 +15038,6 @@ define('ui/healthbars',['require','underscore','jquery','../shared/coords'],func
   return Healthbars;
 });
 
-define('entities/death',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var Death = function(scene) {
-    this.scene = scene;
-    this.scene.autoHook(this);
-  };
-  
-  Death.prototype = {
-    onDeath: function(data, sender) {
-      this.scene.remove(sender);
-    }
-  };
-  
-  return Death;
-});
-
 define('entities/collider',['require','underscore','../scene/entity'],function(require) {
   var _ = require('underscore');
   var Entity = require('../scene/entity');
@@ -15135,6 +15124,44 @@ define('entities/collider',['require','underscore','../scene/entity'],function(r
   _.extend(Collider.prototype, Entity.prototype);
   
   return Collider;
+});
+
+define('entities/god',['require','underscore','../scene/entity'],function(require) {
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+
+  var God = function(entityFactory) {
+    Entity.call(this, "god");
+    this.entityFactory = entityFactory;
+    this.scene = null;
+    this.on('AddedToScene', this.onAddedToScene, this);
+    
+    var self = this;
+    this.attach({
+      createEntity: function(id, type, data) {
+        var entity = self.entityFactory.create(type, id, data);
+        self.scene.add(entity);
+      },
+      destroyEntity: function(id) {
+        var entity = self.scene.get(id);
+        if(entity)
+          self.scene.remove(entity);
+      }
+    });
+  };
+  
+  God.prototype = {
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+      this.scene.on('HealthZeroed', this.onEntityHealthZeroed, this);
+    },
+    onEntityHealthZeroed: function(data, sender) {
+      this.scene.dispatch('god', 'destroyEntity', [ sender.id ]);
+    }
+  };
+  _.extend(God.prototype, Entity.prototype);
+  
+  return God;
 });
 
 define('entities/controller',['require','underscore','../scene/entity','../shared/coords'],function(require) {
@@ -15244,6 +15271,9 @@ define('network/commander',['require','underscore'],function(require) {
     hookSocketEvents: function() {
       var self = this;
       this.socket.on('CommandDispatch', function(data) {
+        if(data.command.indexOf('Destination') < 0) {
+          console.log(data.id, data.command, data.args);
+        }
         self.scene.dispatchDirect(data.id, data.command, data.args);
       });
     }
@@ -15366,7 +15396,7 @@ define('network/clientconnector',['require','underscore','../entities/controller
   return ClientConnector;
 });
 
-define('apps/demo/app',['require','../../input/inputemitter','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/death','../../entities/collider','../../network/clientconnector'],function(require) {
+define('apps/demo/app',['require','../../input/inputemitter','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector'],function(require) {
 
 
   var InputEmitter = require('../../input/inputemitter');
@@ -15375,8 +15405,8 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
   
   var QuestAsker = require('../../ui/questasker');
   var HealthBars = require('../../ui/healthbars');
-  var Death = require('../../entities/death');
   var Collider = require('../../entities/collider');
+  var God = require('../../entities/god');
   var ClientConnector = require('../../network/clientconnector');
  
   var Demo = function(element) {
@@ -15391,7 +15421,9 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
       var healthbars = new HealthBars(this.context);
       context.scene.add(collider);
       var input = new InputEmitter(context);
-      this.death = new Death(context.scene);
+      
+      var god = new God(context.entityFactory);
+      context.scene.add(god);
       
       this.connector = new ClientConnector(this.context);
       this.connector.on('GameStarted', function(data) {

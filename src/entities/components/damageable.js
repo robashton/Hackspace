@@ -8,19 +8,16 @@ define(function(require) {
   
   Damageable.prototype = {
     applyDamage: function(data) {
-      // Do all the crazy calculations
+      // TODO: Do all the crazy calculations
       this.lastDamagerId = data.dealer;
       this.parent.dispatch('removeHealth', [ data.physical ]);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
     },
-    onDeath: function() {
-      var self = this;
+    onHealthZeroed: function() {
       if(this.lastDamagerId) {
-        this.scene.withEntity(this.lastDamagerId, function(damager) {
-          damager.dispatch('notifyKilledTarget', [self.parent.id]);
-        });
+        this.scene.dispatch(this.lastDamagerId, 'notifyKilledTarget', [this.parent.id]);
       }
     }
   };
