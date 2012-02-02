@@ -14926,10 +14926,11 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
 define('ui/questasker',['require','underscore'],function(require) {
   var _ = require('underscore');
 
-  var QuestAsker = function(scene, element) {
+  var QuestAsker = function(scene, playerId, element) {
     this.scene = scene;
     this.scene.autoHook(this);
     this.element = element;
+    this.playerId = playerId;
     this.element.hide();
     this.element.find('#quest-started-accept').on({
       click: function() {
@@ -14939,11 +14940,13 @@ define('ui/questasker',['require','underscore'],function(require) {
   };
   
   QuestAsker.prototype = {
-    onQuestStarted: function(questTemplate) {
+    onQuestStarted: function(questTemplate, sender) {
+      if(sender.id !== this.playerId) return;
       this.element.find('#quest-started-text').text(questTemplate.meta.askText);
       this.element.show();
     },
-    onTalkTo: function(data) {
+    onTalkTo: function(data, sender) {
+      if(sender.id !== this.playerId) return;
       this.element.find('#quest-started-text').text(data.text);
       this.element.show();
     }
@@ -15348,7 +15351,7 @@ define('network/clientconnector',['require','underscore','../entities/controller
       var chase = new ChaseCamera(this.context.scene, data.playerid);
       this.context.scene.add(controller);
       this.loadMap(data.map);
-      this.raise('GameStarted'); 
+      this.raise('GameStarted', data); 
     },
     loadMap: function(path) {
       var mapResource = this.context.resources.get(path);
@@ -15381,16 +15384,19 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
   };
 
   Demo.prototype = {
-    start: function(context) {          
+    start: function(context) {        
+      var self = this;  
       this.context = context;      
       var collider = new Collider();
       var healthbars = new HealthBars(this.context);
       context.scene.add(collider);
       var input = new InputEmitter(context);
-      this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
       this.death = new Death(context.scene);
       
       this.connector = new ClientConnector(this.context);
+      this.connector.on('GameStarted', function(data) {
+        self.questAsker = new QuestAsker(context.scene, data.playerid, $('#quest-started'));
+      });
     }
   }
 

@@ -16,16 +16,19 @@ define(function(require) {
   };
 
   Demo.prototype = {
-    start: function(context) {          
+    start: function(context) {        
+      var self = this;  
       this.context = context;      
       var collider = new Collider();
       var healthbars = new HealthBars(this.context);
       context.scene.add(collider);
       var input = new InputEmitter(context);
-      this.questAsker = new QuestAsker(context.scene, $('#quest-started'));
       this.death = new Death(context.scene);
       
       this.connector = new ClientConnector(this.context);
+      this.connector.on('GameStarted', function(data) {
+        self.questAsker = new QuestAsker(context.scene, data.playerid, $('#quest-started'));
+      });
     }
   }
 

@@ -44,7 +44,7 @@ define(function(require) {
       var chase = new ChaseCamera(this.context.scene, data.playerid);
       this.context.scene.add(controller);
       this.loadMap(data.map);
-      this.raise('GameStarted'); 
+      this.raise('GameStarted', data); 
     },
     loadMap: function(path) {
       var mapResource = this.context.resources.get(path);
