@@ -23,8 +23,25 @@ body {
   height: 5px;
 }
 
+#identify-player {
+  display: none;
+  position: absolute;
+  width: 600px;
+  height: 120px;
+  border: 1px solid #000;
+  top: 355px;
+  left: 20px;   
+  background-color: #fff; 
+}
+
+#identify-failed {
+  display: none;
+  clear: both;
+}
+
 
 #quest-started {
+  display: none;
   position: absolute;
   width: 600px;
   height: 120px;

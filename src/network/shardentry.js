@@ -6,12 +6,10 @@ define(function(require) {
   var God = require('../entities/god');
   
   
-  var ShardEntry = function(io, map) {
+  var ShardEntry = function(map) {
     Eventable.call(this);
-    this.io = io;
-    this.sockets = [];
-    this.on('SceneLoaded', this.startListening, this);
     this.map = map;
+    this.communication = null;
     this.context = null;
     this.setupScene();
   };
@@ -44,56 +42,53 @@ define(function(require) {
     },
     
     onSceneCommandDispatched: function(data) {
-      for(var i = 0; i < this.sockets.length; i++) {
-        var socket = this.sockets[i];
-        socket.emit('CommandDispatch', {
-          id: data.id,
-          command: data.command,
-          args: data.args
-        });
-      }
+      this.communication.broadcastAll('CommandDispatch', {
+        id: data.id,
+        command: data.command,
+        args: data.args
+      });
     },
     
-    startListening: function() {
+    onStartup: function(communication) {
+      this.communication = communication;
+    },
+    
+    onNewSocket: function(socket) {
+      this.handleNewSocket(socket);
       var self = this;
-      
-      this.io.sockets.on('connection', function(socket) {
-        self.handleNewSocket(socket);
-        
-        socket.on('CommandDispatch', function(data) {          
-          self.context.scene.dispatch(socket.id, data.command, data.args);
-        });
-        
-        socket.on('disconnect', function() {
-          self.handleDisconnectedSocket(socket);
-        });
+      socket.on('CommandDispatch', function(data) {          
+        self.context.scene.dispatch(socket.id, data.command, data.args);
       });
-      
+    },
+    
+    onSocketLost:  function(socket) {
+      this.handleDisconnectedSocket(socket);
+    }, 
+        
+    handleNewSocket: function(socket) {
+      var self = this;
+      socket.on('Ready', function() {
+        self.addPlayerToScene(socket.id);
+          
+        var data = {
+          playerid: socket.id,
+          map: self.map,
+          entities: self.context.getSerializedEntities()
+        };
+        
+        socket.emit('Init', data);
+        socket.broadcast.emit('PlayerJoined', self.context.getSerialisedEntity(socket.id));
+      });
     },
     
     handleDisconnectedSocket: function(socket) {
-      this.sockets = _(this.sockets).without(socket);
       var self = this;
       this.context.scene.withEntity(socket.id, function(entity) {
         self.context.scene.remove(entity);
       });
       socket.broadcast.emit('PlayerLeft', socket.id);
     },
-    
-    handleNewSocket: function(socket) {
-      this.sockets.push(socket);
-      
-      this.addPlayerToScene(socket.id);
-        
-     var data = {
-        playerid: socket.id,
-        map: this.map,
-        entities: this.context.getSerializedEntities()
-      };    
-      
-      socket.emit('Init', data);
-      socket.broadcast.emit('PlayerJoined', this.context.getSerialisedEntity(socket.id));
-    },
+
     addPlayerToScene: function(id) {
       var entity = this.context.createEntity('character', id, {
         x: 0,

@@ -2,6 +2,8 @@
   var requirejs = require('./bootstrap');
   var socketio = requirejs('socket.io');
   var ShardEntry = requirejs('./network/shardentry');
+  var LoginServer = requirejs('./network/loginserver');
+  var FrontServer = requirejs('./network/frontserver');
   
   var FrontendServer = function(server) {
     this.server = server;
@@ -13,7 +15,16 @@
   FrontendServer.prototype = {
     startListening: function() {
       this.io = socketio.listen(this.server);
-      this.shard = new ShardEntry(this.io, '/main/world.json');
+      var self = this;
+      
+      var shard = new ShardEntry('/main/world.json');
+      shard.on('SceneLoaded', function() {
+        var login = new LoginServer(); 
+        
+        self.communication = new FrontServer(self.io, [
+          login, shard
+        ]);
+      });
     }
   };
   

@@ -10,9 +10,12 @@ define(function(require) {
   var Collider = require('../../entities/collider');
   var God = require('../../entities/god');
   var ClientConnector = require('../../network/clientconnector');
+  
+  var Identify = require('../../ui/identify');
  
-  var Demo = function(element) {
+  var Demo = function(socket, element) {
     this.element = element;
+    this.socket = socket;
   };
 
   Demo.prototype = {
@@ -27,7 +30,7 @@ define(function(require) {
       var god = new God(context.entityFactory);
       context.scene.add(god);
       
-      this.connector = new ClientConnector(this.context);
+      this.connector = new ClientConnector(this.socket, this.context);
       this.connector.on('GameStarted', function(data) {
         self.questAsker = new QuestAsker(context.scene, data.playerid, $('#quest-started'));
       });
@@ -36,6 +39,13 @@ define(function(require) {
 
   $(document).ready(function() {
     var canvasElement = document.getElementById('target');
-    var context = new Context(canvasElement, new Demo(canvasElement));            
+    var socket = null;
+    var context = null;
+    var socket = io.connect();    
+    Identify.Ask(socket, {
+      onAuthenticated: function(user) {
+        context = new Context(canvasElement, new Demo(socket, canvasElement));           
+      }
+    }); 
   }); 
 });

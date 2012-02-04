@@ -15344,15 +15344,15 @@ define('network/clientconnector',['require','underscore','../entities/controller
   var Grid = require('../editor/grid');
   var Eventable = require('../shared/eventable');
   
-  var ClientConnector = function(context) {
+  var ClientConnector = function(socket, context) {
     Eventable.call(this);
     this.context = context;
+    this.socket = socket;
     this.connectToServer();
   };
   
   ClientConnector.prototype = {
     connectToServer: function() {
-      this.socket = io.connect();
       var self = this;
       this.socket.on('Init', function(data) {
         self.populateSceneFromMessage(data);
@@ -15365,6 +15365,7 @@ define('network/clientconnector',['require','underscore','../entities/controller
           self.context.scene.remove(entity);
         });
       });
+      this.socket.emit('Ready');
     },
     addEntityFromData: function(id, item) {
       var entity = this.context.createEntity(item.type, id, item.data);
@@ -15396,7 +15397,59 @@ define('network/clientconnector',['require','underscore','../entities/controller
   return ClientConnector;
 });
 
-define('apps/demo/app',['require','../../input/inputemitter','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector'],function(require) {
+define('ui/identify',['require','underscore','../shared/eventable'],function(require) {
+  var _ = require('underscore');
+  var Eventable = require('../shared/eventable');
+
+  var Identify = function(socket) {
+    Eventable.call(this);
+    this.socket = socket;
+    var self = this;
+    this.socket.on('AuthenticateResponse', function(response) {
+      self.handleAuthenticateResponse(response);
+    });
+  };
+  
+  Identify.prototype = {
+    ask: function() {
+      var self = this;
+      $('#identify-player').show();
+      $('#identify-submit').on({
+        click: function() {
+          self.submitCredentials();
+        }      
+      });
+    },
+    submitCredentials: function() {
+      var username = $('#player-name').val();
+      this.socket.emit('Authenticate', {
+        username: username
+      });
+    },
+    handleAuthenticateResponse: function(response) {
+      if(response.success) {
+        this.raise('Authenticated', response.user);
+      } else {
+        $('#identify-failed').show();
+      }
+    }
+  };
+  
+  Identify.Ask = function(socket, handlers) {
+    var identifier = new Identify(socket);
+    identifier.autoHook(handlers);
+    identifier.on('Authenticated', function() {
+      $('#identify-player').hide("fast");
+    });
+    identifier.ask();
+  };  
+  
+  _.extend(Identify.prototype, Eventable.prototype);
+  
+  return Identify;
+});
+
+define('apps/demo/app',['require','../../input/inputemitter','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify'],function(require) {
 
 
   var InputEmitter = require('../../input/inputemitter');
@@ -15408,9 +15461,12 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
   var Collider = require('../../entities/collider');
   var God = require('../../entities/god');
   var ClientConnector = require('../../network/clientconnector');
+  
+  var Identify = require('../../ui/identify');
  
-  var Demo = function(element) {
+  var Demo = function(socket, element) {
     this.element = element;
+    this.socket = socket;
   };
 
   Demo.prototype = {
@@ -15425,7 +15481,7 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
       var god = new God(context.entityFactory);
       context.scene.add(god);
       
-      this.connector = new ClientConnector(this.context);
+      this.connector = new ClientConnector(this.socket, this.context);
       this.connector.on('GameStarted', function(data) {
         self.questAsker = new QuestAsker(context.scene, data.playerid, $('#quest-started'));
       });
@@ -15434,6 +15490,13 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
 
   $(document).ready(function() {
     var canvasElement = document.getElementById('target');
-    var context = new Context(canvasElement, new Demo(canvasElement));            
+    var socket = null;
+    var context = null;
+    var socket = io.connect();    
+    Identify.Ask(socket, {
+      onAuthenticated: function(user) {
+        context = new Context(canvasElement, new Demo(socket, canvasElement));           
+      }
+    }); 
   }); 
 });

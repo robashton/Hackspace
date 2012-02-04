@@ -7,15 +7,15 @@ define(function(require) {
   var Grid = require('../editor/grid');
   var Eventable = require('../shared/eventable');
   
-  var ClientConnector = function(context) {
+  var ClientConnector = function(socket, context) {
     Eventable.call(this);
     this.context = context;
+    this.socket = socket;
     this.connectToServer();
   };
   
   ClientConnector.prototype = {
     connectToServer: function() {
-      this.socket = io.connect();
       var self = this;
       this.socket.on('Init', function(data) {
         self.populateSceneFromMessage(data);
@@ -28,6 +28,7 @@ define(function(require) {
           self.context.scene.remove(entity);
         });
       });
+      this.socket.emit('Ready');
     },
     addEntityFromData: function(id, item) {
       var entity = this.context.createEntity(item.type, id, item.data);
