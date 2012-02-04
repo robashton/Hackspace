@@ -63,7 +63,7 @@ define(function(require) {
         return;
       }
       fs.readFile(this.pathToPlayer(id), 'utf8', function(err, data) {
-        if(err) callback(null);
+        if(err) { callback(null); return; }
         var character = JSON.parse(data);
         self.loadedCharacters[id] = character;
         callback(character);

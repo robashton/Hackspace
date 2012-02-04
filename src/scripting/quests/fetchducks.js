@@ -12,12 +12,10 @@ define(function(require) {
     onItemPickedUp: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
       this.markUpdated();
-      console.log('Item count: ' + this.itemCount);
     },
     onItemRemoved: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
       this.markUpdated();
-      console.log('Item count: ' + this.itemCount);
     },
     onDiscussion: function(entityId) {
       if(entityId === 'quest-giver') {
@@ -45,13 +43,10 @@ define(function(require) {
       }
     },
     removeDucksFromPlayer: function() {
-      this.entity.dispatch('removeItemsOfType', [ 'duck' ]);
+      this.scene.dispatch(this.entity.id, 'removeItemsOfType', [ 'duck' ]);
     },
     talk: function(text) {
-      this.entity.raise('TalkTo', {
-        id: "quest-giver",
-        text: text        
-      });
+      this.scene.dispatch(this.entity.id, 'talkTo', ['quest-giver', text]);
     },
     meta: {
       id: 'fetchducks',

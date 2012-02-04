@@ -15,6 +15,12 @@ define(function(require) {
           self.requestStartQuest(questId);
       });
     },
+    talkTo: function(targetId, text) {
+      this.parent.raise('TalkedTo', {
+        targetId: targetId,
+        text: text
+      });
+    },
     requestStartQuest: function(questId) {
       this.parent.raise('QuestRequested', questId);
     },

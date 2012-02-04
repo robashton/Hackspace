@@ -20,7 +20,7 @@ define(function(require) {
       this.element.find('#quest-started-text').text(info.askText);
       this.element.show();
     },
-    onTalkTo: function(data, sender) {
+    onTalkedTo: function(data, sender) {
       if(sender.id !== this.playerId) return;
       this.element.find('#quest-started-text').text(data.text);
       this.element.show();

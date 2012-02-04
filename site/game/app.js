@@ -3573,12 +3573,7 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
       return this.currentCommandDepth > 0;
     },
           
-    count : 0,
     dispatch: function(command, data) {
-      if(command === 'startQuest') {
-        console.trace('DISPATCHING COMMAND ' + command);
-        if(this.count++ > 3) return;   
-      }
       if(this.isCurrentlyHandlingCommand())
         this.queueCommand(command, data);
       else
@@ -4629,6 +4624,12 @@ define('entities/components/talker',['require','underscore','../../scripting/que
         var questId = target.get('getQuest', [self.parent]);
         if(questId)
           self.requestStartQuest(questId);
+      });
+    },
+    talkTo: function(targetId, text) {
+      this.parent.raise('TalkedTo', {
+        targetId: targetId,
+        text: text
       });
     },
     requestStartQuest: function(questId) {
@@ -14820,7 +14821,7 @@ define('ui/questasker',['require','underscore'],function(require) {
       this.element.find('#quest-started-text').text(info.askText);
       this.element.show();
     },
-    onTalkTo: function(data, sender) {
+    onTalkedTo: function(data, sender) {
       if(sender.id !== this.playerId) return;
       this.element.find('#quest-started-text').text(data.text);
       this.element.show();

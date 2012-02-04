@@ -60,12 +60,7 @@ define(function(require) {
       return this.currentCommandDepth > 0;
     },
           
-    count : 0,
     dispatch: function(command, data) {
-      if(command === 'startQuest') {
-        console.trace('DISPATCHING COMMAND ' + command);
-        if(this.count++ > 3) return;   
-      }
       if(this.isCurrentlyHandlingCommand())
         this.queueCommand(command, data);
       else
