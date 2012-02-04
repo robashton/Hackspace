@@ -2,18 +2,16 @@ define(function(require) {
   var _ = require('underscore');
 
   var Quester = function() {
-    this.quests = [];
+    this.quests = {};
   };
   
   Quester.prototype = {
-    startQuest: function(quest) {
-      this.quests.push(quest);
-      quest.start(this.parent);
+    startQuest: function(info) {
+      this.quests[info.id] = info;
+      this.parent.raise('QuestStarted', info);
     },
-    hasStartedQuest: function(template) {
-      return !!_(this.quests).find(function(quest) {
-        return quest.madeFromTemplate(template);
-      });
+    hasStartedQuest: function(id) {
+      return !!this.quests[id];
     }
   };
   

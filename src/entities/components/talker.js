@@ -10,17 +10,13 @@ define(function(require) {
     onDiscussion: function(targetid) {
       var self = this;
       this.scene.withEntity(targetid, function(target) {
-        var questTemplate = target.get('getQuest', [self.parent]);
-        if(questTemplate)
-          self.startQuestFromTemplate(questTemplate);
+        var questId = target.get('getQuest', [self.parent]);
+        if(questId)
+          self.requestStartQuest(questId);
       });
     },
-    startQuestFromTemplate: function(questTemplate) {
-      this.parent.raise('QuestStarted',  questTemplate);
-    },
-    onQuestStarted: function(questTemplate) {
-      var quest = new Quest(questTemplate);
-      this.parent.dispatch('startQuest', [quest]);
+    requestStartQuest: function(questId) {
+      this.parent.raise('QuestRequested', questId);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;

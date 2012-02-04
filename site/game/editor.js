@@ -13219,18 +13219,16 @@ define('entities/components/quester',['require','underscore'],function(require) 
   var _ = require('underscore');
 
   var Quester = function() {
-    this.quests = [];
+    this.quests = {};
   };
   
   Quester.prototype = {
-    startQuest: function(quest) {
-      this.quests.push(quest);
-      quest.start(this.parent);
+    startQuest: function(info) {
+      this.quests[info.id] = info;
+      this.parent.raise('QuestStarted', info);
     },
-    hasStartedQuest: function(template) {
-      return !!_(this.quests).find(function(quest) {
-        return quest.madeFromTemplate(template);
-      });
+    hasStartedQuest: function(id) {
+      return !!this.quests[id];
     }
   };
   
@@ -13637,32 +13635,6 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   return Seeker;
 });
 
-define('scripting/item',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var Item = function(id, template) {
-    _.extend(this, template);
-    this.id = id;    
-  };
-  
-  Item.prototype = {
-    
-  };
-  
-  return Item;
-});
-
-define('scripting/items/duck',['require'],function(require) {
-
-  return {
-    type: 'duck',
-    pickupWidth: 5,
-    pickupHeight: 8,
-    pickupTexture: 'duck'
-  };
-    
-});
-
 define('shared/eventcontainer',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -14024,7 +13996,12 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
       return this.currentCommandDepth > 0;
     },
           
+    count : 0,
     dispatch: function(command, data) {
+      if(command === 'startQuest') {
+        console.trace('DISPATCHING COMMAND ' + command);
+        if(this.count++ > 3) return;   
+      }
       if(this.isCurrentlyHandlingCommand())
         this.queueCommand(command, data);
       else
@@ -14516,115 +14493,6 @@ define('entities/monsterfactory',['require','underscore','./monster'],function(r
   return MonsterFactory;
 });
 
-define('entities/pickup',['require','underscore','../scene/entity','./components/renderable','./components/tangible','./components/physical'],function(require) {
-
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-  var Renderable = require('./components/renderable');
-  var Tangible = require('./components/tangible');
-  var Physical = require('./components/physical');
-  
-  var Pickup = function(x, y, item) {
-    Entity.call(this, 'pickup-' + item.id);
-    this.item = item;
-    
-    this.attach(new Renderable(item.pickupTexture));
-    this.attach(new Tangible(x, y, item.pickupWidth, item.pickupHeight));
-    this.attach(new Physical());
-    this.attachSelf();
-  };
-  
-  Pickup.prototype = {
-    attachSelf: function() {
-      var self = this;
-      this.attach({
-        giveItemTo: function(entityId) {
-          self.putItemInEntity(entityId);
-        },
-        hasPickup: function() {
-          return true;
-        }    
-      });
-    },
-    putItemInEntity: function(entityId) {
-      var self = this;
-      this.scene.withEntity(entityId, function(entity) {
-        entity.dispatch('add', [self.item]); 
-        self.scene.remove(self);
-      })
-    } 
-  };
-  
-  _.extend(Pickup.prototype, Entity.prototype);
-  
-  return Pickup;
-  
-});
-
-define('scripting/quests/fetchducks',['require','underscore','../item','../items/duck','../../entities/pickup'],function(require) {
-
-  var _ = require('underscore');
-  var Item = require('../item');
-  var DuckTemplate = require('../items/duck');
-  var Pickup = require('../../entities/pickup');
-
-  FetchDucks = {
-    init: function() {
-      this.itemCount = 0;
-    },
-    onItemPickedUp: function() {
-      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
-      this.markUpdated();
-      console.log('Item count: ' + this.itemCount);
-    },
-    onItemRemoved: function() {
-      this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
-      this.markUpdated();
-      console.log('Item count: ' + this.itemCount);
-    },
-    onDiscussion: function(entityId) {
-      if(entityId === 'quest-giver') {
-        this.determineIfQuestFinished();      
-      }
-    },
-    onKilledTarget: function(targetId) {
-      var self = this;
-      console.log('Genning item for ' + targetId);
-      this.scene.withEntity(targetId, function(target) {
-        // Check some value         
-        var targetPosition = target.get('getPosition');        
-        // TODO: This needs to come via item generation       
-        var duck = new Item('duck-' + (Math.random() * 100000) , DuckTemplate);
-        self.scene.add(new Pickup(targetPosition[0], targetPosition[1], duck));
-      });
-    },
-    determineIfQuestFinished: function() {
-      if(this.itemCount === 5) {
-        this.talk('Thanks for finding all my ducks');
-        this.removeDucksFromPlayer();
-        this.markComplete();
-      } else {
-       this.talk('Please find my ducks, I miss my ducks');
-      }
-    },
-    removeDucksFromPlayer: function() {
-      this.entity.dispatch('removeItemsOfType', [ 'duck' ]);
-    },
-    talk: function(text) {
-      this.entity.raise('TalkTo', {
-        id: "quest-giver",
-        text: text        
-      });
-    },
-    meta: {
-      askText: "Help, please fetch my ducks for me",
-      description: "You've been asked to fetch five ducks"
-    }
-  };
-  
-  return FetchDucks;    
-});
-
 define('editor/grid',['require','underscore','../scene/entity','../shared/coords'],function(require) {
   
   var _ = require('underscore');
@@ -14737,17 +14605,13 @@ define('entities/components/talker',['require','underscore','../../scripting/que
     onDiscussion: function(targetid) {
       var self = this;
       this.scene.withEntity(targetid, function(target) {
-        var questTemplate = target.get('getQuest', [self.parent]);
-        if(questTemplate)
-          self.startQuestFromTemplate(questTemplate);
+        var questId = target.get('getQuest', [self.parent]);
+        if(questId)
+          self.requestStartQuest(questId);
       });
     },
-    startQuestFromTemplate: function(questTemplate) {
-      this.parent.raise('QuestStarted',  questTemplate);
-    },
-    onQuestStarted: function(questTemplate) {
-      var quest = new Quest(questTemplate);
-      this.parent.dispatch('startQuest', [quest]);
+    requestStartQuest: function(questId) {
+      this.parent.raise('QuestRequested', questId);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
@@ -14825,25 +14689,32 @@ define('entities/components/questgiver',['require','underscore','../../scripting
   
   var Quest = require('../../scripting/quest');
 
-  var QuestGiver = function(questTemplate) {
-    this.questTemplate = questTemplate;
+  var QuestGiver = function(questId) {
+    this.questId = questId;
+    this.scene = null;
   };
   
   QuestGiver.prototype = {
+  
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+    },
+    
     canTalk: function(entity) {
       return true;
     },
     
     getQuest: function(entity) {
-      if(!entity.get('hasStartedQuest', [ this.questTemplate ]))
-        return this.questTemplate;
+      if(!entity.get('hasStartedQuest', [ this.questId ])) {
+        return this.questId;
+      }
     }
   };
   
   return QuestGiver;
 });
 
-define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/questgiver','../scene/entity','../scripting/quests/fetchducks'],function(require) {
+define('entities/npc',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/questgiver','../scene/entity'],function(require) {
 
   var _ = require('underscore');
   
@@ -14854,8 +14725,6 @@ define('entities/npc',['require','underscore','./components/physical','./compone
   var Trackable = require('./components/trackable');
   var QuestGiver = require('./components/questgiver');
   var Entity = require('../scene/entity');
-  
-  var FetchDucks = require('../scripting/quests/fetchducks');
 
   var Npc = function(id, data) {
     Entity.call(this, id);
@@ -14864,7 +14733,7 @@ define('entities/npc',['require','underscore','./components/physical','./compone
     this.attach(new Renderable('character', true));
     this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(3.0));
-    this.attach(new QuestGiver(FetchDucks));
+    this.attach(new QuestGiver('fetchducks'));
 
   };  
   Npc.prototype = {};  

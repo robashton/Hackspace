@@ -4,6 +4,8 @@ define(function(require) {
   var ServerContext = require('../harness/servercontext');
   var Collider = require('../entities/collider');
   var God = require('../entities/god');
+  var QuestWatcher = require('../entities/questwatcher');
+  var QuestFactory = require('../scripting/questfactory');
   
   var ShardEntry = function(map, persistence) {
     Eventable.call(this);
@@ -11,6 +13,7 @@ define(function(require) {
     this.communication = null;
     this.context = null;
     this.persistence = persistence;
+    
     this.setupScene();
   };
   
@@ -38,6 +41,8 @@ define(function(require) {
       this.context.scene.add(collider);
       var god = new God(this.context.entityFactory);
       this.context.scene.add(god);    
+      
+      var questWatcher = new QuestWatcher(this.context.scene, new QuestFactory());      
       this.persistence.startMonitoring(this.context.scene);   
       this.raise('SceneLoaded');  
     },

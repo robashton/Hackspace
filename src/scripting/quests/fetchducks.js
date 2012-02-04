@@ -54,6 +54,7 @@ define(function(require) {
       });
     },
     meta: {
+      id: 'fetchducks',
       askText: "Help, please fetch my ducks for me",
       description: "You've been asked to fetch five ducks"
     }

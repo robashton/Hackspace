@@ -15,9 +15,9 @@ define(function(require) {
   };
   
   QuestAsker.prototype = {
-    onQuestStarted: function(questTemplate, sender) {
+    onQuestStarted: function(info, sender) {
       if(sender.id !== this.playerId) return;
-      this.element.find('#quest-started-text').text(questTemplate.meta.askText);
+      this.element.find('#quest-started-text').text(info.askText);
       this.element.show();
     },
     onTalkTo: function(data, sender) {
