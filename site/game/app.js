@@ -4554,8 +4554,18 @@ define('entities/components/quester',['require','underscore'],function(require) 
       this.quests[info.id] = info;
       this.parent.raise('QuestStarted', info);
     },
+    updateQuest: function(info) {
+      this.quests[info.id] = info;
+    },
     hasStartedQuest: function(id) {
       return !!this.quests[id];
+    },
+    _out: function(data) {
+      data.quests = this.quests;
+    },
+    _in: function(data) {
+      this.quests = data.quests;
+      console.log(this.quests);
     }
   };
   
@@ -4569,8 +4579,11 @@ define('scripting/quest',['require','underscore','../shared/eventable'],function
 
   var Quest = function(questTemplate) {
     Eventable.call(this);
+    this.complete = false;
     this.questTemplate = questTemplate;
     _.extend(this, questTemplate)
+    
+    this.on('Completed',  this.onCompleted, this);
   };
   
   Quest.prototype = {
@@ -4578,9 +4591,14 @@ define('scripting/quest',['require','underscore','../shared/eventable'],function
     start: function(entity) {
       this.entity = entity;
       this.scene = entity.scene;
+      this.init(); 
       this.hookEntityEvents();
-      this.init();
-    },  
+    },    
+    
+    onCompleted: function() {
+      this.complete = true;
+      this.unhookEntityEvents();
+    },
     
     madeFromTemplate: function(template) {
       return this.questTemplate === template;
@@ -4588,6 +4606,10 @@ define('scripting/quest',['require','underscore','../shared/eventable'],function
         
     hookEntityEvents: function() {
       this.entity.autoHook(this);
+    },
+    
+    unhookEntityEvents: function() {
+      this.entity.autoUnhook(this);
     },
     
     markUpdated: function() {

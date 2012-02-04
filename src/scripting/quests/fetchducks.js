@@ -51,10 +51,19 @@ define(function(require) {
     talk: function(text) {
       this.scene.dispatch(this.entity.id, 'talkTo', ['quest-giver', text]);
     },
+    currentDescription: function() {
+      return "You have been asked to fetch five ducks for the stick man that is not you";
+    },
     meta: {
       id: 'fetchducks',
-      askText: "Help, please fetch my ducks for me",
-      description: "You've been asked to fetch five ducks"
+      title: "The missing ducks",
+      askText: "Help, please fetch my ducks for me"
+    },
+    _out: function(data) {
+      data.itemCount = this.itemCount;
+    },
+    _in: function(data) {
+      this.itemCount = data.itemCount;
     }
   };
   

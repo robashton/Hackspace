@@ -13,6 +13,7 @@ define(function(require) {
     this.communication = null;
     this.context = null;
     this.persistence = persistence;
+    this.quests = null;
     
     this.setupScene();
   };
@@ -42,7 +43,7 @@ define(function(require) {
       var god = new God(this.context.entityFactory);
       this.context.scene.add(god);    
       
-      var questWatcher = new QuestWatcher(this.context.scene, new QuestFactory());      
+      this.quests = new QuestWatcher(this.context.scene, this.persistence, new QuestFactory());      
       this.persistence.startMonitoring(this.context.scene);   
       this.raise('SceneLoaded');  
     },
@@ -91,7 +92,7 @@ define(function(require) {
         entities: this.context.getSerializedEntities()
       };
       socket.emit('Init', data);
-      socket.broadcast.emit('PlayerJoined', this.context.getSerialisedEntity(id));   
+      socket.broadcast.emit('PlayerJoined', this.context.getSerialisedEntity(id));
     },
     
     handleDisconnectedSocket: function(socket) {
@@ -107,7 +108,8 @@ define(function(require) {
 
     addPlayerToScene: function(id, callback) {
       var self = this;
-      this.persistence.playerExists(id, function(exists) {      
+      this.persistence.playerExists(id, function(exists) {    
+
         if(exists) 
           self.loadExistingPlayerIntoScene(id, callback);
         else
@@ -119,8 +121,9 @@ define(function(require) {
       var self = this;
       this.persistence.getPlayerData(id, function(data) {
         var entity = self.context.createEntity('character', id, data);
-        self.context.scene.add(entity);
-        callback();      
+        entity._in(data);
+        self.context.scene.add(entity); 
+        self.quests.loadQuestsForPlayer(id, callback);
       });
     },
     
@@ -132,7 +135,7 @@ define(function(require) {
         data.y = 0;
         var entity = self.context.createEntity('character', id, data);
         self.context.scene.add(entity);
-        callback();
+        self.quests.loadQuestsForPlayer(id, callback);
       });
     },    
     

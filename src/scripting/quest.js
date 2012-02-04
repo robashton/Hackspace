@@ -5,8 +5,11 @@ define(function(require) {
 
   var Quest = function(questTemplate) {
     Eventable.call(this);
+    this.complete = false;
     this.questTemplate = questTemplate;
     _.extend(this, questTemplate)
+    
+    this.on('Completed',  this.onCompleted, this);
   };
   
   Quest.prototype = {
@@ -14,9 +17,14 @@ define(function(require) {
     start: function(entity) {
       this.entity = entity;
       this.scene = entity.scene;
+      this.init(); 
       this.hookEntityEvents();
-      this.init();
-    },  
+    },    
+    
+    onCompleted: function() {
+      this.complete = true;
+      this.unhookEntityEvents();
+    },
     
     madeFromTemplate: function(template) {
       return this.questTemplate === template;
@@ -24,6 +32,10 @@ define(function(require) {
         
     hookEntityEvents: function() {
       this.entity.autoHook(this);
+    },
+    
+    unhookEntityEvents: function() {
+      this.entity.autoUnhook(this);
     },
     
     markUpdated: function() {

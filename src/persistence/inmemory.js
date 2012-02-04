@@ -20,6 +20,18 @@ define(function(require) {
       }, 5000);
     },
     
+    retrieveQuestsForPlayer: function(id, callback) {
+      fs.readFile(this.pathToQuestsForPlayer(id), 'utf8', function(err, data) {
+        if(err) { callback({}); return; }
+        var quests = JSON.parse(data);
+        callback(quests);
+      });
+    },
+    
+    saveQuestsForPlayer: function(id, quests, callback) {
+      fs.writeFile(this.pathToQuestsForPlayer(id), JSON.stringify(quests), 'utf8', callback);
+    },
+    
     syncPlayersToDisk: function() {
       for(var i in this.loadedCharacters) {
         this.syncPlayer(i);
@@ -72,6 +84,10 @@ define(function(require) {
     
     pathToPlayer: function(id) {
       return path.join(path.join(this.baseDir, 'characters'), id + '.json');
+    },
+    
+    pathToQuestsForPlayer: function(id) {
+      return path.join(path.join(this.baseDir, 'quests'), id + '.json');
     }
   }
   
