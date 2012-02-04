@@ -3572,7 +3572,7 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
     isCurrentlyHandlingCommand: function() {
       return this.currentCommandDepth > 0;
     },
-          
+         
     dispatch: function(command, data) {
       if(this.isCurrentlyHandlingCommand())
         this.queueCommand(command, data);
@@ -14996,9 +14996,71 @@ define('entities/collider',['require','underscore','../scene/entity'],function(r
   return Collider;
 });
 
-define('entities/god',['require','underscore','../scene/entity'],function(require) {
+define('scripting/item',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Item = function(id, template) {
+    _.extend(this, template);
+    this.id = id;    
+  };
+  
+  Item.prototype = {
+    
+  };
+  
+  return Item;
+});
+
+define('entities/pickup',['require','underscore','../scene/entity','./components/renderable','./components/tangible','./components/physical'],function(require) {
+
   var _ = require('underscore');
   var Entity = require('../scene/entity');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Physical = require('./components/physical');
+  
+  var Pickup = function(x, y, item) {
+    Entity.call(this, 'pickup-' + item.id);
+    this.item = item;
+    
+    this.attach(new Renderable(item.pickupTexture));
+    this.attach(new Tangible(x, y, item.pickupWidth, item.pickupHeight));
+    this.attach(new Physical());
+    this.attachSelf();
+  };
+  
+  Pickup.prototype = {
+    attachSelf: function() {
+      var self = this;
+      this.attach({
+        giveItemTo: function(entityId) {
+          self.putItemInEntity(entityId);
+        },
+        hasPickup: function() {
+          return true;
+        }    
+      });
+    },
+    putItemInEntity: function(entityId) {
+      var self = this;
+      this.scene.withEntity(entityId, function(entity) {
+        entity.dispatch('add', [self.item]); 
+        self.scene.remove(self);
+      })
+    } 
+  };
+  
+  _.extend(Pickup.prototype, Entity.prototype);
+  
+  return Pickup;
+  
+});
+
+define('entities/god',['require','underscore','../scene/entity','../scripting/item','./pickup'],function(require) {
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  var Item = require('../scripting/item');
+  var Pickup = require('./pickup');
 
   var God = function(entityFactory) {
     Entity.call(this, "god");
@@ -15016,6 +15078,11 @@ define('entities/god',['require','underscore','../scene/entity'],function(requir
         var entity = self.scene.get(id);
         if(entity)
           self.scene.remove(entity);
+      },
+      createPickup: function(data) {
+        var item = new Item(data.id, data.template);
+        var pickup = new Pickup(data.x, data.y, item);
+        self.scene.add(pickup);
       }
     });
   };

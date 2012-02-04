@@ -18,6 +18,10 @@
     startListening: function() {
       this.io = socketio.listen(this.server);
       var self = this;
+      this.io.configure(function() {
+        self.io.set('log level', 1);
+      });
+      var self = this;
       
       var shard = new ShardEntry('/main/world.json', this.persistence);
       var login = new LoginServer(); 

@@ -59,7 +59,7 @@ define(function(require) {
     isCurrentlyHandlingCommand: function() {
       return this.currentCommandDepth > 0;
     },
-          
+         
     dispatch: function(command, data) {
       if(this.isCurrentlyHandlingCommand())
         this.queueCommand(command, data);

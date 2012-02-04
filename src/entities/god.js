@@ -1,6 +1,8 @@
 define(function(require) {
   var _ = require('underscore');
   var Entity = require('../scene/entity');
+  var Item = require('../scripting/item');
+  var Pickup = require('./pickup');
 
   var God = function(entityFactory) {
     Entity.call(this, "god");
@@ -18,6 +20,11 @@ define(function(require) {
         var entity = self.scene.get(id);
         if(entity)
           self.scene.remove(entity);
+      },
+      createPickup: function(data) {
+        var item = new Item(data.id, data.template);
+        var pickup = new Pickup(data.x, data.y, item);
+        self.scene.add(pickup);
       }
     });
   };

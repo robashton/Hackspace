@@ -1,9 +1,7 @@
 define(function(require) {
 
   var _ = require('underscore');
-  var Item = require('../item');
   var DuckTemplate = require('../items/duck');
-  var Pickup = require('../../entities/pickup');
 
   FetchDucks = {
     init: function() {
@@ -12,6 +10,7 @@ define(function(require) {
     onItemPickedUp: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
       this.markUpdated();
+      console.log('Item picked up', this.itemCount);
     },
     onItemRemoved: function() {
       this.itemCount = this.entity.get('countOfItemType', [ 'duck' ]);
@@ -28,13 +27,17 @@ define(function(require) {
       this.scene.withEntity(targetId, function(target) {
         // Check some value         
         var targetPosition = target.get('getPosition');        
-        // TODO: This needs to come via item generation       
-        var duck = new Item('duck-' + (Math.random() * 100000) , DuckTemplate);
-        self.scene.add(new Pickup(targetPosition[0], targetPosition[1], duck));
+        
+        // TODO: This needs to come via item generation  
+        self.scene.dispatch('god', 'createPickup', [ { 
+          template: DuckTemplate, 
+          id: 'duck-' + (Math.random() * 100000), 
+          x: targetPosition[0], 
+          y: targetPosition[1] } ]);
       });
     },
     determineIfQuestFinished: function() {
-      if(this.itemCount === 5) {
+      if(this.itemCount >= 5) {
         this.talk('Thanks for finding all my ducks');
         this.removeDucksFromPlayer();
         this.markComplete();
