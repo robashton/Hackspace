@@ -4,11 +4,13 @@
   var ShardEntry = requirejs('./network/shardentry');
   var LoginServer = requirejs('./network/loginserver');
   var FrontServer = requirejs('./network/frontserver');
+  var Persistence = requirejs('./persistence/inmemory');
   
   var FrontendServer = function(server) {
     this.server = server;
     this.io = null;
     this.shard = null;
+    this.persistence = new Persistence();
     this.startListening();
   };
   
@@ -17,10 +19,10 @@
       this.io = socketio.listen(this.server);
       var self = this;
       
-      var shard = new ShardEntry('/main/world.json');
+      var shard = new ShardEntry('/main/world.json', this.persistence);
+      var login = new LoginServer(); 
+      
       shard.on('SceneLoaded', function() {
-        var login = new LoginServer(); 
-        
         self.communication = new FrontServer(self.io, [
           login, shard
         ]);

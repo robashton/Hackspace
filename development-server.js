@@ -30,3 +30,8 @@ try {
 } catch (ex) {
   console.error(ex);
 }
+/*
+process.on('uncaughtException', function (err) {
+  console.log('Caught exception: ' + err);
+  process.exit();
+});*/

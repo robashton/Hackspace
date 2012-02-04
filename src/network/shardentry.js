@@ -5,12 +5,12 @@ define(function(require) {
   var Collider = require('../entities/collider');
   var God = require('../entities/god');
   
-  
-  var ShardEntry = function(map) {
+  var ShardEntry = function(map, persistence) {
     Eventable.call(this);
     this.map = map;
     this.communication = null;
     this.context = null;
+    this.persistence = persistence;
     this.setupScene();
   };
   
@@ -37,7 +37,8 @@ define(function(require) {
       var collider = new Collider();
       this.context.scene.add(collider);
       var god = new God(this.context.entityFactory);
-      this.context.scene.add(god);       
+      this.context.scene.add(god);    
+      this.persistence.startMonitoring(this.context.scene);   
       this.raise('SceneLoaded');  
     },
     
@@ -56,8 +57,10 @@ define(function(require) {
     onNewSocket: function(socket) {
       this.handleNewSocket(socket);
       var self = this;
-      socket.on('CommandDispatch', function(data) {          
-        self.context.scene.dispatch(socket.id, data.command, data.args);
+      socket.on('CommandDispatch', function(data) {   
+        socket.get('Username', function(err, username) {
+          self.context.scene.dispatch(username, data.command, data.args);
+        });   
       });
     },
     
@@ -68,34 +71,66 @@ define(function(require) {
     handleNewSocket: function(socket) {
       var self = this;
       socket.on('Ready', function() {
-        self.addPlayerToScene(socket.id);
-          
-        var data = {
-          playerid: socket.id,
-          map: self.map,
-          entities: self.context.getSerializedEntities()
-        };
-        
-        socket.emit('Init', data);
-        socket.broadcast.emit('PlayerJoined', self.context.getSerialisedEntity(socket.id));
+        socket.get('Username', function(err, username) {
+          self.addPlayerToScene(username, function() {
+            self.initializePlayer(socket, username);
+          });
+        });    
       });
+    },
+    
+    initializePlayer: function(socket, id) {
+      var data = {
+        playerid: id,
+        map: this.map,
+        entities: this.context.getSerializedEntities()
+      };
+      socket.emit('Init', data);
+      socket.broadcast.emit('PlayerJoined', this.context.getSerialisedEntity(id));   
     },
     
     handleDisconnectedSocket: function(socket) {
       var self = this;
-      this.context.scene.withEntity(socket.id, function(entity) {
-        self.context.scene.remove(entity);
+      socket.get('Username', function(err, username) {
+        self.persistence.syncPlayer(username);
+        self.context.scene.withEntity(username, function(entity) {
+          self.context.scene.remove(entity);
+        });
+        socket.broadcast.emit('PlayerLeft', username);
       });
-      socket.broadcast.emit('PlayerLeft', socket.id);
     },
 
-    addPlayerToScene: function(id) {
-      var entity = this.context.createEntity('character', id, {
-        x: 0,
-        y: 0
+    addPlayerToScene: function(id, callback) {
+      var self = this;
+      this.persistence.playerExists(id, function(exists) {      
+        if(exists) 
+          self.loadExistingPlayerIntoScene(id, callback);
+        else
+          self.createNewPlayerIntoScene(id, callback);
       });
-      this.context.scene.add(entity);
     },
+    
+    loadExistingPlayerIntoScene: function(id, callback) {
+      var self = this;
+      this.persistence.getPlayerData(id, function(data) {
+        var entity = self.context.createEntity('character', id, data);
+        self.context.scene.add(entity);
+        callback();      
+      });
+    },
+    
+    createNewPlayerIntoScene: function(id, callback) {
+      // Create in tutorial village ;-)
+      var self = this;
+      this.persistence.createPlayer(id, function(data) {
+        data.x = 0;
+        data.y = 0;
+        var entity = self.context.createEntity('character', id, data);
+        self.context.scene.add(entity);
+        callback();
+      });
+    },    
+    
     getDefaultSceneData: function() {
 
      var entities = {

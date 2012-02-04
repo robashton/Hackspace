@@ -10,11 +10,12 @@ define(function(require) {
    onNewSocket: function(socket) {
     var self = this;
     socket.on('Authenticate', function(data) {
-      socket.emit('AuthenticateResponse', {
-        success: true,
-        user: data.username
+      socket.set('Username', data.username, function() {
+        socket.emit('AuthenticateResponse', {
+          success: true,
+          user: data.username
+        });  
       });
-      socket.set('Username', data.username);
     });
    }
   };
