@@ -18,10 +18,8 @@ define(function(require) {
       return true;
     },
     
-    getQuest: function(entity) {
-      if(!entity.get('hasStartedQuest', [ this.questId ])) {
-        return this.questId;
-      }
+    getQuest: function() {
+       return this.questId;
     }
   };
   

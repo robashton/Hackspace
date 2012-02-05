@@ -13215,36 +13215,6 @@ define('entities/components/carrier',['require','underscore'],function(require) 
   return Carrier;
 });
 
-define('entities/components/quester',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var Quester = function() {
-    this.quests = {};
-  };
-  
-  Quester.prototype = {
-    startQuest: function(info) {
-      this.quests[info.id] = info;
-      this.parent.raise('QuestStarted', info);
-    },
-    updateQuest: function(info) {
-      this.quests[info.id] = info;
-    },
-    hasStartedQuest: function(id) {
-      return !!this.quests[id];
-    },
-    _out: function(data) {
-      data.quests = this.quests;
-    },
-    _in: function(data) {
-      this.quests = data.quests;
-      console.log(this.quests);
-    }
-  };
-  
-  return Quester;
-});
-
 define('entities/components/fighter',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -14619,22 +14589,17 @@ define('entities/components/talker',['require','underscore','../../scripting/que
   };
   
   Talker.prototype = {
-    onDiscussion: function(targetid) {
-      var self = this;
-      this.scene.withEntity(targetid, function(target) {
-        var questId = target.get('getQuest', [self.parent]);
-        if(questId)
-          self.requestStartQuest(questId);
-      });
-    },
     talkTo: function(targetId, text) {
       this.parent.raise('TalkedTo', {
         targetId: targetId,
         text: text
       });
     },
-    requestStartQuest: function(questId) {
-      this.parent.raise('QuestRequested', questId);
+    startQuest: function(info) {
+      this.parent.raise('QuestStarted', info);
+    },
+    updateQuest: function(info) {
+      this.parent.raise('QuestUpdated', info);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
@@ -14644,7 +14609,7 @@ define('entities/components/talker',['require','underscore','../../scripting/que
   return Talker;
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/quester','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations'],function(require) {
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations'],function(require) {
 
   var _ = require('underscore');
   
@@ -14656,7 +14621,6 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Actionable = require('./components/actionable');
   var Entity = require('../scene/entity');
   var Carrier = require('./components/carrier');
-  var Quester = require('./components/quester');
   var Talker = require('./components/talker');
   var Fighter = require('./components/fighter');
   var Factionable = require('./components/factionable');
@@ -14674,7 +14638,6 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Directable(3.0));
     this.attach(new Actionable());
     this.attach(new Carrier());
-    this.attach(new Quester());
     this.attach(new Talker());
     this.attach(new Fighter());
     this.attach(new Factionable('player'));
@@ -14727,10 +14690,8 @@ define('entities/components/questgiver',['require','underscore','../../scripting
       return true;
     },
     
-    getQuest: function(entity) {
-      if(!entity.get('hasStartedQuest', [ this.questId ])) {
-        return this.questId;
-      }
+    getQuest: function() {
+       return this.questId;
     }
   };
   

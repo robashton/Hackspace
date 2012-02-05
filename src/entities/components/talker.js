@@ -7,22 +7,17 @@ define(function(require) {
   };
   
   Talker.prototype = {
-    onDiscussion: function(targetid) {
-      var self = this;
-      this.scene.withEntity(targetid, function(target) {
-        var questId = target.get('getQuest', [self.parent]);
-        if(questId)
-          self.requestStartQuest(questId);
-      });
-    },
     talkTo: function(targetId, text) {
       this.parent.raise('TalkedTo', {
         targetId: targetId,
         text: text
       });
     },
-    requestStartQuest: function(questId) {
-      this.parent.raise('QuestRequested', questId);
+    startQuest: function(info) {
+      this.parent.raise('QuestStarted', info);
+    },
+    updateQuest: function(info) {
+      this.parent.raise('QuestUpdated', info);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;

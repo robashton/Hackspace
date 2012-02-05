@@ -19,22 +19,44 @@ define(function(require) {
   
   QuestWatcher.prototype = {
     hookSceneEvents: function() {
-      this.scene.on('QuestRequested', this.onQuestGivenToEntity, this);
+      this.scene.on('Discussion', this.onEntityTalkedToNpc, this);
     },
     
-    onQuestGivenToEntity: function(questId, sender) {
+    onEntityTalkedToNpc: function(targetId, sender) {
+      var questId = this.findQuestToStart(targetId, sender.id);
+      if(!questId) return;
+      this.startQuestForEntity(sender.id, questId);
+    },
+    
+    findQuestToStart: function(giverId, receiverId) {
+      var giver = this.scene.get(giverId);
+      var questId = giver.get('getQuest');
+      if(this.questStarted(receiverId, questId)) return null;
+      return questId;
+    },
+    
+    startQuestForEntity: function(entityId, questId) {
       var template = this.questFactory.get(questId);
       var quest = new Quest(template);
-      quest.start(sender);
-      this.updateQuestForPlayer(sender.id, quest); 
-      this.scene.dispatch(sender.id, 'startQuest', [ {
-        id: questId,
-        description: quest.currentDescription(),
-        title: template.meta.title,
-        completed: false,
-        askText: template.meta.askText 
-      }]);
-      this.trackQuest(sender.id, quest);
+      var entity = this.scene.get(entityId);
+      quest.start(entity);
+      this.updateQuestForPlayer(entityId, quest); 
+      this.notifyEntityOfQuestStart(entityId, quest);
+      this.trackQuest(entityId, quest);    
+    },
+    
+    notifyEntityOfQuestStart: function(entityId, quest) {
+      this.scene.dispatch(entityId, 'startQuest', [ {
+          id: quest.meta.id,
+          description: quest.currentDescription(),
+          title: quest.meta.title,
+          completed: false,
+          askText: quest.meta.askText 
+        }]);
+    },
+    
+    questStarted: function(entityId, questId) {
+      return !!this.trackedQuestData[entityId][questId];
     },
     
     trackQuest: function(playerId, quest) {
