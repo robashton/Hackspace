@@ -56,13 +56,13 @@ define(function(require) {
     
     onQuestUpdated: function(data, sender) {
       this.updateQuestForPlayer(sender.entity.id, sender);
-      this.scene.dispatch(sender.entity.id, 'updateQuest', [this.trackedQuestData[sender.entity.id][sender.id] ]);
+      this.scene.dispatch(sender.entity.id, 'updateQuest', [this.trackedQuestData[sender.entity.id][sender.meta.id] ]);
     },
     
     onQuestCompleted: function(data, sender) {
       this.updateQuestForPlayer(sender.entity.id, sender);
       this.removeQuestForPlayer(sender.entity.id, sender);
-      this.scene.dispatch(sender.entity.id, 'updateQuest', [this.trackedQuestData[sender.entity.id][sender.id] ]);
+      this.scene.dispatch(sender.entity.id, 'updateQuest', [this.trackedQuestData[sender.entity.id][sender.meta.id] ]);
     },
     
     loadQuestsForPlayer: function(playerId, callback) {

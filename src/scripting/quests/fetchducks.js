@@ -31,7 +31,7 @@ define(function(require) {
         // TODO: This needs to come via item generation  
         self.scene.dispatch('god', 'createPickup', [ { 
           template: DuckTemplate, 
-          id: 'duck-' + (Math.random() * 100000), 
+          id: 'duck-' + parseInt(Math.random() * 1000000), 
           x: targetPosition[0], 
           y: targetPosition[1] } ]);
       });

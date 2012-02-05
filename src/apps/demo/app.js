@@ -12,6 +12,7 @@ define(function(require) {
   var ClientConnector = require('../../network/clientconnector');
   
   var Identify = require('../../ui/identify');
+  var Inventory = require('../../ui/inventory');
  
   var Demo = function(socket, element) {
     this.element = element;
@@ -33,6 +34,7 @@ define(function(require) {
       this.connector = new ClientConnector(this.socket, this.context);
       this.connector.on('GameStarted', function(playerId) {
         self.questAsker = new QuestAsker(context.scene, playerId, $('#quest-started'));
+        self.inventory = new Inventory(context.scene, playerId);
       });
     }
   }

@@ -14862,7 +14862,7 @@ define('ui/questasker',['require','underscore'],function(require) {
   QuestAsker.prototype = {
     onQuestStarted: function(info, sender) {
       if(sender.id !== this.playerId) return;
-      this.element.find('#quest-started-text').text(info.meta.askText); // Yes, clearly this is not satisfactory
+      this.element.find('#quest-started-text').text(info.meta.askText); // Yes, clearly this is unsatisfactory
       this.element.show();
     },
     onTalkedTo: function(data, sender) {
@@ -15419,7 +15419,41 @@ define('ui/identify',['require','underscore','../shared/eventable'],function(req
   return Identify;
 });
 
-define('apps/demo/app',['require','../../input/inputemitter','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify'],function(require) {
+define('ui/inventory',['require','underscore','jquery'],function(require) {
+  var _ = require('underscore');
+  var $ = require('jquery');
+  
+  var Inventory = function(scene, playerId) {
+    this.scene = scene;
+    this.playerId = playerId;
+    this.scene.autoHook(this);
+    this.inventoryElement = $('#inventory');
+    this.inventoryContentElement = $('#inventory-content');
+  };
+  
+  Inventory.prototype = {
+    onItemPickedUp: function(item, sender) {
+      if(sender.id !== this.playerId) return;
+      var html = this.createHtmlForItem(item);
+      this.inventoryContentElement.append(html);      
+    },
+    onItemRemoved: function(data, sender) {
+      if(sender.id !== this.playerId) return;
+      console.log('Removal of item');
+      this.inventoryContentElement.find('#' + data.id).remove();
+    },
+    createHtmlForItem: function(item) {
+      var html = $('<div/>');
+      html.attr('id', item.id);
+      html.text(item.data.type);
+      return html;
+    }
+  };
+  
+  return Inventory;
+});
+
+define('apps/demo/app',['require','../../input/inputemitter','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory'],function(require) {
 
 
   var InputEmitter = require('../../input/inputemitter');
@@ -15433,6 +15467,7 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
   var ClientConnector = require('../../network/clientconnector');
   
   var Identify = require('../../ui/identify');
+  var Inventory = require('../../ui/inventory');
  
   var Demo = function(socket, element) {
     this.element = element;
@@ -15454,6 +15489,7 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
       this.connector = new ClientConnector(this.socket, this.context);
       this.connector.on('GameStarted', function(playerId) {
         self.questAsker = new QuestAsker(context.scene, playerId, $('#quest-started'));
+        self.inventory = new Inventory(context.scene, playerId);
       });
     }
   }
