@@ -17,6 +17,7 @@ define(function(require) {
   var HasHealth = require('./components/hashealth');
   var Animatable = require('./components/animatable');
   var StandardAnimations = require('./components/standardanimations');
+  var Quester = require('./components/quester');
   
   var Character = function(id, data) {
     Entity.call(this, id);
@@ -34,6 +35,7 @@ define(function(require) {
     this.attach(new HasHealth(100));
     this.attach(new Animatable('character'));
     this.attach(new StandardAnimations());
+    this.attach(new Quester());
   };
   
   Character.prototype = {};  

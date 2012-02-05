@@ -1,6 +1,5 @@
 define(function(require) {
   var _ = require('underscore');
-  var Quest = require('../../scripting/quest');
 
   var Talker = function() {
     
@@ -12,12 +11,6 @@ define(function(require) {
         targetId: targetId,
         text: text
       });
-    },
-    startQuest: function(info) {
-      this.parent.raise('QuestStarted', info);
-    },
-    updateQuest: function(info) {
-      this.parent.raise('QuestUpdated', info);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;

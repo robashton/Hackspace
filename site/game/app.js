@@ -4569,68 +4569,8 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
   return Carrier;
 });
 
-define('scripting/quest',['require','underscore','../shared/eventable'],function(require) {
-
+define('entities/components/talker',['require','underscore'],function(require) {
   var _ = require('underscore');
-  var Eventable = require('../shared/eventable');
-
-  var Quest = function(questTemplate) {
-    Eventable.call(this);
-    this.complete = false;
-    this.questTemplate = questTemplate;
-    _.extend(this, questTemplate)
-    
-    this.on('Completed',  this.onCompleted, this);
-  };
-  
-  Quest.prototype = {
-  
-    start: function(entity) {
-      this.entity = entity;
-      this.scene = entity.scene;
-      this.init(); 
-      this.hookEntityEvents();
-    },    
-    
-    onCompleted: function() {
-      this.complete = true;
-      this.unhookEntityEvents();
-    },
-    
-    madeFromTemplate: function(template) {
-      return this.questTemplate === template;
-    }, 
-        
-    hookEntityEvents: function() {
-      this.entity.autoHook(this);
-    },
-    
-    unhookEntityEvents: function() {
-      this.entity.autoUnhook(this);
-    },
-    
-    markUpdated: function() {
-      this.raise('Updated');
-    },
-    
-    markComplete: function() {
-      this.raise('Completed');
-      this.stop();
-    },
-    
-    stop: function() {
-      this.entity.autoUnhook(this);
-    }
-  };
-  
-  _.extend(Quest.prototype, Eventable.prototype);
-  
-  return Quest;
-});
-
-define('entities/components/talker',['require','underscore','../../scripting/quest'],function(require) {
-  var _ = require('underscore');
-  var Quest = require('../../scripting/quest');
 
   var Talker = function() {
     
@@ -4642,12 +4582,6 @@ define('entities/components/talker',['require','underscore','../../scripting/que
         targetId: targetId,
         text: text
       });
-    },
-    startQuest: function(info) {
-      this.parent.raise('QuestStarted', info);
-    },
-    updateQuest: function(info) {
-      this.parent.raise('QuestUpdated', info);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
@@ -4926,7 +4860,35 @@ define('entities/components/standardanimations',['require','underscore'],functio
   return StandardAnimations;
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations'],function(require) {
+define('entities/components/quester',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Quester = function() {
+    this.quests = {};
+  };
+  
+  Quester.prototype = {
+    onQuestStarted: function(info) {
+      this.quests[info.meta.id] = info;
+    },
+    onQuestUpdated: function(info) {
+      this.quests[info.meta.id] = info;
+    },
+    startQuest: function(info) {
+      this.parent.raise('QuestStarted', info);
+    },
+    updateQuest: function(info) {
+      this.parent.raise('QuestUpdated', info);
+    },
+    _setQuestData: function(data) {
+      this.quests = data;
+    }
+  };
+  
+  return Quester;
+});
+
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations','./components/quester'],function(require) {
 
   var _ = require('underscore');
   
@@ -4945,6 +4907,7 @@ define('entities/character',['require','underscore','./components/physical','./c
   var HasHealth = require('./components/hashealth');
   var Animatable = require('./components/animatable');
   var StandardAnimations = require('./components/standardanimations');
+  var Quester = require('./components/quester');
   
   var Character = function(id, data) {
     Entity.call(this, id);
@@ -4962,6 +4925,7 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new HasHealth(100));
     this.attach(new Animatable('character'));
     this.attach(new StandardAnimations());
+    this.attach(new Quester());
   };
   
   Character.prototype = {};  
@@ -5203,6 +5167,76 @@ define('entities/monsterfactory',['require','underscore','./monster'],function(r
   };
   
   return MonsterFactory;
+});
+
+define('scripting/quest',['require','underscore','../shared/eventable'],function(require) {
+
+  var _ = require('underscore');
+  var Eventable = require('../shared/eventable');
+
+  var Quest = function(questTemplate) {
+    Eventable.call(this);
+    this.complete = false;
+    this.questTemplate = questTemplate;
+    _.extend(this, questTemplate)
+    
+    this.on('Completed',  this.onCompleted, this);
+  };
+  
+  Quest.prototype = {
+  
+    start: function(entity) {
+      this.entity = entity;
+      this.scene = entity.scene;
+      this.init(); 
+      this.hookEntityEvents();
+    },    
+    
+    onCompleted: function() {
+      this.complete = true;
+      this.unhookEntityEvents();
+    },
+    
+    madeFromTemplate: function(template) {
+      return this.questTemplate === template;
+    }, 
+        
+    hookEntityEvents: function() {
+      this.entity.autoHook(this);
+    },
+    
+    unhookEntityEvents: function() {
+      this.entity.autoUnhook(this);
+    },
+    
+    markUpdated: function() {
+      this.raise('Updated');
+    },
+    
+    markComplete: function() {
+      this.raise('Completed');
+      this.stop();
+    },
+    
+    stop: function() {
+      this.entity.autoUnhook(this);
+    },
+    
+    _setQuestData: function(data) {
+      this.complete = data.complete;
+      this._in(data);
+    },
+    
+    _getQuestData: function(data) {
+      data.complete = this.complete;
+      data.meta = this.meta;
+      this._out(data);
+    }
+  };
+  
+  _.extend(Quest.prototype, Eventable.prototype);
+  
+  return Quest;
 });
 
 define('entities/components/questgiver',['require','underscore','../../scripting/quest'],function(require) {
@@ -14828,7 +14862,7 @@ define('ui/questasker',['require','underscore'],function(require) {
   QuestAsker.prototype = {
     onQuestStarted: function(info, sender) {
       if(sender.id !== this.playerId) return;
-      this.element.find('#quest-started-text').text(info.askText);
+      this.element.find('#quest-started-text').text(info.meta.askText); // Yes, clearly this is not satisfactory
       this.element.show();
     },
     onTalkedTo: function(data, sender) {

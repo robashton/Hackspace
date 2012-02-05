@@ -17,7 +17,7 @@ define(function(require) {
   QuestAsker.prototype = {
     onQuestStarted: function(info, sender) {
       if(sender.id !== this.playerId) return;
-      this.element.find('#quest-started-text').text(info.askText);
+      this.element.find('#quest-started-text').text(info.meta.askText); // Yes, clearly this is not satisfactory
       this.element.show();
     },
     onTalkedTo: function(data, sender) {

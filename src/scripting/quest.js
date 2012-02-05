@@ -49,6 +49,17 @@ define(function(require) {
     
     stop: function() {
       this.entity.autoUnhook(this);
+    },
+    
+    _setQuestData: function(data) {
+      this.complete = data.complete;
+      this._in(data);
+    },
+    
+    _getQuestData: function(data) {
+      data.complete = this.complete;
+      data.meta = this.meta;
+      this._out(data);
     }
   };
   

@@ -61,6 +61,7 @@ define(function(require) {
     },
     _out: function(data) {
       data.itemCount = this.itemCount;
+      data.description = this.currentDescription();
     },
     _in: function(data) {
       this.itemCount = data.itemCount;

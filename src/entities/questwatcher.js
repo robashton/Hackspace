@@ -26,7 +26,7 @@ define(function(require) {
     findQuestToStart: function(giverId, receiverId) {
       var giver = this.scene.get(giverId);
       var questId = giver.get('getQuest');
-      if(this.questStarted(receiverId, questId)) return null;
+      if(this.hasQuestBeenStartedForEntity(receiverId, questId)) return null;
       return questId;
     },
     
@@ -41,16 +41,10 @@ define(function(require) {
     },
     
     notifyEntityOfQuestStart: function(entityId, quest) {
-      this.scene.dispatch(entityId, 'startQuest', [ {
-          id: quest.meta.id,
-          description: quest.currentDescription(),
-          title: quest.meta.title,
-          completed: false,
-          askText: quest.meta.askText 
-        }]);
+      this.scene.dispatch(entityId, 'startQuest', [this.trackedQuestData[entityId][quest.meta.id] ]);
     },
     
-    questStarted: function(entityId, questId) {
+    hasQuestBeenStartedForEntity: function(entityId, questId) {
       return !!this.trackedQuestData[entityId][questId];
     },
     
@@ -61,24 +55,14 @@ define(function(require) {
     },
     
     onQuestUpdated: function(data, sender) {
-      this.scene.dispatch(sender.entity.id, 'updateQuest', [{
-        id: sender.meta.id,
-        description: sender.currentDescription(),
-        title: sender.meta.title,
-        completed: false
-      }]);
       this.updateQuestForPlayer(sender.entity.id, sender);
+      this.scene.dispatch(sender.entity.id, 'updateQuest', [this.trackedQuestData[sender.entity.id][sender.id] ]);
     },
     
     onQuestCompleted: function(data, sender) {
-      this.scene.dispatch(sender.entity.id, 'updateQuest', [{
-        id: sender.meta.id,
-        description: sender.currentDescription(),
-        title: sender.meta.title,
-        completed: true
-      }]);
       this.updateQuestForPlayer(sender.entity.id, sender);
       this.removeQuestForPlayer(sender.entity.id, sender);
+      this.scene.dispatch(sender.entity.id, 'updateQuest', [this.trackedQuestData[sender.entity.id][sender.id] ]);
     },
     
     loadQuestsForPlayer: function(playerId, callback) {
@@ -86,7 +70,10 @@ define(function(require) {
       this.persistence.retrieveQuestsForPlayer(playerId, function(data) {
         self.trackedQuests[playerId] = {};
         self.trackedQuestData[playerId] = data;
-        self.loadPlayerQuestDataIntoQuests(playerId, callback);
+        self.loadPlayerQuestDataIntoQuests(playerId, function() {
+          self.scene.dispatch(playerId, '_setQuestData', [ data ]);
+          callback();
+        });
       });
     },
     
@@ -106,7 +93,7 @@ define(function(require) {
       var player = this.scene.get(playerId);
       
       quest.start(player);
-      quest._in(data);
+      quest._setQuestData(data);
 
       this.trackQuest(playerId, quest);
     },
@@ -122,9 +109,7 @@ define(function(require) {
     
     updateQuestForPlayer: function(playerId, quest) {
       var data = {};
-      quest._out(data);
-      
-      data.complete = quest.complete;
+      quest._getQuestData(data);
       this.trackedQuestData[playerId][quest.meta.id] = data;
       this.persistence.saveQuestsForPlayer(playerId, this.trackedQuestData[playerId]);
     }
