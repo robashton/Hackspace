@@ -31,8 +31,8 @@ define(function(require) {
       context.scene.add(god);
       
       this.connector = new ClientConnector(this.socket, this.context);
-      this.connector.on('GameStarted', function(data) {
-        self.questAsker = new QuestAsker(context.scene, data.playerid, $('#quest-started'));
+      this.connector.on('GameStarted', function(playerId) {
+        self.questAsker = new QuestAsker(context.scene, playerId, $('#quest-started'));
       });
     }
   }

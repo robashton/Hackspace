@@ -4557,15 +4557,9 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
           this.removeInventoryItem(this.items[i]);
       }
     },
-    _getInventoryData: function(data) {
-      for(var key in this.items) {
-        var item = this.items[key];
-        data[key] = item.template;
-      }
-    },
     _setInventoryData: function(data) {
       for(var key in data) {
-        var itemData = this.data[key];
+        var itemData = data[key];
         var item = new Item(key, itemData);
         this.items[item.id] = item;
       }
@@ -15286,6 +15280,7 @@ define('network/clientconnector',['require','underscore','../entities/controller
     Eventable.call(this);
     this.context = context;
     this.socket = socket;
+    this.playerId = null;
     this.connectToServer();
   };
   
@@ -15294,6 +15289,9 @@ define('network/clientconnector',['require','underscore','../entities/controller
       var self = this;
       this.socket.on('Init', function(data) {
         self.populateSceneFromMessage(data);
+      });
+      this.socket.on('Start', function() {
+        self.raise('GameStarted',  self.playerId); 
       });
       this.socket.on('PlayerJoined', function(data) {
         self.addEntityFromData(data.id, data);
@@ -15310,7 +15308,8 @@ define('network/clientconnector',['require','underscore','../entities/controller
       entity._in(item.sync);
       this.context.scene.add(entity);  
     },
-    populateSceneFromMessage: function(data) {    
+    populateSceneFromMessage: function(data) {   
+      this.playerId = data.playerid; 
       for(var id in data.entities) {
         var item = data.entities[id];
         this.addEntityFromData(id, item);
@@ -15320,7 +15319,6 @@ define('network/clientconnector',['require','underscore','../entities/controller
       var chase = new ChaseCamera(this.context.scene, data.playerid);
       this.context.scene.add(controller);
       this.loadMap(data.map);
-      this.raise('GameStarted', data); 
     },
     loadMap: function(path) {
       var mapResource = this.context.resources.get(path);
@@ -15420,8 +15418,8 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
       context.scene.add(god);
       
       this.connector = new ClientConnector(this.socket, this.context);
-      this.connector.on('GameStarted', function(data) {
-        self.questAsker = new QuestAsker(context.scene, data.playerid, $('#quest-started'));
+      this.connector.on('GameStarted', function(playerId) {
+        self.questAsker = new QuestAsker(context.scene, playerId, $('#quest-started'));
       });
     }
   }

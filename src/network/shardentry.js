@@ -96,6 +96,16 @@ define(function(require) {
       };
       socket.emit('Init', data);
       socket.broadcast.emit('PlayerJoined', this.context.getSerialisedEntity(id));
+      this.sendFurtherStateToPlayer(id, function() {
+        socket.emit('Start');
+      });
+    },
+    
+    sendFurtherStateToPlayer: function(id, callback) {
+      var self = this;
+      this.quests.loadQuestsForPlayer(id, function() {
+          self.inventories.loadItemsForPlayer(id, callback);
+      });
     },
     
     handleDisconnectedSocket: function(socket) {
@@ -128,9 +138,7 @@ define(function(require) {
         var entity = self.context.createEntity('character', id, data);
         entity._in(data);
         self.context.scene.add(entity); 
-        self.quests.loadQuestsForPlayer(id, function() {
-          self.inventories.loadItemsForPlayer(id, callback);
-        });
+        callback();
       });
     },
     
@@ -142,9 +150,7 @@ define(function(require) {
         data.y = 0;
         var entity = self.context.createEntity('character', id, data);
         self.context.scene.add(entity);
-        self.quests.loadQuestsForPlayer(id, function() {
-          self.inventories.loadItemsForPlayer(id, callback);
-        });
+        callback();
       });
     },    
     

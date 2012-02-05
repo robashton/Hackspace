@@ -13230,15 +13230,9 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
           this.removeInventoryItem(this.items[i]);
       }
     },
-    _getInventoryData: function(data) {
-      for(var key in this.items) {
-        var item = this.items[key];
-        data[key] = item.template;
-      }
-    },
     _setInventoryData: function(data) {
       for(var key in data) {
-        var itemData = this.data[key];
+        var itemData = data[key];
         var item = new Item(key, itemData);
         this.items[item.id] = item;
       }

@@ -28,6 +28,9 @@ define(function(require) {
       var self = this;
       this.persistence.loadInventoryForPlayer(playerId, function(data) {
         self.inventories[playerId] = data; 
+        self.scene.dispatch(playerId, '_setInventoryData', [
+          data
+        ]);
         callback();
       });
     },
