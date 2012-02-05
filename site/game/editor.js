@@ -13165,9 +13165,7 @@ define('entities/components/actionable',['require'],function(require) {
     
     pickupTarget: function() {
       var self = this;
-      this.scene.withEntity(this.targetId, function(target) {
-        target.dispatch('giveItemTo', [ self.parent.id ]);
-      });
+      this.scene.dispatch(this.targetId, 'giveItemTo', [ self.parent.id ]);
     },
     
     onDestinationChanged: function() {
@@ -13180,35 +13178,70 @@ define('entities/components/actionable',['require'],function(require) {
   return Actionable;
 });
 
-define('entities/components/carrier',['require','underscore'],function(require) {
+define('scripting/item',['require','underscore'],function(require) {
   var _ = require('underscore');
 
+  var Item = function(id, template) {
+    _.extend(this, template);
+    this.data = template;
+    this.id = id;    
+  };
+  
+  Item.prototype = {
+    
+  };
+  
+  return Item;
+});
+
+define('entities/components/carrier',['require','underscore','../../scripting/item'],function(require) {
+  var _ = require('underscore');
+  var Item = require('../../scripting/item');
+
   var Carrier = function() {
-    this.items = [];
+    this.items = {};
   };
   
   Carrier.prototype = {
     countOfItemType: function(itemType) {
-      return _(this.items).filter(function(item) {
-        return item.type === itemType;
-      }).length;
+      var count = 0;
+      for(var i in this.items) {
+        if(this.items[i].type === itemType)
+          count++;       
+      }
+      return count;
     },
-    add: function(item) {
-      this.items.push(item);
+    addInventoryItem: function(id, data) {
+      this.items[id]  = new Item(id, data);
       this.parent.raise('ItemPickedUp', {
-        item: item
+        id: id,
+        data: data
       });
     },
-    remove: function(item) {
-      this.items = _(this.items).without(item);
+    removeInventoryItem: function(item) {
+      delete this.items[item.id];
       this.parent.raise('ItemRemoved', {
-        item: item
+        id: item.id
       });
     },
     removeItemsOfType: function(itemType) {
-      this.items = _(this.items).filter(function(item) {
-        return item.type !== itemType
-      });
+     for(var i in this.items) {
+        if(this.items[i].type === itemType)
+          this.removeInventoryItem(this.items[i]);
+      }
+    },
+    _getInventoryData: function(data) {
+      for(var key in this.items) {
+        var item = this.items[key];
+        data[key] = item.template;
+      }
+    },
+    _setInventoryData: function(data) {
+      for(var key in data) {
+        var itemData = this.data[key];
+        var item = new Item(key, itemData);
+        this.items[item.id] = item;
+      }
     }
   };
   

@@ -6,6 +6,7 @@ define(function(require) {
   var God = require('../entities/god');
   var QuestWatcher = require('../entities/questwatcher');
   var QuestFactory = require('../scripting/questfactory');
+  var InventoryWatcher = require('../entities/inventorywatcher');
   
   var ShardEntry = function(map, persistence) {
     Eventable.call(this);
@@ -14,6 +15,7 @@ define(function(require) {
     this.context = null;
     this.persistence = persistence;
     this.quests = null;
+    this.inventories = null;
     
     this.setupScene();
   };
@@ -43,7 +45,8 @@ define(function(require) {
       var god = new God(this.context.entityFactory);
       this.context.scene.add(god);    
       
-      this.quests = new QuestWatcher(this.context.scene, this.persistence, new QuestFactory());      
+      this.quests = new QuestWatcher(this.context.scene, this.persistence, new QuestFactory());
+      this.inventories = new InventoryWatcher(this.context.scene, this.persistence);      
       this.persistence.startMonitoring(this.context.scene);   
       this.raise('SceneLoaded');  
     },
@@ -99,6 +102,8 @@ define(function(require) {
       var self = this;
       socket.get('Username', function(err, username) {
         self.persistence.syncPlayer(username);
+        self.inventories.unloadItemsForPlayer(username);
+        self.quests.unloadQuestsForPlayer(username);
         self.context.scene.withEntity(username, function(entity) {
           self.context.scene.remove(entity);
         });
@@ -123,7 +128,9 @@ define(function(require) {
         var entity = self.context.createEntity('character', id, data);
         entity._in(data);
         self.context.scene.add(entity); 
-        self.quests.loadQuestsForPlayer(id, callback);
+        self.quests.loadQuestsForPlayer(id, function() {
+          self.inventories.loadItemsForPlayer(id, callback);
+        });
       });
     },
     
@@ -135,7 +142,9 @@ define(function(require) {
         data.y = 0;
         var entity = self.context.createEntity('character', id, data);
         self.context.scene.add(entity);
-        self.quests.loadQuestsForPlayer(id, callback);
+        self.quests.loadQuestsForPlayer(id, function() {
+          self.inventories.loadItemsForPlayer(id, callback);
+        });
       });
     },    
     

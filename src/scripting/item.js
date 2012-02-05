@@ -3,6 +3,7 @@ define(function(require) {
 
   var Item = function(id, template) {
     _.extend(this, template);
+    this.data = template;
     this.id = id;    
   };
   

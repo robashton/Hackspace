@@ -57,6 +57,20 @@ define(function(require) {
       });
     },
     
+    saveInventoryForPlayer: function(id, data) {
+      var path = this.pathToInventoryForPlayer(id);
+      fs.writeFile(path, JSON.stringify(data), 'utf8');
+    },
+    
+    loadInventoryForPlayer: function(id, callback) {
+      var path = this.pathToInventoryForPlayer(id);
+      fs.readFile(path, 'utf8', function(err, data) {
+        if(err) { callback({}); return; }
+        var inventoryData = JSON.parse(data);
+        callback(inventoryData);
+      });
+    },
+    
     playerExists: function(id, callback) {
       this.getPlayerData(id, function(data) {
         if(data)
@@ -88,6 +102,10 @@ define(function(require) {
     
     pathToQuestsForPlayer: function(id) {
       return path.join(path.join(this.baseDir, 'quests'), id + '.json');
+    },
+    
+    pathToInventoryForPlayer: function(id) {
+      return path.join(path.join(this.baseDir, 'inventories'), id + '.json');
     }
   }
   

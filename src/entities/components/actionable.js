@@ -50,9 +50,7 @@ define(function(require) {
     
     pickupTarget: function() {
       var self = this;
-      this.scene.withEntity(this.targetId, function(target) {
-        target.dispatch('giveItemTo', [ self.parent.id ]);
-      });
+      this.scene.dispatch(this.targetId, 'giveItemTo', [ self.parent.id ]);
     },
     
     onDestinationChanged: function() {

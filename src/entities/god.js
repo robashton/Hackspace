@@ -22,8 +22,7 @@ define(function(require) {
           self.scene.remove(entity);
       },
       createPickup: function(data) {
-        var item = new Item(data.id, data.template);
-        var pickup = new Pickup(data.x, data.y, item);
+        var pickup = new Pickup(data.x, data.y, data.id, data.template);
         self.scene.add(pickup);
       }
     });

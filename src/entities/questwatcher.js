@@ -1,13 +1,7 @@
 define(function(require) {
   var _ = require('underscore');
   var Quest = require('../scripting/quest');
-
-  // My job is to watch the scene and hand out quests to entities
-  // I also watch the state of the quests for each entity and notify those entities and the scene
-  // When states change within a quest
-  // The reason I do this, is that the client doesn't need to know about quests and such things - it's irrelevant, the logic will be ran on the server
-  // What needs to happen is the client needs to be told when a quest is changed or updated so that their UI can update - no more than that
-  
+ 
   var QuestWatcher = function(scene, persistence, questFactory) {
     this.scene = scene;
     this.persistence = persistence;
@@ -18,6 +12,7 @@ define(function(require) {
   };
   
   QuestWatcher.prototype = {
+  
     hookSceneEvents: function() {
       this.scene.on('Discussion', this.onEntityTalkedToNpc, this);
     },
@@ -99,18 +94,21 @@ define(function(require) {
       var data = this.trackedQuestData[playerId];
       for(var questId in data) {
         var item = data[questId];
-        if(item.complete) continue; // Don't bother initializing quests that are already completed
-        
-        var template = this.questFactory.get(questId);
-        var quest = new Quest(template);
-        var player = this.scene.get(playerId);
-        
-        quest.start(player);
-        quest._in(item);
-
-        this.trackQuest(playerId, quest);
+        if(item.complete) continue;
+        this.initializeQuestFromData(playerId, questId, item);        
       }
       callback();
+    },
+    
+    initializeQuestFromData: function(playerId, questId, data) {
+      var template = this.questFactory.get(questId);
+      var quest = new Quest(template);
+      var player = this.scene.get(playerId);
+      
+      quest.start(player);
+      quest._in(data);
+
+      this.trackQuest(playerId, quest);
     },
     
     removeQuestForPlayer: function(playerId, quest) {
