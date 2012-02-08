@@ -22,10 +22,12 @@ define(function(require) {
     });
     $(document).on({
       keydown: function(e) {
-        console.log(e);
         switch(e.keyCode) {
           case 73: 
             self.raiseToggleInventory();
+            break;
+          case 81:
+            self.raiseToggleQuests();
           default:
             return;
         }     
@@ -48,6 +50,9 @@ define(function(require) {
     }, 
     raiseToggleInventory: function() {
       this.raise('InventoryToggleRequest');
+    },
+    raiseToggleQuests: function() {
+      this.raise('QuestsToggleRequest');
     }
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);

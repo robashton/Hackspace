@@ -4563,6 +4563,7 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
         var item = new Item(key, itemData);
         this.items[item.id] = item;
       }
+      this.parent.raise('InventoryDataUpdated', data);
     }
   };
   
@@ -4882,6 +4883,7 @@ define('entities/components/quester',['require','underscore'],function(require) 
     },
     _setQuestData: function(data) {
       this.quests = data;
+      this.parent.raise('QuestDataUpdated', data);
     }
   };
   
@@ -14626,10 +14628,12 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
     });
     $(document).on({
       keydown: function(e) {
-        console.log(e);
         switch(e.keyCode) {
           case 73: 
             self.raiseToggleInventory();
+            break;
+          case 81:
+            self.raiseToggleQuests();
           default:
             return;
         }     
@@ -14652,6 +14656,9 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
     }, 
     raiseToggleInventory: function() {
       this.raise('InventoryToggleRequest');
+    },
+    raiseToggleQuests: function() {
+      this.raise('QuestsToggleRequest');
     }
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);
@@ -15336,9 +15343,10 @@ define('network/clientconnector',['require','underscore','../entities/controller
       var self = this;
       this.socket.on('Init', function(data) {
         self.populateSceneFromMessage(data);
+        self.raise('PlayerCreated', data.playerid);
       });
       this.socket.on('Start', function() {
-        self.raise('GameStarted',  self.playerId); 
+        self.raise('GameStarted'); 
       });
       this.socket.on('PlayerJoined', function(data) {
         self.addEntityFromData(data.id, data);
@@ -15450,25 +15458,34 @@ define('ui/inventory',['require','underscore','jquery'],function(require) {
   Inventory.prototype = {
     onItemPickedUp: function(item, sender) {
       if(sender.id !== this.playerId) return;
-      var html = this.createHtmlForItem(item);
-      this.inventoryContentElement.append(html);      
+      this.addItem(item);     
     },
     onItemRemoved: function(data, sender) {
       if(sender.id !== this.playerId) return;
-      console.log('Removal of item');
       this.inventoryContentElement.find('#' + data.id).remove();
     },
-    createHtmlForItem: function(item) {
-      var html = $('<div/>');
-      html.attr('id', item.id);
-      html.text(item.data.type);
-      return html;
-    },
+    onInventoryDataUpdated: function(data, sender) {
+      if(sender.id !== this.playerId) return;
+      for(var id in data) {
+        this.addItem(data[id]);
+      }
+    },    
     onInventoryToggleRequest: function() {
       if(this.visible)
         this.hide();
       else
         this.show();
+    },
+    addItem: function(item) {
+      var html = this.createHtmlForItem(item);
+      this.inventoryContentElement.append(html); 
+    },
+    createHtmlForItem: function(item) {
+      var html = $('<div/>');
+      html.attr('id', item.id);
+      html.text(item.data.type);
+      html.addClass('inventory-item');
+      return html;
     },
     show: function() {
       this.inventoryElement.show();
@@ -15483,7 +15500,71 @@ define('ui/inventory',['require','underscore','jquery'],function(require) {
   return Inventory;
 });
 
-define('apps/demo/app',['require','../../input/inputemitter','../../input/inputtranslator','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory'],function(require) {
+define('ui/quests',['require','underscore','jquery'],function(require) {
+  var _ = require('underscore');
+  var $ = require('jquery');
+
+  var Quests = function(input, scene, playerId) {
+    this.scene = scene;
+    this.playerId = playerId;
+    this.scene.autoHook(this);
+    this.visible = false;
+    this.input = input;
+    this.questElement = $('#quests');
+    this.questContentElement = $('#quests-content');
+    this.input.on('QuestsToggleRequest', this.onQuestsToggleRequest, this);
+  };
+  
+  Quests.prototype = {
+    onQuestStarted: function(info, sender) {
+      if(sender.id !== this.playerId) return;
+      this.addItem(info);
+    },
+    onQuestUpdated: function(info, sender) {     
+     if(sender.id !== this.playerId) return;
+      var html = this.createHtmlForItem(info);
+      $('#' + info.meta.id).replaceWith(html);
+    },
+    onQuestDataUpdated: function(data, sender) {
+      if(sender.id !== this.playerId) return;
+      for(var id in data) {
+        this.addItem(data[id]);
+      }
+    },  
+    onQuestsToggleRequest: function() {
+      if(this.visible)
+        this.hide();
+      else
+        this.show();
+    },
+    addItem: function(info) {
+      var html = this.createHtmlForItem(info);
+      this.questContentElement.append(html); 
+    },    
+    createHtmlForItem: function(item) {
+      var html = $('<div/>');
+      html.attr('id', item.meta.id);
+      html.text(item.meta.title);
+      html.addClass('quest');
+      if(item.complete)
+        html.addClass('complete');
+        
+      return html;
+    },
+    show: function() {
+      this.questElement.show();
+      this.visible = true;
+    },
+    hide: function() {
+      this.questElement.hide();
+      this.visible = false;
+    }
+  };
+  
+  return Quests;
+});
+
+define('apps/demo/app',['require','../../input/inputemitter','../../input/inputtranslator','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory','../../ui/quests'],function(require) {
 
 
   var InputEmitter = require('../../input/inputemitter');
@@ -15499,6 +15580,7 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
   
   var Identify = require('../../ui/identify');
   var Inventory = require('../../ui/inventory');
+  var Quests = require('../../ui/quests');
  
   var Demo = function(socket, element) {
     this.element = element;
@@ -15517,11 +15599,18 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
       
       var god = new God(context.entityFactory);
       context.scene.add(god);
+
       
       this.connector = new ClientConnector(this.socket, this.context);
-      this.connector.on('GameStarted', function(playerId) {
-        self.questAsker = new QuestAsker(context.scene, playerId, $('#quest-started'));
+      this.playerId = null;
+      
+      this.connector.on('PlayerCreated', function(playerId) {
+        self.playerId = playerId;
         self.inventory = new Inventory(input, context.scene, playerId);
+        self.quests = new Quests(input, context.scene, playerId);
+      });
+      this.connector.on('GameStarted', function(playerId) {
+        self.questAsker = new QuestAsker(context.scene, self.playerId, $('#quest-started'));
       });
     }
   }

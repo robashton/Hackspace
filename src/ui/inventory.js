@@ -16,25 +16,34 @@ define(function(require) {
   Inventory.prototype = {
     onItemPickedUp: function(item, sender) {
       if(sender.id !== this.playerId) return;
-      var html = this.createHtmlForItem(item);
-      this.inventoryContentElement.append(html);      
+      this.addItem(item);     
     },
     onItemRemoved: function(data, sender) {
       if(sender.id !== this.playerId) return;
-      console.log('Removal of item');
       this.inventoryContentElement.find('#' + data.id).remove();
     },
-    createHtmlForItem: function(item) {
-      var html = $('<div/>');
-      html.attr('id', item.id);
-      html.text(item.data.type);
-      return html;
-    },
+    onInventoryDataUpdated: function(data, sender) {
+      if(sender.id !== this.playerId) return;
+      for(var id in data) {
+        this.addItem(data[id]);
+      }
+    },    
     onInventoryToggleRequest: function() {
       if(this.visible)
         this.hide();
       else
         this.show();
+    },
+    addItem: function(item) {
+      var html = this.createHtmlForItem(item);
+      this.inventoryContentElement.append(html); 
+    },
+    createHtmlForItem: function(item) {
+      var html = $('<div/>');
+      html.attr('id', item.id);
+      html.text(item.data.type);
+      html.addClass('inventory-item');
+      return html;
     },
     show: function() {
       this.inventoryElement.show();

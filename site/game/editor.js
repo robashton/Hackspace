@@ -13236,6 +13236,7 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
         var item = new Item(key, itemData);
         this.items[item.id] = item;
       }
+      this.parent.raise('InventoryDataUpdated', data);
     }
   };
   
@@ -13555,6 +13556,7 @@ define('entities/components/quester',['require','underscore'],function(require) 
     },
     _setQuestData: function(data) {
       this.quests = data;
+      this.parent.raise('QuestDataUpdated', data);
     }
   };
   

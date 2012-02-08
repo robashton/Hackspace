@@ -20,9 +20,10 @@ define(function(require) {
       var self = this;
       this.socket.on('Init', function(data) {
         self.populateSceneFromMessage(data);
+        self.raise('PlayerCreated', data.playerid);
       });
       this.socket.on('Start', function() {
-        self.raise('GameStarted',  self.playerId); 
+        self.raise('GameStarted'); 
       });
       this.socket.on('PlayerJoined', function(data) {
         self.addEntityFromData(data.id, data);

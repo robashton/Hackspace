@@ -40,6 +40,7 @@ define(function(require) {
         var item = new Item(key, itemData);
         this.items[item.id] = item;
       }
+      this.parent.raise('InventoryDataUpdated', data);
     }
   };
   

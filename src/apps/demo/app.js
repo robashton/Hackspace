@@ -14,6 +14,7 @@ define(function(require) {
   
   var Identify = require('../../ui/identify');
   var Inventory = require('../../ui/inventory');
+  var Quests = require('../../ui/quests');
  
   var Demo = function(socket, element) {
     this.element = element;
@@ -32,11 +33,18 @@ define(function(require) {
       
       var god = new God(context.entityFactory);
       context.scene.add(god);
+
       
       this.connector = new ClientConnector(this.socket, this.context);
-      this.connector.on('GameStarted', function(playerId) {
-        self.questAsker = new QuestAsker(context.scene, playerId, $('#quest-started'));
+      this.playerId = null;
+      
+      this.connector.on('PlayerCreated', function(playerId) {
+        self.playerId = playerId;
         self.inventory = new Inventory(input, context.scene, playerId);
+        self.quests = new Quests(input, context.scene, playerId);
+      });
+      this.connector.on('GameStarted', function(playerId) {
+        self.questAsker = new QuestAsker(context.scene, self.playerId, $('#quest-started'));
       });
     }
   }

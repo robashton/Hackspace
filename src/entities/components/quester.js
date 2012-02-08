@@ -20,6 +20,7 @@ define(function(require) {
     },
     _setQuestData: function(data) {
       this.quests = data;
+      this.parent.raise('QuestDataUpdated', data);
     }
   };
   
