@@ -39,6 +39,17 @@ body {
   clear: both;
 }
 
+#inventory {
+  border: 1px solid #000;
+  display: none;
+  position: absolute;
+  width: 512px;
+  height: 768px;
+  top: 0px;
+  left: 512px;
+  background-color: #fff;
+
+}
 
 #quest-started {
   display: none;

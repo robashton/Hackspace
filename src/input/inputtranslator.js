@@ -20,6 +20,17 @@ define(function(require) {
         self.raiseHover(e.pageX - offset.left, e.pageY - offset.top);
       }
     });
+    $(document).on({
+      keydown: function(e) {
+        console.log(e);
+        switch(e.keyCode) {
+          case 73: 
+            self.raiseToggleInventory();
+          default:
+            return;
+        }     
+      }    
+    });
   };
   
   InputTranslator.prototype = {
@@ -35,6 +46,9 @@ define(function(require) {
         y: y
       });
     }, 
+    raiseToggleInventory: function() {
+      this.raise('InventoryToggleRequest');
+    }
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);
   

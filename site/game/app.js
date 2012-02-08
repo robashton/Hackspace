@@ -14624,6 +14624,17 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
         self.raiseHover(e.pageX - offset.left, e.pageY - offset.top);
       }
     });
+    $(document).on({
+      keydown: function(e) {
+        console.log(e);
+        switch(e.keyCode) {
+          case 73: 
+            self.raiseToggleInventory();
+          default:
+            return;
+        }     
+      }    
+    });
   };
   
   InputTranslator.prototype = {
@@ -14639,6 +14650,9 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
         y: y
       });
     }, 
+    raiseToggleInventory: function() {
+      this.raise('InventoryToggleRequest');
+    }
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);
   
@@ -14650,11 +14664,11 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
   var Coords = require('../shared/coords');
   var InputTranslator = require('./inputtranslator');
   
-  var InputEmitter = function(context) {
+  var InputEmitter = function(translator, context) {
     var self = this;
     this.scene = context.scene;
     this.context = context;
-    this.translator = new InputTranslator(context.element);
+    this.translator = translator;
     
     this.translator.on('PrimaryAction', function(data) {
       self.onPrimaryAction(data);
@@ -14671,7 +14685,6 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
         x: transformed.x,
         y: transformed.y
       });
-
     },
     
     onHover: function(data) {
@@ -15423,12 +15436,15 @@ define('ui/inventory',['require','underscore','jquery'],function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
   
-  var Inventory = function(scene, playerId) {
+  var Inventory = function(input, scene, playerId) {
     this.scene = scene;
+    this.input = input;
     this.playerId = playerId;
     this.scene.autoHook(this);
     this.inventoryElement = $('#inventory');
     this.inventoryContentElement = $('#inventory-content');
+    this.input.on('InventoryToggleRequest', this.onInventoryToggleRequest, this);
+    this.visible = false;
   };
   
   Inventory.prototype = {
@@ -15447,16 +15463,31 @@ define('ui/inventory',['require','underscore','jquery'],function(require) {
       html.attr('id', item.id);
       html.text(item.data.type);
       return html;
+    },
+    onInventoryToggleRequest: function() {
+      if(this.visible)
+        this.hide();
+      else
+        this.show();
+    },
+    show: function() {
+      this.inventoryElement.show();
+      this.visible = true;
+    },
+    hide: function() {
+      this.inventoryElement.hide();
+      this.visible = false;
     }
   };
   
   return Inventory;
 });
 
-define('apps/demo/app',['require','../../input/inputemitter','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory'],function(require) {
+define('apps/demo/app',['require','../../input/inputemitter','../../input/inputtranslator','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory'],function(require) {
 
 
   var InputEmitter = require('../../input/inputemitter');
+  var InputTranslator = require('../../input/inputtranslator');
   var Context = require('../../harness/context');
   var $ = require('jquery');
   
@@ -15481,7 +15512,8 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
       var collider = new Collider();
       var healthbars = new HealthBars(this.context);
       context.scene.add(collider);
-      var input = new InputEmitter(context);
+      var input = new InputTranslator(context.element);
+      var inputEmitter = new InputEmitter(input, context);
       
       var god = new God(context.entityFactory);
       context.scene.add(god);
@@ -15489,7 +15521,7 @@ define('apps/demo/app',['require','../../input/inputemitter','../../harness/cont
       this.connector = new ClientConnector(this.socket, this.context);
       this.connector.on('GameStarted', function(playerId) {
         self.questAsker = new QuestAsker(context.scene, playerId, $('#quest-started'));
-        self.inventory = new Inventory(context.scene, playerId);
+        self.inventory = new Inventory(input, context.scene, playerId);
       });
     }
   }

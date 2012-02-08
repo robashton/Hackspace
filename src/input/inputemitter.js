@@ -3,11 +3,11 @@ define(function(require) {
   var Coords = require('../shared/coords');
   var InputTranslator = require('./inputtranslator');
   
-  var InputEmitter = function(context) {
+  var InputEmitter = function(translator, context) {
     var self = this;
     this.scene = context.scene;
     this.context = context;
-    this.translator = new InputTranslator(context.element);
+    this.translator = translator;
     
     this.translator.on('PrimaryAction', function(data) {
       self.onPrimaryAction(data);
@@ -24,7 +24,6 @@ define(function(require) {
         x: transformed.x,
         y: transformed.y
       });
-
     },
     
     onHover: function(data) {

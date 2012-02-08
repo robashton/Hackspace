@@ -2,6 +2,7 @@ define(function(require) {
 
 
   var InputEmitter = require('../../input/inputemitter');
+  var InputTranslator = require('../../input/inputtranslator');
   var Context = require('../../harness/context');
   var $ = require('jquery');
   
@@ -26,7 +27,8 @@ define(function(require) {
       var collider = new Collider();
       var healthbars = new HealthBars(this.context);
       context.scene.add(collider);
-      var input = new InputEmitter(context);
+      var input = new InputTranslator(context.element);
+      var inputEmitter = new InputEmitter(input, context);
       
       var god = new God(context.entityFactory);
       context.scene.add(god);
@@ -34,7 +36,7 @@ define(function(require) {
       this.connector = new ClientConnector(this.socket, this.context);
       this.connector.on('GameStarted', function(playerId) {
         self.questAsker = new QuestAsker(context.scene, playerId, $('#quest-started'));
-        self.inventory = new Inventory(context.scene, playerId);
+        self.inventory = new Inventory(input, context.scene, playerId);
       });
     }
   }
