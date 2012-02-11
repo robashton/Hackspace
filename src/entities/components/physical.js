@@ -15,6 +15,7 @@ define(function(require) {
       this.size[1] = data.y;
       this.size[2] = data.z;
     },
+    
     onPositionChanged: function(data) {
       this.position[0] = data.x;
       this.position[1] = data.y;

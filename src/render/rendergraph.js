@@ -8,17 +8,32 @@ define(function(require) {
       top: 0,
       bottom: 0,
     };
+    this.items = [];
+    this.updating = false;
   };
   
-  RenderGraph.prototype = {
-    items: [],
-       
+  RenderGraph.prototype = {       
     width: function() {
       return this.viewport.right - this.viewport.left;
     },
     
     height: function() {
       return this.viewport.bottom - this.viewport.top;
+    },
+    
+    beginUpdate: function() {
+      this.updating = true;
+    },
+    
+    endUpdate: function() {
+      this.updating = false;
+      this.sortItems();
+    },
+    
+    sortItems: function() {
+       this.items = _(this.items).sortBy(function(item) {
+        return item.depth();
+       })
     },
     
     updateViewport: function(left, right, top, bottom) {
@@ -32,6 +47,8 @@ define(function(require) {
     
     add: function(item) {
       this.items.push(item);
+      if(!this.updating)
+        this.sortItems();
     },
     
     remove: function(item) {

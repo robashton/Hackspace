@@ -1,8 +1,12 @@
 define(function(require) {
 
+  var _ = require('underscore');
   var Instance = require('../render/instance');
+  var Eventable = require('../shared/eventable');
   
   var Tile = function(map, items, x, y) {
+    Eventable.call(this);
+    
     this.map = map;
     this.items = items;
     this.instances = [];
@@ -29,6 +33,11 @@ define(function(require) {
       instance.scale(template.size[0], template.size[1], template.size[2]);
       instance.translate(this.x + item.x, this.y + item.y);
       this.instances[i] = instance;
+      instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
+    },
+    onInstanceOpacityChanged: function(data, sender) {
+      console.log('Yeah, I know already');
+      this.raise('InstanceChanged');
     },
     addItem: function(x, y, template) {
       var i = this.items.length;
@@ -38,8 +47,13 @@ define(function(require) {
         template: template
       });
       this.createInstanceForItem(i);      
-    }
+    },
+    forEachInstance: function(callback, context) {
+      for(var i = 0; i < this.instances.length; i++) {
+        callback.call(context, this.instances[i]);
+      }
+    },
   };
-  
+  _.extend(Tile.prototype, Eventable.prototype);
   return Tile;  
 });

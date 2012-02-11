@@ -46,6 +46,7 @@ define(function(require) {
     this.tilebottom = -1;
     this.tileright = -1;
     this.collision = new CollisionMap(data);
+    this.needsRedrawing = false;
     
     this.on('AddedToScene', this.onAddedToScene);
   };
@@ -59,6 +60,10 @@ define(function(require) {
       this.scene.graph.add(this);   
     },
     
+    depth: function() {
+      return -1000000;
+    },
+      
     visible: function() { 
       return true; 
     },
@@ -67,6 +72,7 @@ define(function(require) {
       this.evaluateStatus(context);
       
       var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
+      
       var offsetInMapCanvas = {
         x: topLeft.x - this.graph.viewport.left,
         y: topLeft.y - this.graph.viewport.top
@@ -89,8 +95,19 @@ define(function(require) {
       context.drawImage(this.canvas, 0, 0 , this.canvas.width, this.canvas.height, offset.x * scale.y , offset.y * scale.y, this.canvas.width, this.canvas.height);
       context.restore();
     },
-        
+    
     forEachVisibleTile: function(callback) {
+      if(this.tileleft < 0) return;
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          var index = this.index(i, j);
+          var tile = this.tiles[index];
+          callback(tile);
+        }
+      }
+    },
+        
+    forEachVisibleQuad: function(callback) {
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
           var left = i * this.tilewidth;
@@ -128,9 +145,13 @@ define(function(require) {
         this.tileright = tileright;
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
+        this.needsRedrawing = true;
+      }
+      
+      if(this.needsRedrawing) {
+        this.needsRedrawing = false;
         this.redrawBackground(mainContext);
-
-      }     
+      }
     },
     
     redrawBackground: function(mainContext) {
@@ -160,7 +181,7 @@ define(function(require) {
       this.populateGraph();      
       this.renderer.clear();
       this.renderer.draw(this.graph);      
-      this.renderDebugGrid(this.context);
+      // This.renderDebugGrid(this.context);
     },
     
     renderDebugGrid: function(context) {
@@ -192,6 +213,7 @@ define(function(require) {
   
     populateGraph: function() {             
       this.graph.clear();
+      this.graph.beginUpdate();
       
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
@@ -200,6 +222,8 @@ define(function(require) {
           tile.addInstancesToGraph(this.graph);
         }
       }
+
+      this.graph.endUpdate();      
     },
     
     createModels: function(resources) {
@@ -217,8 +241,13 @@ define(function(require) {
           var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
           this.tiles[index] = tile;
           tile.createInstances();
+          tile.on('InstanceChanged', this.onTileInstanceChanged, this);
         }
       }
+    },
+    
+    onTileInstanceChanged: function() {
+      this.needsRedrawing = true;
     },
     
     tileAtCoords: function(x, y) {

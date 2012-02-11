@@ -12243,17 +12243,32 @@ define('render/rendergraph',['require','underscore'],function(require) {
       top: 0,
       bottom: 0,
     };
+    this.items = [];
+    this.updating = false;
   };
   
-  RenderGraph.prototype = {
-    items: [],
-       
+  RenderGraph.prototype = {       
     width: function() {
       return this.viewport.right - this.viewport.left;
     },
     
     height: function() {
       return this.viewport.bottom - this.viewport.top;
+    },
+    
+    beginUpdate: function() {
+      this.updating = true;
+    },
+    
+    endUpdate: function() {
+      this.updating = false;
+      this.sortItems();
+    },
+    
+    sortItems: function() {
+       this.items = _(this.items).sortBy(function(item) {
+        return item.depth();
+       })
     },
     
     updateViewport: function(left, right, top, bottom) {
@@ -12267,6 +12282,8 @@ define('render/rendergraph',['require','underscore'],function(require) {
     
     add: function(item) {
       this.items.push(item);
+      if(!this.updating)
+        this.sortItems();
     },
     
     remove: function(item) {
@@ -12344,88 +12361,6 @@ define('render/material',['require','./color'],function(require) {
   };
   return Material;
   
-});
-
-define('render/instance',['require','glmatrix'],function(require) {
-  var vec3 = require('glmatrix').vec3;
-
-  var Instance = function(model) {
-    this.model = model;
-    this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([0,0,0]);
-    this.rotation = 0;
-  };
-  
-  Instance.prototype = {
-    visible: function(viewport) {
-      return true;
-    },
-    scale: function(x, y, z) {
-      this.size[0] = x || 0;
-      this.size[1] = y || 0;
-      this.size[2] = z || 0;
-    },
-    translate: function(x, y, z) {
-      this.position[0] = x || 0;
-      this.position[1] = y || 0;
-      this.position[2] = z || 0;
-    },
-    rotate: function(x) {
-      this.rotation = x;
-    },
-    render: function(context) {     
-      this.model.upload(context);
-      this.model.render(context, this);
-    }
-  };
-  
-  return Instance;
-});
-
-define('static/tile',['require','../render/instance'],function(require) {
-
-  var Instance = require('../render/instance');
-  
-  var Tile = function(map, items, x, y) {
-    this.map = map;
-    this.items = items;
-    this.instances = [];
-    this.x = x;
-    this.y = y;
-  };
-  
-  Tile.prototype = {
-    addInstancesToGraph: function(graph) {
-      for(var i in this.instances) {
-        graph.add(this.instances[i]);
-      }
-    },
-    createInstances: function() {    
-      for(var i = 0; i < this.items.length ; i++) {
-        this.createInstanceForItem(i);
-      }
-    },
-    createInstanceForItem: function(i) {
-      var item = this.items[i];        
-      var model = this.map.models[item.template];
-      var template = this.map.templates[item.template];
-      var instance = new Instance(model);
-      instance.scale(template.size[0], template.size[1], template.size[2]);
-      instance.translate(this.x + item.x, this.y + item.y);
-      this.instances[i] = instance;
-    },
-    addItem: function(x, y, template) {
-      var i = this.items.length;
-      this.items.push({
-        x: x,
-        y: y,
-        template: template
-      });
-      this.createInstanceForItem(i);      
-    }
-  };
-  
-  return Tile;  
 });
 
 define('shared/bitfield',['require'],function(require) {
@@ -12572,24 +12507,37 @@ define('render/quad',['require','../shared/coords'],function(require) {
     upload: function(context) {
     //  this.material.upload(context);
     },
-    render: function(canvas, instance) {
-      if(this.material.diffuseTexture)
-        this.drawTexturedQuad(canvas, instance);
-      else
-        this.drawPlainQuad(canvas, instance);      
+    render: function(canvas, instance) {         
+    
+      if(this.material.diffuseTexture) {
+        this.withAlpha(canvas, instance, this.drawTexturedQuad);
+      }
+      else {
+        this.withAlpha(canvas, instance, this.drawPlainQuad);
+      }
+    },
+    withAlpha: function(canvas, instance, callback) {
+      if(instance.opacity !== undefined && instance.opacity < 1.0) {
+        canvas.globalAlpha = instance.opacity;
+        callback.call(this, canvas, instance);
+        canvas.globalAlpha = 1.0;
+      } else {
+        callback.call(this, canvas, instance);
+      }
     },
     drawTexturedQuad: function(canvas, instance) {
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
       
       var width = instance.size[0] + instance.size[1];
-      var height = instance.size[2];
+      var height = instance.size[2];      
+      var dim = instance.getQuad();
       
       canvas.drawImage(
         this.image('diffuseTexture'),
-        bottomLeft.x,
-        bottomLeft.y - height,
-        width,
-        height);
+        dim.x,
+        dim.y,
+        dim.width,
+        dim.height);
         
       this.drawFloor(canvas, instance);
     },
@@ -12646,6 +12594,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       this.size[1] = data.y;
       this.size[2] = data.z;
     },
+    
     onPositionChanged: function(data) {
       this.position[0] = data.x;
       this.position[1] = data.y;
@@ -12786,124 +12735,6 @@ define('shared/extramath',['require'],function(require) {
   
   return ExtraMath;
 
-});
-
-define('entities/components/renderable',['require','../../render/instance','../../render/material','../../render/quad','../../shared/extramath','glmatrix'],function(require) {
-
-  var Instance = require('../../render/instance');
-  var Material = require('../../render/material');
-  var Quad = require('../../render/quad');
-  var ExtraMath = require('../../shared/extramath');
-  var vec3 = require('glmatrix').vec3;
-  
-  var Renderable = function(textureName, canRotate) {
-    this.scene = null;
-    this.instance = null;
-    this.textureName = textureName;
-    this.material = null;
-    this.model = null;
-    this.canRotate = canRotate;
-    this.size = vec3.create([0,0,0]);
-    this.position = vec3.create([0,0,0]);
-    this.animationName = 'static';
-    this.animationFrame = -1;
-    this.rotation = 0;
-  };
-  
-  Renderable.prototype = {    
-    onSizeChanged: function(data) {
-      this.size[0] = data.x;
-      this.size[1] = data.y;
-      this.size[2] = data.z;
-      this.updateModel();
-    },    
-    
-    onPositionChanged: function(data) {
-      this.position[0] = data.x;
-      this.position[1] = data.y;
-      this.position[2] = data.z;
-      this.updateModel();
-    },
-    updateModel: function() {
-      this.instance.scale(this.size[0], this.size[1], this.size[2]);
-      this.instance.translate(this.position[0] - (this.size[0] / 2.0), 
-                              this.position[1] - (this.size[1] / 2.0), 
-                              this.position[2]);
-    },
-    onRotationChanged: function(data) {
-      this.rotation = data.x;
-      if(this.canRotate)
-        this.determineTextureFromRotation();
-    },
-       
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-      this.createModel();
-    },    
-    
-    createModel: function() {
-      this.material = new Material();     
-      this.model = new Quad(this.material);
-      this.instance = new Instance(this.model);
-      this.scene.graph.add(this.instance);
-      if(this.canRotate)
-        this.determineTextureFromRotation(Math.PI);
-      else
-        this.determineFixedTexture();
-    },
-    
-    determineFixedTexture: function() {
-      this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '.png');
-    },
-    
-    determineTextureFromRotation: function(rotation) {
-      var path = '/main/' + this.textureName + '/' + this.animationName + '-';
-    
-      var textureSuffix = 'up';
-      var rotation = ExtraMath.clampRotation(this.rotation);
-      
-      // Account for the isometric PoV
-      rotation += Math.PI / 4.0;
-      
-      if(rotation < Math.PI * 0.12)
-        textureSuffix = 'up';
-      else if(rotation < Math.PI * 0.37)
-        textureSuffix = 'up-right';
-      else if(rotation < Math.PI * 0.62)
-        textureSuffix = 'right';
-      else if(rotation < Math.PI * 0.87)
-        textureSuffix = 'down-right';
-      else if(rotation < Math.PI * 1.12)
-        textureSuffix = 'down';
-      else if(rotation < Math.PI * 1.37)
-        textureSuffix = 'down-left';
-      else if(rotation < Math.PI * 1.62)
-        textureSuffix = 'left';
-      else if(rotation < Math.PI * 1.87)
-        textureSuffix = 'up-left'; 
-        
-      if(this.animationFrame < 0)
-        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '.png');
- //     else if(this.animationFrame === 0)
-   //     this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '/static-' + textureSuffix + '.png');
-      else
-        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '-' + this.animationFrame + '.png'); 
-    },
-    onAnimationFrameChanged: function(frame) {
-      this.animationFrame = frame;
-      this.determineTextureFromRotation();
-    },
-    onAnimationChanged: function(data) {
-      this.animationName = data.animation;
-    },
-    
-    onRemovedFromScene: function() {
-      this.scene.graph.remove(this.instance);
-    }
-  };  
-  
-  return Renderable;
-  
 });
 
 define('entities/components/tangible',['require','glmatrix'],function(require) {
@@ -13999,6 +13830,201 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
   return Scene;  
 });
 
+define('render/instance',['require','underscore','glmatrix','../shared/coords','../shared/eventable'],function(require) {
+
+  var _ = require('underscore');
+  var vec3 = require('glmatrix').vec3;
+  var Coords = require('../shared/coords');
+  var Eventable = require('../shared/eventable');
+
+  var Instance = function(model) {
+    Eventable.call(this);
+    this.model = model;
+    this.position = vec3.create([0,0,0]);
+    this.size = vec3.create([0,0,0]);
+    this.rotation = 0;
+    this.opacity = 1.0;
+  };
+  
+  Instance.prototype = {
+    visible: function(viewport) {
+      return true;
+    },
+    scale: function(x, y, z) {
+      this.size[0] = x || 0;
+      this.size[1] = y || 0;
+      this.size[2] = z || 0;
+    },
+    setOpacity: function(value) {
+      if(this.opacity != value) {
+        this.opacity = value;
+        this.raise('OpacityChanged');
+      }
+    },
+    translate: function(x, y, z) {
+      this.position[0] = x || 0;
+      this.position[1] = y || 0;
+      this.position[2] = z || 0;
+    },
+    rotate: function(x) {
+      this.rotation = x;
+    },
+    render: function(context) {     
+      this.model.upload(context);
+      this.model.render(context, this);
+    },
+    depth: function() {
+      return Coords.worldToIsometric(this.position[0], this.position[1]).y;
+    },
+    getQuad: function() {
+      var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
+      var width = this.size[0] + this.size[1];
+      var height = this.size[2];
+      return {
+        x: bottomLeft.x,
+        y: bottomLeft.y - height,
+        width: width,
+        height: height
+      }
+    },
+    coversQuad: function(quad) {
+      var selfQuad = this.getQuad();
+      if(selfQuad.x > quad.x + quad.width) return false;
+      if(selfQuad.y > quad.y + quad.height) return false;
+      if(selfQuad.x + selfQuad.width < quad.x) return false;
+      if(selfQuad.y + selfQuad.height < quad.y) return false;
+      return true;
+    },
+  };
+  _.extend(Instance.prototype, Eventable.prototype);
+  
+  return Instance;
+});
+
+define('entities/components/renderable',['require','../../render/instance','../../render/material','../../render/quad','../../shared/extramath','glmatrix'],function(require) {
+
+  var Instance = require('../../render/instance');
+  var Material = require('../../render/material');
+  var Quad = require('../../render/quad');
+  var ExtraMath = require('../../shared/extramath');
+  var vec3 = require('glmatrix').vec3;
+  
+  var Renderable = function(textureName, canRotate) {
+    this.scene = null;
+    this.instance = null;
+    this.textureName = textureName;
+    this.material = null;
+    this.model = null;
+    this.canRotate = canRotate;
+    this.size = vec3.create([0,0,0]);
+    this.position = vec3.create([0,0,0]);
+    this.animationName = 'static';
+    this.animationFrame = -1;
+    this.rotation = 0;
+  };
+  
+  Renderable.prototype = {    
+    onSizeChanged: function(data) {
+      this.size[0] = data.x;
+      this.size[1] = data.y;
+      this.size[2] = data.z;
+      this.updateModel();
+    },    
+    
+    onPositionChanged: function(data) {
+      this.position[0] = data.x;
+      this.position[1] = data.y;
+      this.position[2] = data.z;
+      this.updateModel();
+    },
+    onAnimationFrameChanged: function(frame) {
+      this.animationFrame = frame;
+      this.determineTextureFromRotation();
+    },
+    onAnimationChanged: function(data) {
+      this.animationName = data.animation;
+    },
+    
+    onRemovedFromScene: function() {
+      this.scene.graph.remove(this.instance);
+    },
+    updateModel: function() {
+      this.instance.scale(this.size[0], this.size[1], this.size[2]);
+      this.instance.translate(this.position[0] - (this.size[0] / 2.0), 
+                              this.position[1] - (this.size[1] / 2.0), 
+                              this.position[2]);
+    },
+    onRotationChanged: function(data) {
+      this.rotation = data.x;
+      if(this.canRotate)
+        this.determineTextureFromRotation();
+    },
+       
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+      this.createModel();
+    },    
+    
+    createModel: function() {
+      this.material = new Material();     
+      this.model = new Quad(this.material);
+      this.instance = new Instance(this.model);
+      this.scene.graph.add(this.instance);
+      if(this.canRotate)
+        this.determineTextureFromRotation(Math.PI);
+      else
+        this.determineFixedTexture();
+    },
+    
+    coversQuad: function(quad) {
+      return this.instance.coversQuad(quad);
+    },
+    
+    isBehind: function(depth) {
+      return this.instance.depth() <= depth;
+    },
+    
+    determineFixedTexture: function() {
+      this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '.png');
+    },
+    
+    determineTextureFromRotation: function(rotation) {
+      var path = '/main/' + this.textureName + '/' + this.animationName + '-';
+    
+      var textureSuffix = 'up';
+      var rotation = ExtraMath.clampRotation(this.rotation);
+      
+      // Account for the isometric PoV
+      rotation += Math.PI / 4.0;
+      
+      if(rotation < Math.PI * 0.12)
+        textureSuffix = 'up';
+      else if(rotation < Math.PI * 0.37)
+        textureSuffix = 'up-right';
+      else if(rotation < Math.PI * 0.62)
+        textureSuffix = 'right';
+      else if(rotation < Math.PI * 0.87)
+        textureSuffix = 'down-right';
+      else if(rotation < Math.PI * 1.12)
+        textureSuffix = 'down';
+      else if(rotation < Math.PI * 1.37)
+        textureSuffix = 'down-left';
+      else if(rotation < Math.PI * 1.62)
+        textureSuffix = 'left';
+      else if(rotation < Math.PI * 1.87)
+        textureSuffix = 'up-left'; 
+        
+      if(this.animationFrame < 0)
+        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '.png');
+      else
+        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '-' + this.animationFrame + '.png'); 
+    }
+  };  
+  
+  return Renderable;
+  
+});
+
 define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
   var _ = require('underscore');
   var Eventable = require('../shared/eventable');
@@ -14316,6 +14342,9 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
       this.scene = scene;
       this.scene.graph.add(this);
     },
+    depth: function() {
+      return -1000000;
+    },
     visible: function() {
       return true;
     },
@@ -14326,7 +14355,7 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
       context.lineWidth = 0.25;
           
       context.beginPath();
-      this.map.forEachVisibleTile(function(left, top, right, bottom) {
+      this.map.forEachVisibleQuad(function(left, top, right, bottom) {
       
         var topleft = Coords.worldToIsometric(left, top);
         var topright = Coords.worldToIsometric(right, top);        
@@ -14348,6 +14377,66 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
   
   return Grid;
 
+});
+
+define('static/tile',['require','underscore','../render/instance','../shared/eventable'],function(require) {
+
+  var _ = require('underscore');
+  var Instance = require('../render/instance');
+  var Eventable = require('../shared/eventable');
+  
+  var Tile = function(map, items, x, y) {
+    Eventable.call(this);
+    
+    this.map = map;
+    this.items = items;
+    this.instances = [];
+    this.x = x;
+    this.y = y;
+  };
+  
+  Tile.prototype = {
+    addInstancesToGraph: function(graph) {
+      for(var i in this.instances) {
+        graph.add(this.instances[i]);
+      }
+    },
+    createInstances: function() {    
+      for(var i = 0; i < this.items.length ; i++) {
+        this.createInstanceForItem(i);
+      }
+    },
+    createInstanceForItem: function(i) {
+      var item = this.items[i];        
+      var model = this.map.models[item.template];
+      var template = this.map.templates[item.template];
+      var instance = new Instance(model);
+      instance.scale(template.size[0], template.size[1], template.size[2]);
+      instance.translate(this.x + item.x, this.y + item.y);
+      this.instances[i] = instance;
+      instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
+    },
+    onInstanceOpacityChanged: function(data, sender) {
+      console.log('Yeah, I know already');
+      this.raise('InstanceChanged');
+    },
+    addItem: function(x, y, template) {
+      var i = this.items.length;
+      this.items.push({
+        x: x,
+        y: y,
+        template: template
+      });
+      this.createInstanceForItem(i);      
+    },
+    forEachInstance: function(callback, context) {
+      for(var i = 0; i < this.instances.length; i++) {
+        callback.call(context, this.instances[i]);
+      }
+    },
+  };
+  _.extend(Tile.prototype, Eventable.prototype);
+  return Tile;  
 });
 
 define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid'],function(require) {
@@ -14398,6 +14487,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.tilebottom = -1;
     this.tileright = -1;
     this.collision = new CollisionMap(data);
+    this.needsRedrawing = false;
     
     this.on('AddedToScene', this.onAddedToScene);
   };
@@ -14411,6 +14501,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
       this.scene.graph.add(this);   
     },
     
+    depth: function() {
+      return -1000000;
+    },
+      
     visible: function() { 
       return true; 
     },
@@ -14419,6 +14513,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       this.evaluateStatus(context);
       
       var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
+      
       var offsetInMapCanvas = {
         x: topLeft.x - this.graph.viewport.left,
         y: topLeft.y - this.graph.viewport.top
@@ -14441,8 +14536,19 @@ define('static/map',['require','underscore','../render/material','../render/quad
       context.drawImage(this.canvas, 0, 0 , this.canvas.width, this.canvas.height, offset.x * scale.y , offset.y * scale.y, this.canvas.width, this.canvas.height);
       context.restore();
     },
-        
+    
     forEachVisibleTile: function(callback) {
+      if(this.tileleft < 0) return;
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          var index = this.index(i, j);
+          var tile = this.tiles[index];
+          callback(tile);
+        }
+      }
+    },
+        
+    forEachVisibleQuad: function(callback) {
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
           var left = i * this.tilewidth;
@@ -14480,9 +14586,13 @@ define('static/map',['require','underscore','../render/material','../render/quad
         this.tileright = tileright;
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
+        this.needsRedrawing = true;
+      }
+      
+      if(this.needsRedrawing) {
+        this.needsRedrawing = false;
         this.redrawBackground(mainContext);
-
-      }     
+      }
     },
     
     redrawBackground: function(mainContext) {
@@ -14512,7 +14622,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       this.populateGraph();      
       this.renderer.clear();
       this.renderer.draw(this.graph);      
-      this.renderDebugGrid(this.context);
+      // This.renderDebugGrid(this.context);
     },
     
     renderDebugGrid: function(context) {
@@ -14544,6 +14654,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
   
     populateGraph: function() {             
       this.graph.clear();
+      this.graph.beginUpdate();
       
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
@@ -14552,6 +14663,8 @@ define('static/map',['require','underscore','../render/material','../render/quad
           tile.addInstancesToGraph(this.graph);
         }
       }
+
+      this.graph.endUpdate();      
     },
     
     createModels: function(resources) {
@@ -14569,8 +14682,13 @@ define('static/map',['require','underscore','../render/material','../render/quad
           var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
           this.tiles[index] = tile;
           tile.createInstances();
+          tile.on('InstanceChanged', this.onTileInstanceChanged, this);
         }
       }
+    },
+    
+    onTileInstanceChanged: function() {
+      this.needsRedrawing = true;
     },
     
     tileAtCoords: function(x, y) {

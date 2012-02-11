@@ -17,6 +17,9 @@ define(function(require) {
       this.scene = scene;
       this.scene.graph.add(this);
     },
+    depth: function() {
+      return -1000000;
+    },
     visible: function() {
       return true;
     },
@@ -27,7 +30,7 @@ define(function(require) {
       context.lineWidth = 0.25;
           
       context.beginPath();
-      this.map.forEachVisibleTile(function(left, top, right, bottom) {
+      this.map.forEachVisibleQuad(function(left, top, right, bottom) {
       
         var topleft = Coords.worldToIsometric(left, top);
         var topright = Coords.worldToIsometric(right, top);        

@@ -10,24 +10,37 @@ define(function(require) {
     upload: function(context) {
     //  this.material.upload(context);
     },
-    render: function(canvas, instance) {
-      if(this.material.diffuseTexture)
-        this.drawTexturedQuad(canvas, instance);
-      else
-        this.drawPlainQuad(canvas, instance);      
+    render: function(canvas, instance) {         
+    
+      if(this.material.diffuseTexture) {
+        this.withAlpha(canvas, instance, this.drawTexturedQuad);
+      }
+      else {
+        this.withAlpha(canvas, instance, this.drawPlainQuad);
+      }
+    },
+    withAlpha: function(canvas, instance, callback) {
+      if(instance.opacity !== undefined && instance.opacity < 1.0) {
+        canvas.globalAlpha = instance.opacity;
+        callback.call(this, canvas, instance);
+        canvas.globalAlpha = 1.0;
+      } else {
+        callback.call(this, canvas, instance);
+      }
     },
     drawTexturedQuad: function(canvas, instance) {
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
       
       var width = instance.size[0] + instance.size[1];
-      var height = instance.size[2];
+      var height = instance.size[2];      
+      var dim = instance.getQuad();
       
       canvas.drawImage(
         this.image('diffuseTexture'),
-        bottomLeft.x,
-        bottomLeft.y - height,
-        width,
-        height);
+        dim.x,
+        dim.y,
+        dim.width,
+        dim.height);
         
       this.drawFloor(canvas, instance);
     },

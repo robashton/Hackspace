@@ -34,6 +34,17 @@ define(function(require) {
       this.position[2] = data.z;
       this.updateModel();
     },
+    onAnimationFrameChanged: function(frame) {
+      this.animationFrame = frame;
+      this.determineTextureFromRotation();
+    },
+    onAnimationChanged: function(data) {
+      this.animationName = data.animation;
+    },
+    
+    onRemovedFromScene: function() {
+      this.scene.graph.remove(this.instance);
+    },
     updateModel: function() {
       this.instance.scale(this.size[0], this.size[1], this.size[2]);
       this.instance.translate(this.position[0] - (this.size[0] / 2.0), 
@@ -60,6 +71,14 @@ define(function(require) {
         this.determineTextureFromRotation(Math.PI);
       else
         this.determineFixedTexture();
+    },
+    
+    coversQuad: function(quad) {
+      return this.instance.coversQuad(quad);
+    },
+    
+    isBehind: function(depth) {
+      return this.instance.depth() <= depth;
     },
     
     determineFixedTexture: function() {
@@ -94,21 +113,8 @@ define(function(require) {
         
       if(this.animationFrame < 0)
         this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '.png');
- //     else if(this.animationFrame === 0)
-   //     this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '/static-' + textureSuffix + '.png');
       else
         this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '-' + this.animationFrame + '.png'); 
-    },
-    onAnimationFrameChanged: function(frame) {
-      this.animationFrame = frame;
-      this.determineTextureFromRotation();
-    },
-    onAnimationChanged: function(data) {
-      this.animationName = data.animation;
-    },
-    
-    onRemovedFromScene: function() {
-      this.scene.graph.remove(this.instance);
     }
   };  
   

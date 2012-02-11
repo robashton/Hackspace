@@ -40,7 +40,8 @@ define(function(require) {
       entity._in(item.sync);
       this.context.scene.add(entity);  
     },
-    populateSceneFromMessage: function(data) {   
+    populateSceneFromMessage: function(data) {  
+
       this.playerId = data.playerid; 
       for(var id in data.entities) {
         var item = data.entities[id];
@@ -50,7 +51,7 @@ define(function(require) {
       var controller = new Controller(commander);
       var chase = new ChaseCamera(this.context.scene, data.playerid);
       this.context.scene.add(controller);
-      this.loadMap(data.map);
+      this.loadMap(data.map); 
     },
     loadMap: function(path) {
       var mapResource = this.context.resources.get(path);
