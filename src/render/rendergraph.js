@@ -56,10 +56,16 @@ define(function(require) {
       var canvasWidth = canvas.width;
       var canvasHeight = canvas.height;
       
-      var scalex = canvasWidth / (this.viewport.right - this.viewport.left);
-      var scaley = canvasHeight / (this.viewport.bottom - this.viewport.top);
+      var scale = this.getScaleForDimensions(canvasWidth, canvasHeight);
       
-      context.scale(scalex, scaley);
+      context.scale(scale.x, scale.y);
+    },
+    
+    getScaleForDimensions: function(width, height) {
+      return {
+        x: width / (this.viewport.right - this.viewport.left),
+        y: height / (this.viewport.bottom - this.viewport.top)
+      };
     },
     
     pass: function(callback) {

@@ -10,6 +10,7 @@ define(function(require) {
   var Tile = require('./tile');
   var CollisionMap = require('./collisionmap');
   var Coords = require('../shared/coords');
+  var Grid = require('../editor/grid');
 
 
   var Map = function(data) {
@@ -24,11 +25,18 @@ define(function(require) {
     this.tilecountwidth = data.tilecountwidth;
     this.tilecountheight = data.tilecountheight;
     
+    var tileBottomRight = Coords.worldToIsometric(this.tilewidth, this.tileheight);
+    var tileTopRight = Coords.worldToIsometric(this.tilewidth, 0);
+    var tileBottomLeft = Coords.worldToIsometric(0, this.tileheight);
+        
+    this.renderTileWidth = tileTopRight.x - tileBottomLeft.x;
+    this.renderTileHeight = tileBottomRight.y;
+    
     this.tiles = new Array(this.tilecountwidth * this.tilecountheight);
     this.models = {};  
     this.scene = null;
     this.instanceTiles = null;
-    this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
+    this.canvas =  document.createElement('canvas'); // document.getElementById('source');  // 
     this.context = this.canvas.getContext('2d');
     this.graph = new RenderGraph();
     this.renderer = new CanvasRender(this.context);  
@@ -55,22 +63,30 @@ define(function(require) {
       return true; 
     },
     
-    render: function(context) {
+    render: function(context) {      
+      this.evaluateStatus(context);
       
-      if(this.canvas.width !== context.canvas.width || this.canvas.height !== context.canvas.height) {
-          this.canvas.width = context.canvas.width;
-          this.canvas.height = context.canvas.height;
+      var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
+      var offsetInMapCanvas = {
+        x: topLeft.x - this.graph.viewport.left,
+        y: topLeft.y - this.graph.viewport.top
       };
-
-      this.evaluateStatus();
-
-      this.raise('Debug', [this.tileleft, this.tileright, this.tiletop, this.tilebottom]);
+      
+      var offsetInWorldCanvas = {
+        x: topLeft.x - this.scene.graph.viewport.left,
+        y: topLeft.y - this.scene.graph.viewport.top
+      };     
+      
+      var offset = {
+        x: offsetInWorldCanvas.x - offsetInMapCanvas.x,
+        y: offsetInWorldCanvas.y - offsetInMapCanvas.y
+      };
+      
+      var scale = this.scene.graph.getScaleForDimensions(context.canvas.width, context.canvas.height);
       
       context.save();
-      context.setTransform(1,0,0,1,0,0);          
-                
-      context.drawImage(this.canvas, 0, 0, context.canvas.width, context.canvas.height);
-      
+      context.setTransform(1,0,0,1,0,0);  
+      context.drawImage(this.canvas, 0, 0 , this.canvas.width, this.canvas.height, offset.x * scale.y , offset.y * scale.y, this.canvas.width, this.canvas.height);
       context.restore();
     },
         
@@ -86,7 +102,7 @@ define(function(require) {
       }
     },
     
-    evaluateStatus: function() {
+    evaluateStatus: function(mainContext) {
     
       var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
       var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
@@ -95,8 +111,8 @@ define(function(require) {
       
       var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
       var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
-      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) + 1;
-      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) + 1;
+      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) ;
+      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) ;
       
       tileleft = Math.max(tileleft, 0);
       tiletop = Math.max(tiletop, 0);
@@ -106,36 +122,80 @@ define(function(require) {
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 
          tileright !== this.tileright ||
-         tilebottom !== this.tilebottom) {
-         
+         tilebottom !== this.tilebottom) {        
+                 
         this.tileleft = tileleft;
         this.tileright = tileright;
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
-      }
-      this.redrawBackground();
+        this.redrawBackground(mainContext);
+
+      }     
     },
     
-    redrawBackground: function() { 
-     
+    redrawBackground: function(mainContext) {
+      
+      // So we know how many units we'll need in order to render all the  current partially visible tiles
+      var worldWidth = ((this.tileright + 1) - this.tileleft) * this.renderTileWidth;
+      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * this.renderTileHeight;
+      
+      // Then of course we need to know where the viewport starts
+      var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
+      var bottomLeft = Coords.worldToIsometric(this.tileleft * this.tilewidth, (this.tilebottom + 1) * this.tileheight);
+      
+      // That gives us the ability to set up the viewport
       this.graph.updateViewport(
-        this.scene.graph.viewport.left,
-        this.scene.graph.viewport.right,
-        this.scene.graph.viewport.top,
-        this.scene.graph.viewport.bottom      
+         bottomLeft.x,
+         bottomLeft.x + worldWidth,
+         topLeft.y,
+         topLeft.y + worldHeight
       );
+           
+      // This is very well and good, but our personal canvas needs to be sized appropriately for this so sizes match up
+      var mainScaleFactor = this.scene.graph.getScaleForDimensions(mainContext.canvas.width, mainContext.canvas.height);
+      this.canvas.width = this.graph.width() * mainScaleFactor.x;
+      this.canvas.height = this.graph.height() * mainScaleFactor.y;
         
+      // And with that all set, we can render all the visible tiles
       this.populateGraph();      
       this.renderer.clear();
       this.renderer.draw(this.graph);      
+      this.renderDebugGrid(this.context);
+    },
+    
+    renderDebugGrid: function(context) {
+      context.save(); 
+      
+      this.graph.uploadTransforms(context);
+      
+      context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
+      context.lineWidth = 0.25;
+          
+      context.beginPath();
+      this.forEachVisibleTile(function(left, top, right, bottom) {
+      
+        var topleft = Coords.worldToIsometric(left, top);
+        var topright = Coords.worldToIsometric(right, top);        
+        var bottomright = Coords.worldToIsometric(right, bottom);
+        var bottomleft = Coords.worldToIsometric(left, bottom);
+         
+        context.moveTo(topleft.x, topleft.y);
+        context.lineTo(topright.x, topright.y);
+        context.lineTo(bottomright.x, bottomright.y);
+        context.lineTo(bottomleft.x, bottomleft.y);
+        context.lineTo(topleft.x, topleft.y);
+      });
+      context.stroke();
+      context.restore();
+    
     },
   
     populateGraph: function() {             
       this.graph.clear();
       
-      for(var x = 0; x < this.tilecountwidth; x++) {
-        for(var y = 0; y < this.tilecountheight ; y++) {
-          var index = this.index(x, y);
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          var index = this.index(i, j);
           var tile = this.tiles[index];
           tile.addInstancesToGraph(this.graph);
         }

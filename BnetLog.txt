@@ -1,7 +1,0 @@
-2/6 20:53:11.777  Connecting to Battle.net...
-2/6 20:53:11.789      querying gateway europe.battle.net
-2/6 20:53:11.849      searching for the fastest server
-2/6 20:53:11.916      Connected to server 213.248.106.68
-2/6 20:53:11.926      accessing accounts
-2/6 20:53:12.017      Checking for the latest version
-2/6 20:53:12.161      Connected to Battle.net
