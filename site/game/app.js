@@ -3749,7 +3749,9 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
   Tile.prototype = {
     addInstancesToGraph: function(graph) {
       for(var i in this.instances) {
-        graph.add(this.instances[i]);
+        var instance = this.instances[i];
+        if(instance.opacity < 1.0) continue;
+        graph.add(instance);
       }
     },
     createInstances: function() {    
@@ -3768,8 +3770,7 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
       instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
     },
     onInstanceOpacityChanged: function(data, sender) {
-      console.log('Yeah, I know already');
-      this.raise('InstanceChanged');
+      this.raise('InstanceOpacityChanged', sender);
     },
     addItem: function(x, y, template) {
       var i = this.items.length;
@@ -4142,12 +4143,18 @@ define('static/map',['require','underscore','../render/material','../render/quad
           var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
           this.tiles[index] = tile;
           tile.createInstances();
-          tile.on('InstanceChanged', this.onTileInstanceChanged, this);
+          tile.on('InstanceOpacityChanged', this.onTileInstanceOpacityChanged, this);
         }
       }
     },
     
-    onTileInstanceChanged: function() {
+    onTileInstanceOpacityChanged: function(instance) {
+      if(instance.opacity < 1.0) {
+        this.scene.graph.add(instance);
+      } else {
+        this.scene.graph.remove(instance);
+      }
+    
       this.needsRedrawing = true;
     },
     

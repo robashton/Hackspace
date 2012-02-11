@@ -241,12 +241,18 @@ define(function(require) {
           var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
           this.tiles[index] = tile;
           tile.createInstances();
-          tile.on('InstanceChanged', this.onTileInstanceChanged, this);
+          tile.on('InstanceOpacityChanged', this.onTileInstanceOpacityChanged, this);
         }
       }
     },
     
-    onTileInstanceChanged: function() {
+    onTileInstanceOpacityChanged: function(instance) {
+      if(instance.opacity < 1.0) {
+        this.scene.graph.add(instance);
+      } else {
+        this.scene.graph.remove(instance);
+      }
+    
       this.needsRedrawing = true;
     },
     

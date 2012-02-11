@@ -17,7 +17,9 @@ define(function(require) {
   Tile.prototype = {
     addInstancesToGraph: function(graph) {
       for(var i in this.instances) {
-        graph.add(this.instances[i]);
+        var instance = this.instances[i];
+        if(instance.opacity < 1.0) continue;
+        graph.add(instance);
       }
     },
     createInstances: function() {    
@@ -36,8 +38,7 @@ define(function(require) {
       instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
     },
     onInstanceOpacityChanged: function(data, sender) {
-      console.log('Yeah, I know already');
-      this.raise('InstanceChanged');
+      this.raise('InstanceOpacityChanged', sender);
     },
     addItem: function(x, y, template) {
       var i = this.items.length;
