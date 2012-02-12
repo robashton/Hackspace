@@ -11,6 +11,7 @@ define(function(require) {
   var CollisionMap = require('./collisionmap');
   var Coords = require('../shared/coords');
   var Grid = require('../editor/grid');
+  var Floor = require('./floor');
 
 
   var Map = function(data) {
@@ -55,6 +56,7 @@ define(function(require) {
   
     onAddedToScene: function(scene) {
       this.scene = scene; 
+      this.createFloor(scene.resources);
       this.createModels(scene.resources);
       this.createInstances();
       this.scene.graph.add(this);   
@@ -181,19 +183,18 @@ define(function(require) {
       this.populateGraph();      
       this.renderer.clear();
       this.renderer.draw(this.graph);      
-      // This.renderDebugGrid(this.context);
+ //     this.renderDebugGrid(this.context);
     },
     
     renderDebugGrid: function(context) {
       context.save(); 
-      
       this.graph.uploadTransforms(context);
       
       context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
-      context.lineWidth = 0.25;
+      context.lineWidth = 1.25;
           
       context.beginPath();
-      this.forEachVisibleTile(function(left, top, right, bottom) {
+      this.forEachVisibleQuad(function(left, top, right, bottom) {
       
         var topleft = Coords.worldToIsometric(left, top);
         var topright = Coords.worldToIsometric(right, top);        
@@ -226,12 +227,27 @@ define(function(require) {
       this.graph.endUpdate();      
     },
     
+    createFloor: function(resources) {
+      this.floor = new Floor(resources);
+    },
+    
     createModels: function(resources) {
       this.models = {};
       for(var t in this.templates) {
         var template = this.templates[t];
         this.createModelForTemplate(template);     
       }
+      this.createModelForTemplate({
+        id: 'testtile',
+        texture: '/main/testtile.png'
+      });
+    },
+    
+    createModelForTemplate: function(template) {
+      var material = new Material();
+      material.diffuseTexture = this.scene.resources.get(template.texture);
+      this.models[template.id] = new Quad(material);
+      return this.models[template.id];
     },
     
     createInstances: function() {    
@@ -263,13 +279,7 @@ define(function(require) {
       return this.tiles[index];
     },
           
-    createModelForTemplate: function(template) {
-      var material = new Material();
-      material.diffuseTexture = this.scene.resources.get(template.texture);
-      this.models[template.id] = new Quad(material);
-      return this.models[template.id];
-    },    
-    
+
     index: function(x, y) {
       return x + y * this.tilecountwidth;
     },

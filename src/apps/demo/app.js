@@ -34,7 +34,6 @@ define(function(require) {
       
       var god = new God(context.entityFactory);
       context.scene.add(god);
-
       
       this.connector = new ClientConnector(this.socket, this.context);
       this.playerId = null;

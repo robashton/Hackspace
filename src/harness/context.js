@@ -92,12 +92,10 @@ define(function(require) {
         self.scene.tick();
       }, 1000 / 30);
       
-      var renderAnimFrame = findRequestAnimationFrame();
-      var render = function() {
+      setInterval(function() {    
         self.scene.render();
-        renderAnimFrame(render);
-      };      
-      render();      
+      }, 1000 / 30);
+           
     },
     createEntity: function(type, id, data) {
       return this.entityFactory.create(type, id, data);

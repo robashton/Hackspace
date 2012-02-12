@@ -3459,13 +3459,8 @@ define('render/quad',['require','../shared/coords'],function(require) {
         callback.call(this, canvas, instance);
       }
     },
-    drawTexturedQuad: function(canvas, instance) {
-      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
-      
-      var width = instance.size[0] + instance.size[1];
-      var height = instance.size[2];      
-      var dim = instance.getQuad();
-      
+    drawTexturedQuad: function(canvas, instance) {  
+      var dim = instance.getQuad();      
       canvas.drawImage(
         this.image('diffuseTexture'),
         dim.x,
@@ -3473,19 +3468,15 @@ define('render/quad',['require','../shared/coords'],function(require) {
         dim.width,
         dim.height);
         
-      this.drawFloor(canvas, instance);
+   //   this.drawFloor(canvas, instance);
     },
     drawPlainQuad: function(canvas, instance) {
-      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
-      
-      var width = instance.size[0] + instance.size[1];
-      var height = instance.size[2];
-          
+      var dim = instance.getQuad();          
       canvas.fillRect(
-        bottomLeft.x,
-        bottomLeft.y - height,
-        width,
-        height);
+        dim.x,
+        dim.y,
+        dim.width,
+        dim.height);
     },
     image: function(name) {
        return this.material[name].get()
@@ -3525,6 +3516,7 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
     this.size = vec3.create([0,0,0]);
     this.rotation = 0;
     this.opacity = 1.0;
+    this.forcedDepth = null;
   };
   
   Instance.prototype = {
@@ -3555,7 +3547,10 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
       this.model.render(context, this);
     },
     depth: function() {
-      return Coords.worldToIsometric(this.position[0], this.position[1]).y;
+      return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;
+    },
+    forceDepth: function(value) {
+      this.forcedDepth = value;
     },
     getQuad: function() {
       var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
@@ -3730,11 +3725,12 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('static/tile',['require','underscore','../render/instance','../shared/eventable'],function(require) {
+define('static/tile',['require','underscore','../render/instance','../shared/eventable','../shared/coords'],function(require) {
 
   var _ = require('underscore');
   var Instance = require('../render/instance');
   var Eventable = require('../shared/eventable');
+  var Coords = require('../shared/coords');
   
   var Tile = function(map, items, x, y) {
     Eventable.call(this);
@@ -3742,12 +3738,14 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
     this.map = map;
     this.items = items;
     this.instances = [];
+    this.floorInstance = null;
     this.x = x;
     this.y = y;
   };
   
   Tile.prototype = {
     addInstancesToGraph: function(graph) {
+      graph.add(this.floorInstance);
       for(var i in this.instances) {
         var instance = this.instances[i];
         if(instance.opacity < 1.0) continue;
@@ -3758,6 +3756,18 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
       for(var i = 0; i < this.items.length ; i++) {
         this.createInstanceForItem(i);
       }
+      this.createFloor();
+    },
+    createFloor: function() {
+      var transformedCoords = Coords.worldToIsometric(this.x, this.y);
+      transformedCoords.y += this.map.renderTileHeight / 2.0;
+      
+      var floorCoords = Coords.isometricToWorld(transformedCoords.x, transformedCoords.y);
+      
+      this.floorInstance = new Instance(this.map.models['testtile']);
+      this.floorInstance.scale(this.map.renderTileWidth, 0, this.map.renderTileHeight);
+      this.floorInstance.translate(floorCoords.x , floorCoords.y + this.map.renderTileHeight , 0);
+      this.floorInstance.forceDepth(-10000 + this.floorInstance.depth());
     },
     createInstanceForItem: function(i) {
       var item = this.items[i];        
@@ -3900,7 +3910,24 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
 
 });
 
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid'],function(require) {
+define('static/floor',['require','underscore','../render/material','../render/quad'],function(require) {
+  var _ = require('underscore');
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  
+  var Floor = function(resources) {
+
+    
+  };
+  
+  Floor.prototype = {
+  
+  };
+  
+  return Floor;
+});
+
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./floor'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -3913,6 +3940,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var CollisionMap = require('./collisionmap');
   var Coords = require('../shared/coords');
   var Grid = require('../editor/grid');
+  var Floor = require('./floor');
 
 
   var Map = function(data) {
@@ -3957,6 +3985,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
   
     onAddedToScene: function(scene) {
       this.scene = scene; 
+      this.createFloor(scene.resources);
       this.createModels(scene.resources);
       this.createInstances();
       this.scene.graph.add(this);   
@@ -4083,19 +4112,18 @@ define('static/map',['require','underscore','../render/material','../render/quad
       this.populateGraph();      
       this.renderer.clear();
       this.renderer.draw(this.graph);      
-      // This.renderDebugGrid(this.context);
+ //     this.renderDebugGrid(this.context);
     },
     
     renderDebugGrid: function(context) {
       context.save(); 
-      
       this.graph.uploadTransforms(context);
       
       context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
-      context.lineWidth = 0.25;
+      context.lineWidth = 1.25;
           
       context.beginPath();
-      this.forEachVisibleTile(function(left, top, right, bottom) {
+      this.forEachVisibleQuad(function(left, top, right, bottom) {
       
         var topleft = Coords.worldToIsometric(left, top);
         var topright = Coords.worldToIsometric(right, top);        
@@ -4128,12 +4156,27 @@ define('static/map',['require','underscore','../render/material','../render/quad
       this.graph.endUpdate();      
     },
     
+    createFloor: function(resources) {
+      this.floor = new Floor(resources);
+    },
+    
     createModels: function(resources) {
       this.models = {};
       for(var t in this.templates) {
         var template = this.templates[t];
         this.createModelForTemplate(template);     
       }
+      this.createModelForTemplate({
+        id: 'testtile',
+        texture: '/main/testtile.png'
+      });
+    },
+    
+    createModelForTemplate: function(template) {
+      var material = new Material();
+      material.diffuseTexture = this.scene.resources.get(template.texture);
+      this.models[template.id] = new Quad(material);
+      return this.models[template.id];
     },
     
     createInstances: function() {    
@@ -4165,13 +4208,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       return this.tiles[index];
     },
           
-    createModelForTemplate: function(template) {
-      var material = new Material();
-      material.diffuseTexture = this.scene.resources.get(template.texture);
-      this.models[template.id] = new Quad(material);
-      return this.models[template.id];
-    },    
-    
+
     index: function(x, y) {
       return x + y * this.tilecountwidth;
     },
@@ -15092,12 +15129,10 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
         self.scene.tick();
       }, 1000 / 30);
       
-      var renderAnimFrame = findRequestAnimationFrame();
-      var render = function() {
+      setInterval(function() {    
         self.scene.render();
-        renderAnimFrame(render);
-      };      
-      render();      
+      }, 1000 / 30);
+           
     },
     createEntity: function(type, id, data) {
       return this.entityFactory.create(type, id, data);
@@ -15572,7 +15607,7 @@ define('network/clientconnector',['require','underscore','../entities/controller
       var map = new Map(mapResource.get());
       this.context.scene.add(map);
       this.grid = new Grid(map);
-      this.context.scene.add(this.grid); 
+ //     this.context.scene.add(this.grid); 
     }
   };
   _.extend(ClientConnector.prototype, Eventable.prototype);
@@ -15835,7 +15870,6 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
       
       var god = new God(context.entityFactory);
       context.scene.add(god);
-
       
       this.connector = new ClientConnector(this.socket, this.context);
       this.playerId = null;

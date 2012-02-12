@@ -58,7 +58,7 @@ define(function(require) {
       var map = new Map(mapResource.get());
       this.context.scene.add(map);
       this.grid = new Grid(map);
-      this.context.scene.add(this.grid); 
+ //     this.context.scene.add(this.grid); 
     }
   };
   _.extend(ClientConnector.prototype, Eventable.prototype);

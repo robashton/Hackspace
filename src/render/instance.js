@@ -12,6 +12,7 @@ define(function(require) {
     this.size = vec3.create([0,0,0]);
     this.rotation = 0;
     this.opacity = 1.0;
+    this.forcedDepth = null;
   };
   
   Instance.prototype = {
@@ -42,7 +43,10 @@ define(function(require) {
       this.model.render(context, this);
     },
     depth: function() {
-      return Coords.worldToIsometric(this.position[0], this.position[1]).y;
+      return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;
+    },
+    forceDepth: function(value) {
+      this.forcedDepth = value;
     },
     getQuad: function() {
       var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
