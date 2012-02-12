@@ -15430,19 +15430,22 @@ define('entities/god',['require','underscore','../scene/entity','../scripting/it
   return God;
 });
 
-define('entities/controller',['require','underscore','../scene/entity','../shared/coords'],function(require) {
+define('entities/controller',['require','underscore','../scene/entity','jquery','../shared/coords'],function(require) {
 
   var _ = require('underscore');
   var Entity = require('../scene/entity');
+  var $ = require('jquery');
   var Coords = require('../shared/coords');
 
-  var Controller = function(commander) {
+  var Controller = function(element, commander) {
     Entity.call(this, "controller");   
     this.scene = null;        
     this.on('AddedToScene', this.hookSceneEvents);
     this.x = 0;
     this.y = 0;   
     this.commander = commander;
+    this.element = $(element);
+    this.isHovering = false;
   };  
   
   Controller.prototype = {
@@ -15457,10 +15460,12 @@ define('entities/controller',['require','underscore','../scene/entity','../share
   
     determineWhatMouseIsOver: function() {
       var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
-      if(selectedEntity) {
-        console.log(selectedEntity.id);
-      } else {
-      
+      if(selectedEntity && !this.isHovering) {
+        this.element.css('cursor', 'pointer');
+        this.isHovering = true;
+      } else if(!selectedEntity && this.isHovering) {
+        this.element.css('cursor', 'default');
+        this.isHovering = false;
       }    
     },
     
@@ -15598,7 +15603,7 @@ define('network/clientconnector',['require','underscore','../entities/controller
         this.addEntityFromData(id, item);
       }      
       var commander = new Commander(this.socket, this.context.scene, data.playerid);
-      var controller = new Controller(commander);
+      var controller = new Controller(this.context.element, commander);
       var chase = new ChaseCamera(this.context.scene, data.playerid);
       this.context.scene.add(controller);
       this.loadMap(data.map); 

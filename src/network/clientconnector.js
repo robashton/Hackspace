@@ -48,7 +48,7 @@ define(function(require) {
         this.addEntityFromData(id, item);
       }      
       var commander = new Commander(this.socket, this.context.scene, data.playerid);
-      var controller = new Controller(commander);
+      var controller = new Controller(this.context.element, commander);
       var chase = new ChaseCamera(this.context.scene, data.playerid);
       this.context.scene.add(controller);
       this.loadMap(data.map); 
