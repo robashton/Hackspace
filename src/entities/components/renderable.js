@@ -5,6 +5,7 @@ define(function(require) {
   var Quad = require('../../render/quad');
   var ExtraMath = require('../../shared/extramath');
   var vec3 = require('glmatrix').vec3;
+  var Coords = require('../../shared/coords');
   
   var Renderable = function(textureName, canRotate) {
     this.scene = null;
@@ -60,7 +61,22 @@ define(function(require) {
     onAddedToScene: function(scene) {
       this.scene = scene;
       this.createModel();
-    },    
+    }, 
+    
+    intersectWithMouse: function(x, y) {
+    
+      var mouse = Coords.worldToIsometric(x, y);  
+      var model = this.instance.getQuad();
+      
+      
+              
+      if(mouse.x < model.x) return false;
+      if(mouse.x > model.x + model.width) return false;
+      if(mouse.y < model.y) return false;
+      if(mouse.y > model.y + model.height) return false;
+      
+      return true;
+    }, 
     
     createModel: function() {
       this.material = new Material();     

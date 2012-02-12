@@ -50,22 +50,7 @@ define(function(require) {
         self.collideWithMap(map);
       });      
     },
-    
-    intersectWithMouse: function(x, y) {
-    
-      var mouse = { x: x, y: y};  
-      var model = { 
-        x: this.position[0] - this.size[0] / 2.0, 
-        y: this.position[1] - this.size[1] / 2.0
-      };
-              
-      if(mouse.x < model.x) return false;
-      if(mouse.x > model.x + this.size[0]) return false;
-      if(mouse.y < model.y) return false;
-      if(mouse.y > model.y + this.size[1]) return false;
-      
-      return true;
-    },
+   
     getBounds: function() {
       return {
         x: this.position[0],

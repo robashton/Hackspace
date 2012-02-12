@@ -26,7 +26,7 @@ define(function(require) {
     determineWhatMouseIsOver: function() {
       var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
       if(selectedEntity) {
-      //  console.log(selectedEntity.id);
+        console.log(selectedEntity.id);
       } else {
       
       }    

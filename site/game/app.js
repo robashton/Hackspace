@@ -4276,22 +4276,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         self.collideWithMap(map);
       });      
     },
-    
-    intersectWithMouse: function(x, y) {
-    
-      var mouse = { x: x, y: y};  
-      var model = { 
-        x: this.position[0] - this.size[0] / 2.0, 
-        y: this.position[1] - this.size[1] / 2.0
-      };
-              
-      if(mouse.x < model.x) return false;
-      if(mouse.x > model.x + this.size[0]) return false;
-      if(mouse.y < model.y) return false;
-      if(mouse.y > model.y + this.size[1]) return false;
-      
-      return true;
-    },
+   
     getBounds: function() {
       return {
         x: this.position[0],
@@ -4384,13 +4369,14 @@ define('shared/extramath',['require'],function(require) {
 
 });
 
-define('entities/components/renderable',['require','../../render/instance','../../render/material','../../render/quad','../../shared/extramath','glmatrix'],function(require) {
+define('entities/components/renderable',['require','../../render/instance','../../render/material','../../render/quad','../../shared/extramath','glmatrix','../../shared/coords'],function(require) {
 
   var Instance = require('../../render/instance');
   var Material = require('../../render/material');
   var Quad = require('../../render/quad');
   var ExtraMath = require('../../shared/extramath');
   var vec3 = require('glmatrix').vec3;
+  var Coords = require('../../shared/coords');
   
   var Renderable = function(textureName, canRotate) {
     this.scene = null;
@@ -4446,7 +4432,22 @@ define('entities/components/renderable',['require','../../render/instance','../.
     onAddedToScene: function(scene) {
       this.scene = scene;
       this.createModel();
-    },    
+    }, 
+    
+    intersectWithMouse: function(x, y) {
+    
+      var mouse = Coords.worldToIsometric(x, y);  
+      var model = this.instance.getQuad();
+      
+      
+              
+      if(mouse.x < model.x) return false;
+      if(mouse.x > model.x + model.width) return false;
+      if(mouse.y < model.y) return false;
+      if(mouse.y > model.y + model.height) return false;
+      
+      return true;
+    }, 
     
     createModel: function() {
       this.material = new Material();     
@@ -15457,7 +15458,7 @@ define('entities/controller',['require','underscore','../scene/entity','../share
     determineWhatMouseIsOver: function() {
       var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
       if(selectedEntity) {
-      //  console.log(selectedEntity.id);
+        console.log(selectedEntity.id);
       } else {
       
       }    
