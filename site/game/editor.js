@@ -12568,23 +12568,6 @@ define('render/quad',['require','../shared/coords'],function(require) {
   return Quad;
 });
 
-define('static/floor',['require','underscore','../render/material','../render/quad'],function(require) {
-  var _ = require('underscore');
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  
-  var Floor = function(resources) {
-
-    
-  };
-  
-  Floor.prototype = {
-  
-  };
-  
-  return Floor;
-});
-
 define('entities/components/physical',['require','glmatrix','../../shared/coords'],function(require) {
 
   var vec3 = require('glmatrix').vec3;
@@ -14468,7 +14451,7 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
   return Tile;  
 });
 
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./floor'],function(require) {
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -14481,7 +14464,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var CollisionMap = require('./collisionmap');
   var Coords = require('../shared/coords');
   var Grid = require('../editor/grid');
-  var Floor = require('./floor');
 
 
   var Map = function(data) {
@@ -14526,7 +14508,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
   
     onAddedToScene: function(scene) {
       this.scene = scene; 
-      this.createFloor(scene.resources);
       this.createModels(scene.resources);
       this.createInstances();
       this.scene.graph.add(this);   
@@ -14556,15 +14537,33 @@ define('static/map',['require','underscore','../render/material','../render/quad
       };     
       
       var offset = {
-        x: offsetInWorldCanvas.x - offsetInMapCanvas.x,
-        y: offsetInWorldCanvas.y - offsetInMapCanvas.y
+        x: offsetInMapCanvas.x - offsetInWorldCanvas.x,
+        y: offsetInMapCanvas.y - offsetInWorldCanvas.y
       };
       
       var scale = this.scene.graph.getScaleForDimensions(context.canvas.width, context.canvas.height);
       
+      var sx = offset.x, sy = offset.y;
+      var sw = context.canvas.width, sh = context.canvas.height;
+      var dx = 0, dy = 0;
+      var dw = context.canvas.width, dh = context.canvas.height;
+      
+      if(offset.x < 0) {
+        sx = 0; 
+        dx = offset.x;
+        sw += offset.x;
+        dw += offset.x;
+      }
+      if(offset.y < 0) {
+        sy = 0; 
+        dy = -offset.y;
+        sh += offset.y;
+        dh += offset.y;
+      }
+      
       context.save();
       context.setTransform(1,0,0,1,0,0);  
-      context.drawImage(this.canvas, 0, 0 , this.canvas.width, this.canvas.height, offset.x * scale.y , offset.y * scale.y, this.canvas.width, this.canvas.height);
+      context.drawImage(this.canvas, sx * scale.x, sy * scale.y , sw, sh, dx * scale.x, dy * scale.y , dw, dh);
       context.restore();
     },
     
@@ -14695,10 +14694,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
       }
 
       this.graph.endUpdate();      
-    },
-    
-    createFloor: function(resources) {
-      this.floor = new Floor(resources);
     },
     
     createModels: function(resources) {
