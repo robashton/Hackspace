@@ -7,6 +7,7 @@ define(function(require) {
   var QuestWatcher = require('../entities/questwatcher');
   var QuestFactory = require('../scripting/questfactory');
   var InventoryWatcher = require('../entities/inventorywatcher');
+  var EntitySpawner = require('../entities/entityspawner');
   
   var ShardEntry = function(map, persistence) {
     Eventable.call(this);
@@ -48,6 +49,22 @@ define(function(require) {
       this.quests = new QuestWatcher(this.context.scene, this.persistence, new QuestFactory());
       this.inventories = new InventoryWatcher(this.context.scene, this.persistence);      
       this.persistence.startMonitoring(this.context.scene);   
+
+      // And the fixed spawners for now
+      var spiderSpawner = new EntitySpawner('spiders-one', {
+        x: 1000,
+        y: 1000,
+        z: 0,
+        radius: 100,
+        type: 'monster',
+        rate: 30,
+        maxcount: 5,
+        template: {
+          texture: 'spider'
+        } 
+      });
+      this.context.scene.add(spiderSpawner);
+      
       this.raise('SceneLoaded');  
     },
     
@@ -164,18 +181,8 @@ define(function(require) {
             y: 100
           }
         }    
-      };
-                  
-     for(var i = 0; i < 20; i++) {     
-        entities['monster-' + i] = {
-          type: 'monster',
-          data: {
-            x: Math.random() * 1000 + 200,
-            y: Math.random() * 1000 + 200,
-            texture: 'spider'
-          }        
-        };
-      } 
+      };               
+
       return entities;   
     }
   };

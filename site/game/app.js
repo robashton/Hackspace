@@ -3364,11 +3364,13 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       this.entities.push(entity);
       this.entitiesById[entity.id] = entity;
       entity.setScene(this);
+      this.raise('EntityAdded', entity.id);
     },
     remove: function(entity) {
       this.entities = _(this.entities).without(entity);
       delete this.entitiesById[entity.id];
       entity.setScene(null);
+      this.raise('EntityRemoved', entity.id);
     },
     
     dispatchDirect: function(id, command, args) {
@@ -5591,13 +5593,15 @@ define('entities/npcfactory',['require','underscore','./npc'],function(require) 
   return NpcFactory;
 });
 
-define('entities/entityfactory',['require','underscore','./characterfactory','./monsterfactory','./npcfactory'],function(require) {
+define('entities/entityfactory',['require','underscore','./characterfactory','./monsterfactory','./npcfactory','../shared/eventable'],function(require) {
   var _ = require('underscore');
   var CharacterFactory = require('./characterfactory');
   var MonsterFactory = require('./monsterfactory');
   var NpcFactory = require('./npcfactory');
+  var Eventable = require('../shared/eventable');
 
   var EntityFactory = function() {
+    Eventable.call(this);
     this.factories = {
       "character": new CharacterFactory(),
       "monster": new MonsterFactory(),
@@ -5607,9 +5611,18 @@ define('entities/entityfactory',['require','underscore','./characterfactory','./
   
   EntityFactory.prototype = {
     create: function(type, id, data) {
-      return this.factories[type].create(id, data);
+      var entity =  this.factories[type].create(id, data);
+      this.raise('EntityCreated', {
+        data: data,
+        id: id,
+        entity: entity,
+        type: type
+      });
+      return entity;
     }
   };
+  
+  _.extend(EntityFactory.prototype, Eventable.prototype);
   
   return EntityFactory;
 });

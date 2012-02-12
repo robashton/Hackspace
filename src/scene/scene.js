@@ -80,11 +80,13 @@ define(function(require) {
       this.entities.push(entity);
       this.entitiesById[entity.id] = entity;
       entity.setScene(this);
+      this.raise('EntityAdded', entity.id);
     },
     remove: function(entity) {
       this.entities = _(this.entities).without(entity);
       delete this.entitiesById[entity.id];
       entity.setScene(null);
+      this.raise('EntityRemoved', entity.id);
     },
     
     dispatchDirect: function(id, command, args) {

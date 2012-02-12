@@ -14,6 +14,7 @@ define(function(require) {
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('site/game/assets.json');
     this.entityFactory = new EntityFactory();
+    this.entityFactory.on('EntityCreated', this.onEntityCreated, this);
   };
   
   ServerContext.prototype = {    
@@ -27,10 +28,13 @@ define(function(require) {
       }, 1000 / 30);   
     },
     createEntity: function(type, id, data) {
-      var entity = this.entityFactory.create(type, id, data);
-      entity.$CreationData = data;
-      entity.$Type = type;
-      return entity;
+      return this.entityFactory.create(type, id, data);
+    },
+    onEntityCreated: function(ev) {
+      // Attach meta-data for serializing to client
+      var entity = ev.entity;
+      entity.$CreationData = ev.data;
+      entity.$Type = ev.type;   
     },
     getSerializedEntities: function() {
       var data = {};
