@@ -14321,6 +14321,76 @@ define('entities/monsterfactory',['require','underscore','./monster'],function(r
   return MonsterFactory;
 });
 
+define('entities/entityspawner',['require','underscore','glmatrix','../scene/entity'],function(require) {
+  var _ = require('underscore');
+  var vec3 = require('glmatrix').vec3;
+  var Entity = require('../scene/entity');
+  
+  var EntitySpawner = function(id, data) {
+    Entity.call(this, id);
+    this.radius = data.radius;
+    this.position = vec3.create([data.x,data.y,data.z]);
+    this.type = data.type;
+    this.rate = data.rate;
+    this.ticks = 0;
+    this.maxcount = data.maxcount;
+    this.currentCount = 0;
+    this.scene = null;
+    this.template = data.template;
+    this.ownedEntities = {};
+    this.on('AddedToScene', this.onAddedToScene, this);
+    this.on('Tick', this.onTick, this);
+  };
+  
+  EntitySpawner.prototype = {
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+      scene.on('EntityRemoved', this.onEntityRemoved, this);
+    },
+    onTick: function() {
+      ++this.ticks;
+      if(this.currentCount < this.maxcount && (this.ticks % this.rate === 0))
+        this.spawn();
+    },
+    onEntityRemoved: function(id) {
+      if(this.ownedEntities[id]) {
+        delete this.ownedEntities[id];
+        this.currentCount--;      
+      }
+    },
+    spawn: function() {
+      var data = this.template;
+      data.x = this.position[0];
+      data.y = this.position[1];
+      var id = this.type + parseInt(Math.random() * 1000000);
+      this.scene.dispatch('god', 'createEntity', [ id, this.type, data ]);
+      this.currentCount++;
+      this.ownedEntities[id] = {};
+    }
+  };
+  
+  _.extend(EntitySpawner.prototype, Entity.prototype);
+  
+  return EntitySpawner;
+});
+
+define('entities/entityspawnerfactory',['require','underscore','./entityspawner'],function(require) {
+  var _ = require('underscore');
+  var EntitySpawner = require('./entityspawner');
+  
+  var EntitySpawnerFactory = function() {
+  
+  };
+  
+  EntitySpawnerFactory.prototype = {
+    create: function(id, data) {
+      return new EntitySpawner(id, data);
+    }
+  };
+  
+  return EntitySpawnerFactory;
+});
+
 define('editor/grid',['require','underscore','../scene/entity','../shared/coords'],function(require) {
   
   var _ = require('underscore');
@@ -14779,13 +14849,13 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
 
   var MapBuilder = function(data) {
     Map.call(this, data);
-    this.entities = data.entities;
+    this.entities = data.entities || {};
   };
   
   MapBuilder.prototype = {
   
     addEntity: function(id, type, data) {
-    
+      console.log(id, type, data);
       this.entities[id] = {
         type: type,
         data: data
@@ -14875,10 +14945,6 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
       tile.addItem(local.x, local.y, template.id);
       
       this.needsRedrawing = true;            
-    },
-    
-    addEntity: function(type, data) {
-      
     },
     
     addTemplate: function(template) {
@@ -15054,19 +15120,21 @@ define('entities/npcfactory',['require','underscore','./npc'],function(require) 
   return NpcFactory;
 });
 
-define('entities/entityfactory',['require','underscore','./characterfactory','./monsterfactory','./npcfactory','../shared/eventable'],function(require) {
+define('entities/entityfactory',['require','underscore','./characterfactory','./monsterfactory','./npcfactory','../shared/eventable','./entityspawnerfactory'],function(require) {
   var _ = require('underscore');
   var CharacterFactory = require('./characterfactory');
   var MonsterFactory = require('./monsterfactory');
   var NpcFactory = require('./npcfactory');
   var Eventable = require('../shared/eventable');
+  var EntitySpawnerFactory = require('./entityspawnerfactory');
 
   var EntityFactory = function() {
     Eventable.call(this);
     this.factories = {
       "character": new CharacterFactory(),
       "monster": new MonsterFactory(),
-      "npc": new NpcFactory()
+      "npc": new NpcFactory(),
+      "spawner": new EntitySpawnerFactory() // This shouldn't be here as it is server only, doh
     };
   };
   
@@ -15384,7 +15452,7 @@ define('editor/staticelement',['require','underscore','../render/material','../r
   return StaticElement;
 });
 
-define('editor/dynamicelement',['require','underscore','../render/material','../render/quad','../render/instance'],function(require) {
+define('editor/entityelement',['require','underscore','../render/material','../render/quad','../render/instance'],function(require) {
   var _ = require('underscore');
   var Material = require('../render/material');
   var Quad = require('../render/quad');
@@ -15440,10 +15508,10 @@ define('editor/dynamicelement',['require','underscore','../render/material','../
   return EntityElement;
 });
 
-define('editor/library',['require','./libraryitemtool','./staticelement','./dynamicelement'],function(require) {
+define('editor/library',['require','./libraryitemtool','./staticelement','./entityelement'],function(require) {
   var LibraryItemTool = require('./libraryitemtool');
   var StaticElement = require('./staticelement');
-  var DynamicElement = require('./dynamicelement');
+  var EntityElement = require('./entityelement');
   
   var ConstLibraryElements = {
    tree: new StaticElement({
@@ -15453,11 +15521,12 @@ define('editor/library',['require','./libraryitemtool','./staticelement','./dyna
       texture: "/main/tree.png",
       solid: true
     }),
-   spawnzone: new DynamicElement({
+   spawnzone: new EntityElement({
       id: "spawnzone",
       size: [ 12, 12, 25 ],
       collision: [12, 12],    
       texture: "/main/spider.png",
+      type: 'spawner',
       data: {
         z: 0,
         radius: 100,

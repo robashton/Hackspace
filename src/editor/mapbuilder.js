@@ -7,13 +7,13 @@ define(function(require) {
 
   var MapBuilder = function(data) {
     Map.call(this, data);
-    this.entities = data.entities;
+    this.entities = data.entities || {};
   };
   
   MapBuilder.prototype = {
   
     addEntity: function(id, type, data) {
-    
+      console.log(id, type, data);
       this.entities[id] = {
         type: type,
         data: data
@@ -103,10 +103,6 @@ define(function(require) {
       tile.addItem(local.x, local.y, template.id);
       
       this.needsRedrawing = true;            
-    },
-    
-    addEntity: function(type, data) {
-      
     },
     
     addTemplate: function(template) {

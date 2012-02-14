@@ -35,11 +35,13 @@ define(function(require) {
     
     initializeScene: function() {
     
-      var mapResource = this.context.resources.get('/main/world.json');      
-      this.map = new Map(mapResource.get());
+      var mapResource = this.context.resources.get('/main/world.json');
+      var mapData = mapResource.get();
+      this.map = new Map(mapData);
       this.context.scene.add(this.map);
-    
-      var entities = this.getDefaultSceneData();
+      
+      var entities = mapData.entities;
+      this.addDefaultSceneData(entities);
       for(var id in entities) {
         var item = entities[id];
         var entity = this.context.createEntity(item.type, id, item.data);
@@ -55,24 +57,7 @@ define(function(require) {
       
       this.quests = new QuestWatcher(this.context.scene, this.persistence, new QuestFactory());
       this.inventories = new InventoryWatcher(this.context.scene, this.persistence);      
-      this.persistence.startMonitoring(this.context.scene);   
-      
-      
-
-      // And the fixed spawners for now
-      var spiderSpawner = new EntitySpawner('spiders-one', {
-        x: 1000,
-        y: 1000,
-        z: 0,
-        radius: 100,
-        type: 'monster',
-        rate: 30,
-        maxcount: 5,
-        template: {
-          texture: 'spider'
-        } 
-      });
-      this.context.scene.add(spiderSpawner);
+      this.persistence.startMonitoring(this.context.scene);
       
       this.raise('SceneLoaded');  
     },
@@ -180,19 +165,14 @@ define(function(require) {
       });
     },    
     
-    getDefaultSceneData: function() {
-
-     var entities = {
-        'quest-giver': {
-          type: 'npc',
-          data: {
-            x: 150,
-            y: 100
-          }
-        }    
-      };               
-
-      return entities;   
+    addDefaultSceneData: function(data) {
+      data['quest-giver'] = {
+        type: 'npc',
+        data: {
+          x: 150,
+          y: 100
+        }
+      };              
     }
   };
   _.extend(ShardEntry.prototype, Eventable.prototype);

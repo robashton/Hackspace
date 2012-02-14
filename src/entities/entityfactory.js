@@ -4,13 +4,15 @@ define(function(require) {
   var MonsterFactory = require('./monsterfactory');
   var NpcFactory = require('./npcfactory');
   var Eventable = require('../shared/eventable');
+  var EntitySpawnerFactory = require('./entityspawnerfactory');
 
   var EntityFactory = function() {
     Eventable.call(this);
     this.factories = {
       "character": new CharacterFactory(),
       "monster": new MonsterFactory(),
-      "npc": new NpcFactory()
+      "npc": new NpcFactory(),
+      "spawner": new EntitySpawnerFactory() // This shouldn't be here as it is server only, doh
     };
   };
   
