@@ -49,6 +49,8 @@ define(function(require) {
       this.quests = new QuestWatcher(this.context.scene, this.persistence, new QuestFactory());
       this.inventories = new InventoryWatcher(this.context.scene, this.persistence);      
       this.persistence.startMonitoring(this.context.scene);   
+      
+      
 
       // And the fixed spawners for now
       var spiderSpawner = new EntitySpawner('spiders-one', {

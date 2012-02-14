@@ -1,6 +1,7 @@
 define(function(require) {
   var LibraryItemTool = require('./libraryitemtool');
   var StaticElement = require('./staticelement');
+  var DynamicElement = require('./dynamicelement');
   
   var ConstLibraryElements = {
    tree: new StaticElement({
@@ -9,7 +10,23 @@ define(function(require) {
       collision: [12, 12],    
       texture: "/main/tree.png",
       solid: true
-    }) 
+    }),
+   spawnzone: new DynamicElement({
+      id: "spawnzone",
+      size: [ 12, 12, 25 ],
+      collision: [12, 12],    
+      texture: "/main/spider.png",
+      data: {
+        z: 0,
+        radius: 100,
+        type: 'monster',
+        rate: 30,
+        maxcount: 5,
+        template: {
+          texture: 'spider'
+        } 
+      }
+   })
   };
 
   var Library = function(editor) {
