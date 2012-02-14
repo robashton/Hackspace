@@ -8,10 +8,11 @@ define(function(require) {
   var QuestFactory = require('../scripting/questfactory');
   var InventoryWatcher = require('../entities/inventorywatcher');
   var EntitySpawner = require('../entities/entityspawner');
+  var Map = require('../static/map');
   
   var ShardEntry = function(map, persistence) {
     Eventable.call(this);
-    this.map = map;
+    this.mapPath = map;
     this.communication = null;
     this.context = null;
     this.persistence = persistence;
@@ -22,6 +23,7 @@ define(function(require) {
   };
   
   ShardEntry.prototype = {
+  
     setupScene: function() {
       var self = this;
       this.context = new ServerContext({
@@ -32,6 +34,11 @@ define(function(require) {
     },
     
     initializeScene: function() {
+    
+      var mapResource = this.context.resources.get('/main/world.json');      
+      this.map = new Map(mapResource.get());
+      this.context.scene.add(this.map);
+    
       var entities = this.getDefaultSceneData();
       for(var id in entities) {
         var item = entities[id];
@@ -110,7 +117,7 @@ define(function(require) {
     initializePlayer: function(socket, id) {
       var data = {
         playerid: id,
-        map: this.map,
+        map: this.mapPath,
         entities: this.context.getSerializedEntities()
       };
       socket.emit('Init', data);

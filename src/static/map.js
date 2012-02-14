@@ -36,10 +36,10 @@ define(function(require) {
     this.models = {};  
     this.scene = null;
     this.instanceTiles = null;
-    this.canvas =  document.createElement('canvas'); // document.getElementById('source');  // 
-    this.context = this.canvas.getContext('2d');
-    this.graph = new RenderGraph();
-    this.renderer = new CanvasRender(this.context);  
+    this.canvas = null; // document.createElement('canvas'); // document.getElementById('source');  // 
+    this.context = null; //this.canvas.getContext('2d');
+    this.graph = null; //new RenderGraph();
+    this.renderer = null; //new CanvasRender(this.context);  
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -137,7 +137,15 @@ define(function(require) {
       }
     },
     
+    initializeContext: function() {
+      this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
+      this.context = this.canvas.getContext('2d');
+      this.graph = new RenderGraph();
+      this.renderer = new CanvasRender(this.context);  
+    },
+    
     evaluateStatus: function(mainContext) {
+      if(!this.canvas) this.initializeContext();
     
       var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
       var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
