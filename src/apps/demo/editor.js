@@ -35,7 +35,6 @@ define(function(require) {
 
       var mapResource = this.context.resources.get('/main/world.json');      
       this.map = new MapBuilder(mapResource.get());
-            this.map.updateTemplatesFromLibrary(this.library);
       this.context.scene.add(this.map);
 
       this.grid = new Grid(this.map);

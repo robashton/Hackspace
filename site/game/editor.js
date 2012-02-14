@@ -14852,12 +14852,7 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
      
       tile.addItem(local.x, local.y, template.id);
       
-      this.redrawBackground();             
-    },
-    updateTemplatesFromLibrary: function(library) {
-      for(var i in this.templates) {
-        this.templates[i] = library.getLibraryElement(i);
-      }
+      this.needsRedrawing = true;            
     },
     addTemplate: function(template) {
       this.templates[template.id] = template;
@@ -15262,39 +15257,11 @@ define('editor/input',['require','../shared/eventable','underscore','jquery'],fu
 
 });
 
-define('editor/commands/addinstancetomap',['require'],function(require) {
-
-  var AddInstanceToMap = function(x, y, template) {
-    this.x = x;
-    this.y = y;
-    this.template = template;  
-  };
-  
-  AddInstanceToMap.prototype = {
-    execute: function(editor) {
-      editor.map.addStatic(this.template, this.x, this.y);
-    }
-  };
-  
-  return AddInstanceToMap;
-
-});
-
-define('editor/libraryitemtool',['require','../render/material','../render/quad','../render/instance','./commands/addinstancetomap'],function(require) {
-
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  var Instance = require('../render/instance');
-  var AddInstanceToMap = require('./commands/addinstancetomap');
+define('editor/libraryitemtool',['require'],function(require) {
 
   var LibraryItemTool = function(editor, element) {
     this.editor = editor;
     this.element = element;
-    this.material = new Material();
-    this.material.diffuseTexture = editor.context.resources.get(element.texture);
-    this.quad = new Quad(this.material);
-    this.instance = new Instance(this.quad);
-    this.instance.scale(element.size[0], element.size[1], element.size[2]);
   };
   
   LibraryItemTool.prototype = {
@@ -15304,6 +15271,7 @@ define('editor/libraryitemtool',['require','../render/material','../render/quad'
       this.editor.input.on('enter', this.oninputenter, this);
       this.editor.input.on('leave', this.oninputleave, this);
       this.editor.input.on('action', this.oninputaction, this);
+      this.element.activate(this.editor);
     },
     deactivate: function() {
      this.editor.cursor('default');
@@ -15311,36 +15279,24 @@ define('editor/libraryitemtool',['require','../render/material','../render/quad'
      this.editor.input.off('enter', this.oninputenter, this);
      this.editor.input.off('leave', this.oninputleave, this);
      this.editor.input.off('action', this.oninputaction, this);
-     this.hideModel();
+     this.element.deactivate(this.editor);
     },
     oninputmove: function(e) {
-      this.updateModel();
+      this.element.update();
     },  
     oninputenter: function() {
-     this.showModel();
+     this.element.show();
     },
     oninputleave: function() {
-     this.hideModel();
+     this.element.hide();
     },
     oninputaction: function() {
       var coords = this.editor.input.getInputPageCoords();
       coords = this.editor.context.pageCoordsToWorldCoords(coords.x, coords.y);
       this.addInstanceToMapAt(coords.x, coords.y);
     },
-    addInstanceToMapAt: function(x, y) {      
-      this.editor.executeCommand(new AddInstanceToMap(x, y, this.element));
-    },
-    showModel: function() {
-      this.updateModel();
-      this.editor.context.scene.graph.add(this.instance);
-    },
-    hideModel: function() {
-      this.editor.context.scene.graph.remove(this.instance);
-    },
-    updateModel: function() {
-      var coords = this.editor.input.getInputPageCoords();
-      coords = this.editor.context.pageCoordsToWorldCoords(coords.x, coords.y);
-      this.instance.translate(coords.x, coords.y, 0);
+    addInstanceToMapAt: function(x, y) {
+      this.element.execute(x, y, this.editor);  
     }
   };
   
@@ -15348,17 +15304,71 @@ define('editor/libraryitemtool',['require','../render/material','../render/quad'
 
 });
 
-define('editor/library',['require','./libraryitemtool'],function(require) {
+define('editor/staticelement',['require','underscore','../render/material','../render/quad','../render/instance'],function(require) {
+  var _ = require('underscore');
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var Instance = require('../render/instance');
+  
+  var StaticElement = function(template) {
+    this.template = template;
+  };
+  
+  StaticElement.prototype = {
+    execute: function(x, y) {
+      this.editor.map.addStatic(this.template, x, y);
+    },
+    displayTexture: function() {
+      return this.template.texture;
+    },
+    activate: function(editor) {
+      this.editor = editor;
+      if(!this.instance)
+        this.createModel();
+    },
+    deactivate: function() {
+      // Might clean up, might not
+    },
+    
+    show: function() {
+      this.update();
+      this.editor.context.scene.graph.add(this.instance);
+    },
+    
+    hide: function() {
+      this.editor.context.scene.graph.remove(this.instance);
+    },
+
+    update: function() {
+      var coords = this.editor.input.getInputPageCoords();
+      coords = this.editor.context.pageCoordsToWorldCoords(coords.x, coords.y);
+      this.instance.translate(coords.x, coords.y, 0);
+    },
+
+    createModel: function() {
+      this.material = new Material();
+      this.material.diffuseTexture = this.editor.context.resources.get(this.template.texture);
+      this.quad = new Quad(this.material);
+      this.instance = new Instance(this.quad);
+      this.instance.scale(this.template.size[0], this.template.size[1], this.template.size[2]);
+    }
+  };
+  
+  return StaticElement;
+});
+
+define('editor/library',['require','./libraryitemtool','./staticelement'],function(require) {
   var LibraryItemTool = require('./libraryitemtool');
+  var StaticElement = require('./staticelement');
   
   var ConstLibraryElements = {
-   tree: {
+   tree: new StaticElement({
       id: "tree",
       size: [ 25, 25, 50 ],
       collision: [12, 12],    
       texture: "/main/tree.png",
       solid: true
-    } 
+    }) 
   };
 
   var Library = function(editor) {
@@ -15383,10 +15393,11 @@ define('editor/library',['require','./libraryitemtool'],function(require) {
             .addClass('library-element')
             .append(
               $('<img />')
-                .attr('src', "data:image/png;base64," + this.editor.context.resources.getData(item.texture))
+                .attr('src', "data:image/png;base64," + this.editor.context.resources.getData(item.displayTexture()))
             )
             .data('element', item);
-        this.element.append(itemElement);      
+        this.element.append(itemElement);
+       
       }
       
       $('.library-element').on('click', function() {
@@ -15557,7 +15568,6 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
 
       var mapResource = this.context.resources.get('/main/world.json');      
       this.map = new MapBuilder(mapResource.get());
-            this.map.updateTemplatesFromLibrary(this.library);
       this.context.scene.add(this.map);
 
       this.grid = new Grid(this.map);

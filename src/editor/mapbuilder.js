@@ -88,12 +88,7 @@ define(function(require) {
      
       tile.addItem(local.x, local.y, template.id);
       
-      this.redrawBackground();             
-    },
-    updateTemplatesFromLibrary: function(library) {
-      for(var i in this.templates) {
-        this.templates[i] = library.getLibraryElement(i);
-      }
+      this.needsRedrawing = true;            
     },
     addTemplate: function(template) {
       this.templates[template.id] = template;

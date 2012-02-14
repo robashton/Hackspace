@@ -1,18 +1,8 @@
 define(function(require) {
 
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  var Instance = require('../render/instance');
-  var AddInstanceToMap = require('./commands/addinstancetomap');
-
   var LibraryItemTool = function(editor, element) {
     this.editor = editor;
     this.element = element;
-    this.material = new Material();
-    this.material.diffuseTexture = editor.context.resources.get(element.texture);
-    this.quad = new Quad(this.material);
-    this.instance = new Instance(this.quad);
-    this.instance.scale(element.size[0], element.size[1], element.size[2]);
   };
   
   LibraryItemTool.prototype = {
@@ -22,6 +12,7 @@ define(function(require) {
       this.editor.input.on('enter', this.oninputenter, this);
       this.editor.input.on('leave', this.oninputleave, this);
       this.editor.input.on('action', this.oninputaction, this);
+      this.element.activate(this.editor);
     },
     deactivate: function() {
      this.editor.cursor('default');
@@ -29,36 +20,24 @@ define(function(require) {
      this.editor.input.off('enter', this.oninputenter, this);
      this.editor.input.off('leave', this.oninputleave, this);
      this.editor.input.off('action', this.oninputaction, this);
-     this.hideModel();
+     this.element.deactivate(this.editor);
     },
     oninputmove: function(e) {
-      this.updateModel();
+      this.element.update();
     },  
     oninputenter: function() {
-     this.showModel();
+     this.element.show();
     },
     oninputleave: function() {
-     this.hideModel();
+     this.element.hide();
     },
     oninputaction: function() {
       var coords = this.editor.input.getInputPageCoords();
       coords = this.editor.context.pageCoordsToWorldCoords(coords.x, coords.y);
       this.addInstanceToMapAt(coords.x, coords.y);
     },
-    addInstanceToMapAt: function(x, y) {      
-      this.editor.executeCommand(new AddInstanceToMap(x, y, this.element));
-    },
-    showModel: function() {
-      this.updateModel();
-      this.editor.context.scene.graph.add(this.instance);
-    },
-    hideModel: function() {
-      this.editor.context.scene.graph.remove(this.instance);
-    },
-    updateModel: function() {
-      var coords = this.editor.input.getInputPageCoords();
-      coords = this.editor.context.pageCoordsToWorldCoords(coords.x, coords.y);
-      this.instance.translate(coords.x, coords.y, 0);
+    addInstanceToMapAt: function(x, y) {
+      this.element.execute(x, y, this.editor);  
     }
   };
   

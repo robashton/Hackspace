@@ -1,14 +1,15 @@
 define(function(require) {
   var LibraryItemTool = require('./libraryitemtool');
+  var StaticElement = require('./staticelement');
   
   var ConstLibraryElements = {
-   tree: {
+   tree: new StaticElement({
       id: "tree",
       size: [ 25, 25, 50 ],
       collision: [12, 12],    
       texture: "/main/tree.png",
       solid: true
-    } 
+    }) 
   };
 
   var Library = function(editor) {
@@ -33,10 +34,11 @@ define(function(require) {
             .addClass('library-element')
             .append(
               $('<img />')
-                .attr('src', "data:image/png;base64," + this.editor.context.resources.getData(item.texture))
+                .attr('src', "data:image/png;base64," + this.editor.context.resources.getData(item.displayTexture()))
             )
             .data('element', item);
-        this.element.append(itemElement);      
+        this.element.append(itemElement);
+       
       }
       
       $('.library-element').on('click', function() {
