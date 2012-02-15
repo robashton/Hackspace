@@ -13,7 +13,6 @@ define(function(require) {
   MapBuilder.prototype = {
   
     addEntity: function(id, type, data) {
-      console.log(id, type, data);
       this.entities[id] = {
         type: type,
         data: data

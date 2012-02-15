@@ -32,6 +32,7 @@ define(function(require) {
     },
     onEntityCreated: function(ev) {
       // Attach meta-data for serializing to client
+      console.log('Attaching meta data');
       var entity = ev.entity;
       entity.$CreationData = ev.data;
       entity.$Type = ev.type;   

@@ -3646,6 +3646,7 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
         this.queueCommand(command, data);
       else
         this.dispatchCommand(command, data);
+        
     },
     
     queueCommand: function(command, data) {
@@ -4264,6 +4265,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         this.position[1] + data.y,
         this.position[2]
       ]); 
+      console.log(this.position[0], this.position[1]);
     },
     
     onCollided: function(data) {
@@ -4301,12 +4303,13 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         y: 0,
         collided: false
       };
-      this.collideWithTop(map, result);
-      this.collideWithRight(map, result);
-      this.collideWithBottom(map, result);
-      this.collideWithLeft(map, result);   
+      if(!this.collideWithTop(map, result))
+        this.collideWithBottom(map, result);
+      if(!this.collideWithRight(map, result))
+        this.collideWithLeft(map, result);   
       
       if(result.collided) {
+        console.log(this.parent.id, result.x, result.y);
         this.parent.raise('ClippedTerrain', result);   
       }    
     },
@@ -4319,6 +4322,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         result.collided = true;
       }
       result.y += d;
+      return d !== 0;
     },
     collideWithRight: function(map, result) {
       var x = result.x + this.position[0] + this.size[0];
@@ -4329,6 +4333,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         result.collided = true;
       }
       result.x += d;
+      return d !== 0;
     },
     collideWithBottom: function(map, result) {
       var x = result.x + this.position[0] + (this.size[0] / 2.0);
@@ -4339,6 +4344,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         result.collided = true;
       }
       result.y += d;
+      return d !== 0;
     },
     collideWithLeft: function(map, result) {
       var x = result.x + this.position[0];
@@ -4349,6 +4355,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         result.collided = true;
       }
       result.x += d;
+      return d !== 0;
     }    
   };  
   

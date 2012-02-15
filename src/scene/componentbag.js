@@ -65,6 +65,7 @@ define(function(require) {
         this.queueCommand(command, data);
       else
         this.dispatchCommand(command, data);
+        
     },
     
     queueCommand: function(command, data) {

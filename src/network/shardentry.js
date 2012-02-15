@@ -39,7 +39,7 @@ define(function(require) {
       var mapData = mapResource.get();
       this.map = new Map(mapData);
       this.context.scene.add(this.map);
-      
+
       var entities = mapData.entities;
       this.addDefaultSceneData(entities);
       for(var id in entities) {
