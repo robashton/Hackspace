@@ -12527,6 +12527,10 @@ define('render/quad',['require','../shared/coords'],function(require) {
     },
     drawTexturedQuad: function(canvas, instance) {  
       var dim = instance.getQuad();      
+      
+      if(instance.drawFloor)
+         this.drawFloor(canvas, instance);
+         
       canvas.drawImage(
         this.image('diffuseTexture'),
         dim.x,
@@ -12534,7 +12538,7 @@ define('render/quad',['require','../shared/coords'],function(require) {
         dim.width,
         dim.height);
         
-   //   this.drawFloor(canvas, instance);
+
     },
     drawPlainQuad: function(canvas, instance) {
       var dim = instance.getQuad();          
@@ -12553,8 +12557,9 @@ define('render/quad',['require','../shared/coords'],function(require) {
       var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
       
-      canvas.strokeStyle = 'rgba(100, 100, 100, 0.5)';
-      canvas.lineWidth = 0.25;
+      
+      canvas.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      canvas.lineWidth = 1.5;
       canvas.beginPath();
       canvas.moveTo(topLeft.x, topLeft.y);
       canvas.lineTo(topRight.x, topRight.y);
@@ -13513,6 +13518,29 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   return Seeker;
 });
 
+define('editor/worlditem',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var WorldItem = function(instance, data) {
+    this.instance = instance;
+    this.data = data;
+  };
+  
+  WorldItem.prototype = {
+    getEditorData: function() {
+      return this.data;
+    },
+    select: function() {
+      this.instance.drawFloor = true;
+    },
+    deselect: function() {
+      this.instance.drawFloor = false;
+    }
+  };
+  
+  return WorldItem;
+});
+
 define('shared/eventcontainer',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -13829,6 +13857,7 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
     this.rotation = 0;
     this.opacity = 1.0;
     this.forcedDepth = null;
+    this.drawFloor = false;
   };
   
   Instance.prototype = {
@@ -13874,6 +13903,17 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
         width: width,
         height: height
       }
+    },
+    intersectWithWorldCoords: function(x, y) {
+      var screen = Coords.worldToIsometric(x, y);  
+      var model = this.getQuad();     
+              
+      if(screen.x < model.x) return false;
+      if(screen.x > model.x + model.width) return false;
+      if(screen.y < model.y) return false;
+      if(screen.y > model.y + model.height) return false;
+      
+      return true;
     },
     coversQuad: function(quad) {
       var selfQuad = this.getQuad();
@@ -13955,18 +13995,7 @@ define('entities/components/renderable',['require','../../render/instance','../.
     }, 
     
     intersectWithMouse: function(x, y) {
-    
-      var mouse = Coords.worldToIsometric(x, y);  
-      var model = this.instance.getQuad();
-      
-      
-              
-      if(mouse.x < model.x) return false;
-      if(mouse.x > model.x + model.width) return false;
-      if(mouse.y < model.y) return false;
-      if(mouse.y > model.y + model.height) return false;
-      
-      return true;
+      return this.instance.intersectWithWorldCoords(x, y);
     }, 
     
     createModel: function() {
@@ -14847,12 +14876,13 @@ define('static/map',['require','underscore','../render/material','../render/quad
 
 });
 
-define('editor/mapbuilder',['require','underscore','../static/map','../render/instance','../shared/bitfield'],function(require) {
+define('editor/mapbuilder',['require','underscore','../static/map','../render/instance','../shared/bitfield','./worlditem'],function(require) {
   
   var _ = require('underscore');
   var Map = require('../static/map');
   var Instance = require('../render/instance');
   var BitField = require('../shared/bitfield');
+  var WorldItem = require('./worlditem');
 
   var MapBuilder = function(data, entityInstanceFactory) {
     Map.call(this, data);
@@ -14870,6 +14900,18 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
         data: data
       };
       this.createInstanceForEntity(id);
+    },
+    
+    getWorldItemAt: function(x, y) {
+      // Check dynamic instances first
+      for(var i in this.entities) {
+        var instance = this.entityInstances[i];
+        if(!instance.intersectWithWorldCoords(x, y)) continue;
+        return new WorldItem(instance, this.entities[i].data);
+      }
+      
+      // Then check static
+      return null; // Not now ;-)      
     },
     
     createInstanceForEntity: function(id) {
@@ -15293,9 +15335,10 @@ define('editor/input',['require','../shared/eventable','underscore','jquery'],fu
   var _ = require('underscore');
   var $ = require('jquery');
 
-  var Input = function(element) {
+  var Input = function(element, context) {
     Eventable.call(this);
     this.element = $(element);
+    this.context = context;
     this.hookElementEvents();
     this.mouseDown = false;
     this.mouseIn = false;
@@ -15355,8 +15398,10 @@ define('editor/input',['require','../shared/eventable','underscore','jquery'],fu
           self.raise('enter', {});  
           return false;
         },
-        click: function() {
-          self.raise('action', {});
+        click: function(e) {
+          var offset = self.element.offset();     
+          var transformed = self.context.pageCoordsToWorldCoords(e.pageX - offset.left, e.pageY - offset.top);
+          self.raise('action', transformed);
         },
         mousedown: function(e) {
           self.mouseDown = true;
@@ -15546,7 +15591,6 @@ define('editor/library',['require','./libraryitemtool','./staticelement','./enti
   var Library = function(editor) {
     this.editor = editor;
     this.element = $('#library');
-    this.populate();
     this.ConstLibraryElements = {
      tree: new StaticElement({
         id: "tree",
@@ -15573,11 +15617,12 @@ define('editor/library',['require','./libraryitemtool','./staticelement','./enti
         }
      })
     };
+    this.populate();
   };
   
   Library.prototype = {
     getLibraryElement: function(id) {
-      return ConstLibraryElements[id];
+      return this.ConstLibraryElements[id];
     },
     populate: function() {
       var self = this;
@@ -15623,15 +15668,35 @@ define('editor/library',['require','./libraryitemtool','./staticelement','./enti
 define('editor/selecttool',['require'],function(require) {
   var SelectTool = function(editor) {
     this.editor = editor;
+    this.selectedItem = null;
   };
   
   SelectTool.prototype = {
     activate: function() {
      this.editor.cursor('crosshair');
-      
+     this.editor.input.on('action', this.onAttemptToSelect, this);
     },
     deactivate: function() {
      this.editor.cursor('default');
+     this.deselectCurrent();
+    },
+    onAttemptToSelect: function(e) {
+      var worldItem = this.editor.map.getWorldItemAt(e.x, e.y);
+      
+      if(worldItem) {
+        this.deselectCurrent();
+        this.select(worldItem);
+      } 
+    },
+    select: function(item) {
+      this.selectedItem = item;
+      this.selectedItem.select();
+    },
+    deselectCurrent: function() {
+      if(this.selectedItem) {
+        this.selectedItem.deselect();
+        this.selectedItem = null;
+      }
     }
   };
   
@@ -15756,7 +15821,6 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
   
   var Editor = function(element) {
     Eventable.call(this);
-    this.input = new Input(element);
     this.element = $(element);
     this.currentTool = null;
   };
@@ -15764,6 +15828,7 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
   Editor.prototype = { 
     start: function(context) {
       this.context = context;
+      this.input = new Input(this.element, context);
       this.toolbar = new Toolbar(this);
       this.library = new Library(this);
       this.topbar = new TopBar(this);

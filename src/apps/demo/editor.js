@@ -18,7 +18,6 @@ define(function(require) {
   
   var Editor = function(element) {
     Eventable.call(this);
-    this.input = new Input(element);
     this.element = $(element);
     this.currentTool = null;
   };
@@ -26,6 +25,7 @@ define(function(require) {
   Editor.prototype = { 
     start: function(context) {
       this.context = context;
+      this.input = new Input(this.element, context);
       this.toolbar = new Toolbar(this);
       this.library = new Library(this);
       this.topbar = new TopBar(this);

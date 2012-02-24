@@ -4,9 +4,10 @@ define(function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
 
-  var Input = function(element) {
+  var Input = function(element, context) {
     Eventable.call(this);
     this.element = $(element);
+    this.context = context;
     this.hookElementEvents();
     this.mouseDown = false;
     this.mouseIn = false;
@@ -66,8 +67,10 @@ define(function(require) {
           self.raise('enter', {});  
           return false;
         },
-        click: function() {
-          self.raise('action', {});
+        click: function(e) {
+          var offset = self.element.offset();     
+          var transformed = self.context.pageCoordsToWorldCoords(e.pageX - offset.left, e.pageY - offset.top);
+          self.raise('action', transformed);
         },
         mousedown: function(e) {
           self.mouseDown = true;

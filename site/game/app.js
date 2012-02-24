@@ -3463,6 +3463,10 @@ define('render/quad',['require','../shared/coords'],function(require) {
     },
     drawTexturedQuad: function(canvas, instance) {  
       var dim = instance.getQuad();      
+      
+      if(instance.drawFloor)
+         this.drawFloor(canvas, instance);
+         
       canvas.drawImage(
         this.image('diffuseTexture'),
         dim.x,
@@ -3470,7 +3474,7 @@ define('render/quad',['require','../shared/coords'],function(require) {
         dim.width,
         dim.height);
         
-   //   this.drawFloor(canvas, instance);
+
     },
     drawPlainQuad: function(canvas, instance) {
       var dim = instance.getQuad();          
@@ -3489,8 +3493,9 @@ define('render/quad',['require','../shared/coords'],function(require) {
       var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
       
-      canvas.strokeStyle = 'rgba(100, 100, 100, 0.5)';
-      canvas.lineWidth = 0.25;
+      
+      canvas.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      canvas.lineWidth = 1.5;
       canvas.beginPath();
       canvas.moveTo(topLeft.x, topLeft.y);
       canvas.lineTo(topRight.x, topRight.y);
@@ -3519,6 +3524,7 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
     this.rotation = 0;
     this.opacity = 1.0;
     this.forcedDepth = null;
+    this.drawFloor = false;
   };
   
   Instance.prototype = {
@@ -3564,6 +3570,17 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
         width: width,
         height: height
       }
+    },
+    intersectWithWorldCoords: function(x, y) {
+      var screen = Coords.worldToIsometric(x, y);  
+      var model = this.getQuad();     
+              
+      if(screen.x < model.x) return false;
+      if(screen.x > model.x + model.width) return false;
+      if(screen.y < model.y) return false;
+      if(screen.y > model.y + model.height) return false;
+      
+      return true;
     },
     coversQuad: function(quad) {
       var selfQuad = this.getQuad();
@@ -4447,18 +4464,7 @@ define('entities/components/renderable',['require','../../render/instance','../.
     }, 
     
     intersectWithMouse: function(x, y) {
-    
-      var mouse = Coords.worldToIsometric(x, y);  
-      var model = this.instance.getQuad();
-      
-      
-              
-      if(mouse.x < model.x) return false;
-      if(mouse.x > model.x + model.width) return false;
-      if(mouse.y < model.y) return false;
-      if(mouse.y > model.y + model.height) return false;
-      
-      return true;
+      return this.instance.intersectWithWorldCoords(x, y);
     }, 
     
     createModel: function() {

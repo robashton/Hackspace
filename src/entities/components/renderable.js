@@ -64,18 +64,7 @@ define(function(require) {
     }, 
     
     intersectWithMouse: function(x, y) {
-    
-      var mouse = Coords.worldToIsometric(x, y);  
-      var model = this.instance.getQuad();
-      
-      
-              
-      if(mouse.x < model.x) return false;
-      if(mouse.x > model.x + model.width) return false;
-      if(mouse.y < model.y) return false;
-      if(mouse.y > model.y + model.height) return false;
-      
-      return true;
+      return this.instance.intersectWithWorldCoords(x, y);
     }, 
     
     createModel: function() {

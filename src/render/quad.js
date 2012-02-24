@@ -30,6 +30,10 @@ define(function(require) {
     },
     drawTexturedQuad: function(canvas, instance) {  
       var dim = instance.getQuad();      
+      
+      if(instance.drawFloor)
+         this.drawFloor(canvas, instance);
+         
       canvas.drawImage(
         this.image('diffuseTexture'),
         dim.x,
@@ -37,7 +41,7 @@ define(function(require) {
         dim.width,
         dim.height);
         
-   //   this.drawFloor(canvas, instance);
+
     },
     drawPlainQuad: function(canvas, instance) {
       var dim = instance.getQuad();          
@@ -56,8 +60,9 @@ define(function(require) {
       var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
       var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
       
-      canvas.strokeStyle = 'rgba(100, 100, 100, 0.5)';
-      canvas.lineWidth = 0.25;
+      
+      canvas.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      canvas.lineWidth = 1.5;
       canvas.beginPath();
       canvas.moveTo(topLeft.x, topLeft.y);
       canvas.lineTo(topRight.x, topRight.y);

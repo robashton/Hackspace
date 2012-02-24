@@ -4,6 +4,7 @@ define(function(require) {
   var Map = require('../static/map');
   var Instance = require('../render/instance');
   var BitField = require('../shared/bitfield');
+  var WorldItem = require('./worlditem');
 
   var MapBuilder = function(data, entityInstanceFactory) {
     Map.call(this, data);
@@ -21,6 +22,18 @@ define(function(require) {
         data: data
       };
       this.createInstanceForEntity(id);
+    },
+    
+    getWorldItemAt: function(x, y) {
+      // Check dynamic instances first
+      for(var i in this.entities) {
+        var instance = this.entityInstances[i];
+        if(!instance.intersectWithWorldCoords(x, y)) continue;
+        return new WorldItem(instance, this.entities[i].data);
+      }
+      
+      // Then check static
+      return null; // Not now ;-)      
     },
     
     createInstanceForEntity: function(id) {

@@ -6,7 +6,6 @@ define(function(require) {
   var Library = function(editor) {
     this.editor = editor;
     this.element = $('#library');
-    this.populate();
     this.ConstLibraryElements = {
      tree: new StaticElement({
         id: "tree",
@@ -33,11 +32,12 @@ define(function(require) {
         }
      })
     };
+    this.populate();
   };
   
   Library.prototype = {
     getLibraryElement: function(id) {
-      return ConstLibraryElements[id];
+      return this.ConstLibraryElements[id];
     },
     populate: function() {
       var self = this;

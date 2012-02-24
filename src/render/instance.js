@@ -13,6 +13,7 @@ define(function(require) {
     this.rotation = 0;
     this.opacity = 1.0;
     this.forcedDepth = null;
+    this.drawFloor = false;
   };
   
   Instance.prototype = {
@@ -58,6 +59,17 @@ define(function(require) {
         width: width,
         height: height
       }
+    },
+    intersectWithWorldCoords: function(x, y) {
+      var screen = Coords.worldToIsometric(x, y);  
+      var model = this.getQuad();     
+              
+      if(screen.x < model.x) return false;
+      if(screen.x > model.x + model.width) return false;
+      if(screen.y < model.y) return false;
+      if(screen.y > model.y + model.height) return false;
+      
+      return true;
     },
     coversQuad: function(quad) {
       var selfQuad = this.getQuad();
