@@ -39,9 +39,7 @@ define(function(require) {
         dim.x,
         dim.y,
         dim.width,
-        dim.height);
-        
-
+        dim.height);       
     },
     drawPlainQuad: function(canvas, instance) {
       var dim = instance.getQuad();          

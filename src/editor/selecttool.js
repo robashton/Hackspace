@@ -24,6 +24,7 @@ define(function(require) {
     select: function(item) {
       this.selectedItem = item;
       this.selectedItem.select();
+      this.editor.dataeditor.edit(this.selectedItem.getEditorData());
     },
     deselectCurrent: function() {
       if(this.selectedItem) {

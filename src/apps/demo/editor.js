@@ -10,6 +10,7 @@ define(function(require) {
   var Library = require('../../editor/library');
   var Toolbar = require('../../editor/toolbar');
   var TopBar = require('../../editor/topbar');
+  var DataEditor = require('../../editor/dataeditor');
   
   $(document).ready(function() {
     var canvasElement = document.getElementById('target');
@@ -29,6 +30,7 @@ define(function(require) {
       this.toolbar = new Toolbar(this);
       this.library = new Library(this);
       this.topbar = new TopBar(this);
+      this.dataeditor = new DataEditor(this);
       this.initializeMap();
     },
     initializeMap: function() {

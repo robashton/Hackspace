@@ -12536,9 +12536,7 @@ define('render/quad',['require','../shared/coords'],function(require) {
         dim.x,
         dim.y,
         dim.width,
-        dim.height);
-        
-
+        dim.height);       
     },
     drawPlainQuad: function(canvas, instance) {
       var dim = instance.getQuad();          
@@ -15691,6 +15689,7 @@ define('editor/selecttool',['require'],function(require) {
     select: function(item) {
       this.selectedItem = item;
       this.selectedItem.select();
+      this.editor.dataeditor.edit(this.selectedItem.getEditorData());
     },
     deselectCurrent: function() {
       if(this.selectedItem) {
@@ -15801,7 +15800,37 @@ define('editor/topbar',['require','jquery'],function(require) {
 
 });
 
-define('apps/demo/editor',['require','jquery','underscore','../../harness/context','../../editor/mapbuilder','../../editor/grid','../../shared/eventable','../../editor/input','../../editor/library','../../editor/toolbar','../../editor/topbar'],function(require) {
+define('editor/dataeditor',['require','underscore','../shared/eventable','jquery'],function(require) {
+  var _ = require('underscore');
+  var Eventable = require('../shared/eventable');
+  var $ = require('jquery');
+  
+  var DataEditor = function(editor) {
+    Eventable.call(this);
+    this.editor = editor;
+    this.element = $('#data-editor');
+    this.content = $('#data-editor-content');
+    this.data = null;
+    this.element.hide();
+  };
+  
+  DataEditor.prototype = {
+    edit: function(data) {
+      this.data = data;
+      this.content.text(JSON.stringify(this.data));
+      this.element.show();
+    },
+    cancel: function() {
+      this.data = null;
+      this.element.hide();
+    }
+  };
+  _.extend(DataEditor.prototype, Eventable.prototype);
+  
+  return DataEditor;
+});
+
+define('apps/demo/editor',['require','jquery','underscore','../../harness/context','../../editor/mapbuilder','../../editor/grid','../../shared/eventable','../../editor/input','../../editor/library','../../editor/toolbar','../../editor/topbar','../../editor/dataeditor'],function(require) {
   
   var $ = require('jquery');
   var _ = require('underscore');
@@ -15813,6 +15842,7 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
   var Library = require('../../editor/library');
   var Toolbar = require('../../editor/toolbar');
   var TopBar = require('../../editor/topbar');
+  var DataEditor = require('../../editor/dataeditor');
   
   $(document).ready(function() {
     var canvasElement = document.getElementById('target');
@@ -15832,6 +15862,7 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
       this.toolbar = new Toolbar(this);
       this.library = new Library(this);
       this.topbar = new TopBar(this);
+      this.dataeditor = new DataEditor(this);
       this.initializeMap();
     },
     initializeMap: function() {

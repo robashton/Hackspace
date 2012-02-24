@@ -8,8 +8,14 @@
   border: 1px solid #000;
 }
 
+#data-editor {
+  float: left;
+}
+
+
 #target {
   position: relative;
+  float: left;
 }
 
 #controls span {
@@ -52,6 +58,7 @@
   height: 25px;
   width: 25px;
 }
+
 
 .library-element {
   cursor: pointer;
