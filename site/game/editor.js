@@ -14568,10 +14568,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.models = {};  
     this.scene = null;
     this.instanceTiles = null;
-    this.canvas = null; // document.createElement('canvas'); // document.getElementById('source');  // 
-    this.context = null; //this.canvas.getContext('2d');
-    this.graph = null; //new RenderGraph();
-    this.renderer = null; //new CanvasRender(this.context);  
+    this.canvas = null; 
+    this.context = null; 
+    this.graph = null; 
+    this.renderer = null; 
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -14854,9 +14854,12 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
   var Instance = require('../render/instance');
   var BitField = require('../shared/bitfield');
 
-  var MapBuilder = function(data) {
+  var MapBuilder = function(data, entityInstanceFactory) {
     Map.call(this, data);
+    this.entityInstanceFactory = entityInstanceFactory;
     this.entities = data.entities || {};
+    this.entityInstances = {};
+    this.entityModels = {};
   };
   
   MapBuilder.prototype = {
@@ -14866,6 +14869,21 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
         type: type,
         data: data
       };
+      this.createInstanceForEntity(id);
+    },
+    
+    createInstanceForEntity: function(id) {
+      var entity = this.entities[id];
+      var instance = this.entityInstanceFactory.createInstanceForEntityType(entity.type);
+      instance.translate(entity.data.x, entity.data.y);
+      this.entityInstances[id] = instance;
+      this.scene.graph.add(instance);
+    },
+    
+    initializeEditables: function() {
+      for(var i in this.entities) {
+        this.createInstanceForEntity(i);   
+      }
     },
   
     getMapData: function() {
@@ -15464,8 +15482,12 @@ define('editor/entityelement',['require','underscore','../render/material','../r
   var Quad = require('../render/quad');
   var Instance = require('../render/instance');
   
-  var EntityElement = function(template) {
+  var EntityElement = function(editor, template) {
     this.template = template;
+    this.editor = editor;
+    this.material = new Material();
+    this.material.diffuseTexture = this.editor.context.resources.get(this.template.texture);
+    this.quad = new Quad(this.material);
   };
   
   EntityElement.prototype = {
@@ -15478,8 +15500,7 @@ define('editor/entityelement',['require','underscore','../render/material','../r
     displayTexture: function() {
       return this.template.texture;
     },
-    activate: function(editor) {
-      this.editor = editor;
+    activate: function() {
       if(!this.instance)
         this.createModel();
     },
@@ -15502,10 +15523,13 @@ define('editor/entityelement',['require','underscore','../render/material','../r
       this.instance.translate(coords.x, coords.y, 0);
     },
     
+    createEditorInstance: function() {
+      var instance = new Instance(this.quad);
+      instance.scale(this.template.size[0], this.template.size[1], this.template.size[2]);
+      return instance;
+    },
+    
      createModel: function() {
-      this.material = new Material();
-      this.material.diffuseTexture = this.editor.context.resources.get(this.template.texture);
-      this.quad = new Quad(this.material);
       this.instance = new Instance(this.quad);
       this.instance.scale(this.template.size[0], this.template.size[1], this.template.size[2]);
     }
@@ -15519,37 +15543,36 @@ define('editor/library',['require','./libraryitemtool','./staticelement','./enti
   var StaticElement = require('./staticelement');
   var EntityElement = require('./entityelement');
   
-  var ConstLibraryElements = {
-   tree: new StaticElement({
-      id: "tree",
-      size: [ 25, 25, 50 ],
-      collision: [12, 12],    
-      texture: "/main/tree.png",
-      solid: true
-    }),
-   spawnzone: new EntityElement({
-      id: "spawnzone",
-      size: [ 12, 12, 25 ],
-      collision: [12, 12],    
-      texture: "/main/spider.png",
-      type: 'spawner',
-      data: {
-        z: 0,
-        radius: 100,
-        type: 'monster',
-        rate: 30,
-        maxcount: 5,
-        template: {
-          texture: 'spider'
-        } 
-      }
-   })
-  };
-
   var Library = function(editor) {
     this.editor = editor;
     this.element = $('#library');
     this.populate();
+    this.ConstLibraryElements = {
+     tree: new StaticElement({
+        id: "tree",
+        size: [ 25, 25, 50 ],
+        collision: [12, 12],    
+        texture: "/main/tree.png",
+        solid: true
+      }),
+     spawner: new EntityElement(editor, {
+        id: "spawnzone",
+        size: [ 12, 12, 25 ],
+        collision: [12, 12],    
+        texture: "/main/spider.png",
+        type: 'spawner',
+        data: {
+          z: 0,
+          radius: 100,
+          type: 'monster',
+          rate: 30,
+          maxcount: 5,
+          template: {
+            texture: 'spider'
+          } 
+        }
+     })
+    };
   };
   
   Library.prototype = {
@@ -15561,8 +15584,8 @@ define('editor/library',['require','./libraryitemtool','./staticelement','./enti
       
       this.element.html('');
       
-      for(var i in ConstLibraryElements) {
-        var item = ConstLibraryElements[i];
+      for(var i in this.ConstLibraryElements) {
+        var item = this.ConstLibraryElements[i];
         
         var itemElement = $('<div/>')
             .addClass('library-element')
@@ -15583,6 +15606,13 @@ define('editor/library',['require','./libraryitemtool','./staticelement','./enti
     setCurrentElement: function(element) {
       var tool = new LibraryItemTool(this.editor, element);
       this.editor.setCurrentTool(tool);
+    },
+    createInstanceForEntityType: function(type) {
+      var libraryElement = this.ConstLibraryElements[type];
+      if(!libraryElement) {
+        console.error('Could not find library element', type);
+      }
+      return libraryElement.createEditorInstance();
     }
   };
   
@@ -15742,8 +15772,9 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
     initializeMap: function() {
 
       var mapResource = this.context.resources.get('/main/world.json');      
-      this.map = new MapBuilder(mapResource.get());
+      this.map = new MapBuilder(mapResource.get(), this.library);
       this.context.scene.add(this.map);
+      this.map.initializeEditables(); // TODO: This is probably temporary and an anti-pattern and everything else ;-)
 
       this.grid = new Grid(this.map);
       this.context.scene.add(this.grid); 

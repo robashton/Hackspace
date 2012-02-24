@@ -3,37 +3,36 @@ define(function(require) {
   var StaticElement = require('./staticelement');
   var EntityElement = require('./entityelement');
   
-  var ConstLibraryElements = {
-   tree: new StaticElement({
-      id: "tree",
-      size: [ 25, 25, 50 ],
-      collision: [12, 12],    
-      texture: "/main/tree.png",
-      solid: true
-    }),
-   spawnzone: new EntityElement({
-      id: "spawnzone",
-      size: [ 12, 12, 25 ],
-      collision: [12, 12],    
-      texture: "/main/spider.png",
-      type: 'spawner',
-      data: {
-        z: 0,
-        radius: 100,
-        type: 'monster',
-        rate: 30,
-        maxcount: 5,
-        template: {
-          texture: 'spider'
-        } 
-      }
-   })
-  };
-
   var Library = function(editor) {
     this.editor = editor;
     this.element = $('#library');
     this.populate();
+    this.ConstLibraryElements = {
+     tree: new StaticElement({
+        id: "tree",
+        size: [ 25, 25, 50 ],
+        collision: [12, 12],    
+        texture: "/main/tree.png",
+        solid: true
+      }),
+     spawner: new EntityElement(editor, {
+        id: "spawnzone",
+        size: [ 12, 12, 25 ],
+        collision: [12, 12],    
+        texture: "/main/spider.png",
+        type: 'spawner',
+        data: {
+          z: 0,
+          radius: 100,
+          type: 'monster',
+          rate: 30,
+          maxcount: 5,
+          template: {
+            texture: 'spider'
+          } 
+        }
+     })
+    };
   };
   
   Library.prototype = {
@@ -45,8 +44,8 @@ define(function(require) {
       
       this.element.html('');
       
-      for(var i in ConstLibraryElements) {
-        var item = ConstLibraryElements[i];
+      for(var i in this.ConstLibraryElements) {
+        var item = this.ConstLibraryElements[i];
         
         var itemElement = $('<div/>')
             .addClass('library-element')
@@ -67,6 +66,13 @@ define(function(require) {
     setCurrentElement: function(element) {
       var tool = new LibraryItemTool(this.editor, element);
       this.editor.setCurrentTool(tool);
+    },
+    createInstanceForEntityType: function(type) {
+      var libraryElement = this.ConstLibraryElements[type];
+      if(!libraryElement) {
+        console.error('Could not find library element', type);
+      }
+      return libraryElement.createEditorInstance();
     }
   };
   

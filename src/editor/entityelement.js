@@ -4,8 +4,12 @@ define(function(require) {
   var Quad = require('../render/quad');
   var Instance = require('../render/instance');
   
-  var EntityElement = function(template) {
+  var EntityElement = function(editor, template) {
     this.template = template;
+    this.editor = editor;
+    this.material = new Material();
+    this.material.diffuseTexture = this.editor.context.resources.get(this.template.texture);
+    this.quad = new Quad(this.material);
   };
   
   EntityElement.prototype = {
@@ -18,8 +22,7 @@ define(function(require) {
     displayTexture: function() {
       return this.template.texture;
     },
-    activate: function(editor) {
-      this.editor = editor;
+    activate: function() {
       if(!this.instance)
         this.createModel();
     },
@@ -42,10 +45,13 @@ define(function(require) {
       this.instance.translate(coords.x, coords.y, 0);
     },
     
+    createEditorInstance: function() {
+      var instance = new Instance(this.quad);
+      instance.scale(this.template.size[0], this.template.size[1], this.template.size[2]);
+      return instance;
+    },
+    
      createModel: function() {
-      this.material = new Material();
-      this.material.diffuseTexture = this.editor.context.resources.get(this.template.texture);
-      this.quad = new Quad(this.material);
       this.instance = new Instance(this.quad);
       this.instance.scale(this.template.size[0], this.template.size[1], this.template.size[2]);
     }

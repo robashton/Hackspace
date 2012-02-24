@@ -3951,10 +3951,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.models = {};  
     this.scene = null;
     this.instanceTiles = null;
-    this.canvas = null; // document.createElement('canvas'); // document.getElementById('source');  // 
-    this.context = null; //this.canvas.getContext('2d');
-    this.graph = null; //new RenderGraph();
-    this.renderer = null; //new CanvasRender(this.context);  
+    this.canvas = null; 
+    this.context = null; 
+    this.graph = null; 
+    this.renderer = null; 
     
     this.tileleft = -1;
     this.tiletop = -1;

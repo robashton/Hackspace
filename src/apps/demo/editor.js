@@ -34,8 +34,9 @@ define(function(require) {
     initializeMap: function() {
 
       var mapResource = this.context.resources.get('/main/world.json');      
-      this.map = new MapBuilder(mapResource.get());
+      this.map = new MapBuilder(mapResource.get(), this.library);
       this.context.scene.add(this.map);
+      this.map.initializeEditables(); // TODO: This is probably temporary and an anti-pattern and everything else ;-)
 
       this.grid = new Grid(this.map);
       this.context.scene.add(this.grid); 

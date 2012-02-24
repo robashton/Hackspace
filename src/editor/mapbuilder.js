@@ -5,9 +5,12 @@ define(function(require) {
   var Instance = require('../render/instance');
   var BitField = require('../shared/bitfield');
 
-  var MapBuilder = function(data) {
+  var MapBuilder = function(data, entityInstanceFactory) {
     Map.call(this, data);
+    this.entityInstanceFactory = entityInstanceFactory;
     this.entities = data.entities || {};
+    this.entityInstances = {};
+    this.entityModels = {};
   };
   
   MapBuilder.prototype = {
@@ -17,6 +20,21 @@ define(function(require) {
         type: type,
         data: data
       };
+      this.createInstanceForEntity(id);
+    },
+    
+    createInstanceForEntity: function(id) {
+      var entity = this.entities[id];
+      var instance = this.entityInstanceFactory.createInstanceForEntityType(entity.type);
+      instance.translate(entity.data.x, entity.data.y);
+      this.entityInstances[id] = instance;
+      this.scene.graph.add(instance);
+    },
+    
+    initializeEditables: function() {
+      for(var i in this.entities) {
+        this.createInstanceForEntity(i);   
+      }
     },
   
     getMapData: function() {
