@@ -21,15 +21,20 @@ define(function(require) {
         this.select(worldItem);
       } 
     },
+    onEditorDataChanged: function(data) {
+      this.selectedItem.updateData(data);
+    },    
     select: function(item) {
       this.selectedItem = item;
       this.selectedItem.select();
       this.editor.dataeditor.edit(this.selectedItem.getEditorData());
+      this.editor.dataeditor.on('DataChanged', this.onEditorDataChanged, this);
     },
     deselectCurrent: function() {
       if(this.selectedItem) {
         this.selectedItem.deselect();
         this.selectedItem = null;
+        this.editor.dataeditor.off('DataChanged', this.onEditorDataChanged, this);
       }
     }
   };

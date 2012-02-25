@@ -3146,7 +3146,7 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 256.0;
+    this.distance = 512.0;
     
     this.width = 0;
     this.height = 0;

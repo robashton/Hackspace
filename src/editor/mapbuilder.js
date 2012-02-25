@@ -9,44 +9,42 @@ define(function(require) {
   var MapBuilder = function(data, entityInstanceFactory) {
     Map.call(this, data);
     this.entityInstanceFactory = entityInstanceFactory;
-    this.entities = data.entities || {};
-    this.entityInstances = {};
-    this.entityModels = {};
+    this.entities = {};
+    this.addEntities(data.entities);
   };
   
   MapBuilder.prototype = {
   
+    addEntities: function(entities) {
+      for(var i in entities) {
+        var entity = entities[i];
+        this.entities[i] = new WorldItem(this, i, entity);
+      }
+    },
+  
     addEntity: function(id, type, data) {
-      this.entities[id] = {
+      this.entities[id] = new WorldItem(this, id, {
         type: type,
         data: data
-      };
-      this.createInstanceForEntity(id);
+      });
+      this.entities[id].createInstance();
     },
     
     getWorldItemAt: function(x, y) {
       // Check dynamic instances first
       for(var i in this.entities) {
-        var instance = this.entityInstances[i];
-        if(!instance.intersectWithWorldCoords(x, y)) continue;
-        return new WorldItem(instance, this.entities[i].data);
+        var item = this.entities[i];
+        if(!item.intersectWithWorldCoords(x, y)) continue;
+        return item;
       }
       
       // Then check static
       return null; // Not now ;-)      
     },
-    
-    createInstanceForEntity: function(id) {
-      var entity = this.entities[id];
-      var instance = this.entityInstanceFactory.createInstanceForEntityType(entity.type);
-      instance.translate(entity.data.x, entity.data.y);
-      this.entityInstances[id] = instance;
-      this.scene.graph.add(instance);
-    },
-    
+        
     initializeEditables: function() {
       for(var i in this.entities) {
-        this.createInstanceForEntity(i);   
+        this.entities[i].createInstance();  
       }
     },
   
@@ -61,7 +59,11 @@ define(function(require) {
     },
     
     populateEntities: function(map) {
-      map.entities = this.entities;
+      map.entities = {};
+      for(var i in this.entities) {
+        var item = this.entities[i];
+        map.entities[i] = item.entity;  
+      }
     },
     
     populateMapMetadata: function(map) {

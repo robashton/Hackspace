@@ -12457,7 +12457,7 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 256.0;
+    this.distance = 512.0;
     
     this.width = 0;
     this.height = 0;
@@ -13519,20 +13519,39 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
 define('editor/worlditem',['require','underscore'],function(require) {
   var _ = require('underscore');
 
-  var WorldItem = function(instance, data) {
-    this.instance = instance;
-    this.data = data;
+  var WorldItem = function(tool, id, entity) {
+    this.instance = null;
+    this.tool = tool;
+    this.id = id;
+    this.entity = entity;
   };
   
   WorldItem.prototype = {
     getEditorData: function() {
-      return this.data;
+      return this.entity.data;
+    },
+    updateData: function(data) {
+      this.entity.data = data;
+      this.destroyInstance();
+      this.createInstance();
     },
     select: function() {
       this.instance.drawFloor = true;
     },
     deselect: function() {
       this.instance.drawFloor = false;
+    },
+    createInstance: function() {
+      this.instance = this.tool.entityInstanceFactory.createInstanceForEntityType(this.entity.type);
+      this.instance.translate(this.entity.data.x, this.entity.data.y);
+      this.tool.scene.graph.add(this.instance);
+    },
+    destroyInstance: function() {
+      this.tool.scene.graph.remove(this.instance);
+      this.instance = null;
+    },
+    intersectWithWorldCoords: function(x, y) {
+      return this.instance.intersectWithWorldCoords(x, y);
     }
   };
   
@@ -14885,44 +14904,42 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
   var MapBuilder = function(data, entityInstanceFactory) {
     Map.call(this, data);
     this.entityInstanceFactory = entityInstanceFactory;
-    this.entities = data.entities || {};
-    this.entityInstances = {};
-    this.entityModels = {};
+    this.entities = {};
+    this.addEntities(data.entities);
   };
   
   MapBuilder.prototype = {
   
+    addEntities: function(entities) {
+      for(var i in entities) {
+        var entity = entities[i];
+        this.entities[i] = new WorldItem(this, i, entity);
+      }
+    },
+  
     addEntity: function(id, type, data) {
-      this.entities[id] = {
+      this.entities[id] = new WorldItem(this, id, {
         type: type,
         data: data
-      };
-      this.createInstanceForEntity(id);
+      });
+      this.entities[id].createInstance();
     },
     
     getWorldItemAt: function(x, y) {
       // Check dynamic instances first
       for(var i in this.entities) {
-        var instance = this.entityInstances[i];
-        if(!instance.intersectWithWorldCoords(x, y)) continue;
-        return new WorldItem(instance, this.entities[i].data);
+        var item = this.entities[i];
+        if(!item.intersectWithWorldCoords(x, y)) continue;
+        return item;
       }
       
       // Then check static
       return null; // Not now ;-)      
     },
-    
-    createInstanceForEntity: function(id) {
-      var entity = this.entities[id];
-      var instance = this.entityInstanceFactory.createInstanceForEntityType(entity.type);
-      instance.translate(entity.data.x, entity.data.y);
-      this.entityInstances[id] = instance;
-      this.scene.graph.add(instance);
-    },
-    
+        
     initializeEditables: function() {
       for(var i in this.entities) {
-        this.createInstanceForEntity(i);   
+        this.entities[i].createInstance();  
       }
     },
   
@@ -14937,7 +14954,11 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
     },
     
     populateEntities: function(map) {
-      map.entities = this.entities;
+      map.entities = {};
+      for(var i in this.entities) {
+        var item = this.entities[i];
+        map.entities[i] = item.entity;  
+      }
     },
     
     populateMapMetadata: function(map) {
@@ -15686,15 +15707,20 @@ define('editor/selecttool',['require'],function(require) {
         this.select(worldItem);
       } 
     },
+    onEditorDataChanged: function(data) {
+      this.selectedItem.updateData(data);
+    },    
     select: function(item) {
       this.selectedItem = item;
       this.selectedItem.select();
       this.editor.dataeditor.edit(this.selectedItem.getEditorData());
+      this.editor.dataeditor.on('DataChanged', this.onEditorDataChanged, this);
     },
     deselectCurrent: function() {
       if(this.selectedItem) {
         this.selectedItem.deselect();
         this.selectedItem = null;
+        this.editor.dataeditor.off('DataChanged', this.onEditorDataChanged, this);
       }
     }
   };
@@ -15800,10 +15826,105 @@ define('editor/topbar',['require','jquery'],function(require) {
 
 });
 
-define('editor/dataeditor',['require','underscore','../shared/eventable','jquery'],function(require) {
+define('libs/formatjson',['require'],function(require) {
+
+  /*
+    This is stolen from http://joncom.be/code/javascript-json-formatter/
+    I couldn't find a license, so attributing it here because I'm a good citizen
+  */
+
+  var FormatJSON = function(oData, sIndent) {
+      if (arguments.length < 2) {
+          var sIndent = "";
+      }
+      var sIndentStyle = "    ";
+      var sDataType = RealTypeOf(oData);
+
+      // open object
+      if (sDataType == "array") {
+          if (oData.length == 0) {
+              return "[]";
+          }
+          var sHTML = "[";
+      } else {
+          var iCount = 0;
+          $.each(oData, function() {
+              iCount++;
+              return;
+          });
+          if (iCount == 0) { // object is empty
+              return "{}";
+          }
+          var sHTML = "{";
+      }
+
+      // loop through items
+      var iCount = 0;
+      $.each(oData, function(sKey, vValue) {
+          if (iCount > 0) {
+              sHTML += ",";
+          }
+          if (sDataType == "array") {
+              sHTML += ("\n" + sIndent + sIndentStyle);
+          } else {
+              sHTML += ("\n" + sIndent + sIndentStyle + "\"" + sKey + "\"" + ": ");
+          }
+
+          // display relevant data type
+          switch (RealTypeOf(vValue)) {
+              case "array":
+              case "object":
+                  sHTML += FormatJSON(vValue, (sIndent + sIndentStyle));
+                  break;
+              case "boolean":
+              case "number":
+                  sHTML += vValue.toString();
+                  break;
+              case "null":
+                  sHTML += "null";
+                  break;
+              case "string":
+                  sHTML += ("\"" + vValue + "\"");
+                  break;
+              default:
+                  sHTML += ("TYPEOF: " + typeof(vValue));
+          }
+
+          // loop
+          iCount++;
+      });
+
+      // close object
+      if (sDataType == "array") {
+          sHTML += ("\n" + sIndent + "]");
+      } else {
+          sHTML += ("\n" + sIndent + "}");
+      }
+
+      // return
+      return sHTML;
+  };
+  
+  var RealTypeOf = function (v) {
+    if (typeof(v) == "object") {
+      if (v === null) return "null";
+      if (v.constructor == (new Array).constructor) return "array";
+      if (v.constructor == (new Date).constructor) return "date";
+      if (v.constructor == (new RegExp).constructor) return "regex";
+      return "object";
+    }
+    return typeof(v);
+  };
+
+  return FormatJSON;
+
+});
+
+define('editor/dataeditor',['require','underscore','../shared/eventable','jquery','../libs/formatjson'],function(require) {
   var _ = require('underscore');
   var Eventable = require('../shared/eventable');
   var $ = require('jquery');
+  var FormatJson = require('../libs/formatjson');
   
   var DataEditor = function(editor) {
     Eventable.call(this);
@@ -15812,17 +15933,36 @@ define('editor/dataeditor',['require','underscore','../shared/eventable','jquery
     this.content = $('#data-editor-content');
     this.data = null;
     this.element.hide();
+    var self = this;
+    this.content.on('keyup', function() { 
+      self.onKeyPress();
+    });
   };
   
   DataEditor.prototype = {
     edit: function(data) {
       this.data = data;
-      this.content.text(JSON.stringify(this.data));
+      var text = FormatJson(this.data);
+      this.content.val(text);
       this.element.show();
     },
     cancel: function() {
       this.data = null;
       this.element.hide();
+    },
+    onKeyPress: function() {
+      var newData = null;
+      if(this.data) {
+        try {
+          newData = JSON.parse(this.content.val());
+        } catch(ex) {
+          console.warn(ex);
+        }
+        if(newData) {
+          this.data = newData;
+          this.raise('DataChanged', this.data);
+        }
+      }
     }
   };
   _.extend(DataEditor.prototype, Eventable.prototype);
