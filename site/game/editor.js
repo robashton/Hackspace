@@ -12457,7 +12457,7 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 512.0;
+    this.distance = 256.0;
     
     this.width = 0;
     this.height = 0;
@@ -15224,7 +15224,7 @@ define('entities/entityfactory',['require','underscore','./characterfactory','./
   };
   
   EntityFactory.prototype = {
-    create: function(type, id, data) {
+    createEntity: function(type, id, data) {
       var entity =  this.factories[type].create(id, data);
       this.raise('EntityCreated', {
         data: data,
@@ -15341,7 +15341,7 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
            
     },
     createEntity: function(type, id, data) {
-      return this.entityFactory.create(type, id, data);
+      return this.entityFactory.createEntity(type, id, data);
     }
   };
   

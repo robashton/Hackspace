@@ -98,7 +98,7 @@ define(function(require) {
            
     },
     createEntity: function(type, id, data) {
-      return this.entityFactory.create(type, id, data);
+      return this.entityFactory.createEntity(type, id, data);
     }
   };
   

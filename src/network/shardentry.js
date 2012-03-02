@@ -52,7 +52,7 @@ define(function(require) {
            
       var collider = new Collider();
       this.context.scene.add(collider);
-      var god = new God(this.context.entityFactory);
+      var god = new God(this.context);
       this.context.scene.add(god);    
       
       this.quests = new QuestWatcher(this.context.scene, this.persistence, new QuestFactory());

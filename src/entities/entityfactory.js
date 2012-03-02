@@ -17,7 +17,7 @@ define(function(require) {
   };
   
   EntityFactory.prototype = {
-    create: function(type, id, data) {
+    createEntity: function(type, id, data) {
       var entity =  this.factories[type].create(id, data);
       this.raise('EntityCreated', {
         data: data,

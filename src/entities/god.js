@@ -13,7 +13,7 @@ define(function(require) {
     var self = this;
     this.attach({
       createEntity: function(id, type, data) {
-        var entity = self.entityFactory.create(type, id, data);
+        var entity = self.entityFactory.createEntity(type, id, data);
         self.scene.add(entity);
       },
       destroyEntity: function(id) {
