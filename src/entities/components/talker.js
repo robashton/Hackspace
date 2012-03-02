@@ -11,6 +11,8 @@ define(function(require) {
         targetId: targetId,
         text: text
       });
+
+      this.parent.dispatch('rotateTowards', [targetId]);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;

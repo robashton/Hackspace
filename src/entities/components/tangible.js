@@ -32,6 +32,19 @@ define(function(require) {
       });
     },
     
+    rotateTowards: function(targetId) {
+      var self = this;
+      this.scene.withEntity(targetId, function(target) {
+        var targetPosition = target.get('getPosition');
+        var myPosition = self.position;
+        
+        var direction = vec3.create([0,0,0]);
+        vec3.subtract(targetPosition, myPosition, direction);
+        var rotation = Math.atan2(direction[0], -direction[1]);
+        self.parent.dispatch('rotateTo', [rotation]);
+      });
+    },
+    
     getPosition: function() {
       return this.position;
     },

@@ -12779,6 +12779,19 @@ define('entities/components/tangible',['require','glmatrix'],function(require) {
       });
     },
     
+    rotateTowards: function(targetId) {
+      var self = this;
+      this.scene.withEntity(targetId, function(target) {
+        var targetPosition = target.get('getPosition');
+        var myPosition = self.position;
+        
+        var direction = vec3.create([0,0,0]);
+        vec3.subtract(targetPosition, myPosition, direction);
+        var rotation = Math.atan2(direction[0], -direction[1]);
+        self.parent.dispatch('rotateTo', [rotation]);
+      });
+    },
+    
     getPosition: function() {
       return this.position;
     },
@@ -13107,6 +13120,8 @@ define('entities/components/talker',['require','underscore'],function(require) {
         targetId: targetId,
         text: text
       });
+
+      this.parent.dispatch('rotateTowards', [targetId]);
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
@@ -13180,16 +13195,7 @@ define('entities/components/fighter',['require','underscore','glmatrix'],functio
     },
     
     orientTowardsTarget: function() {
-      var self = this;
-      this.scene.withEntity(this.currentTargetId, function(target) {
-        var targetPosition = target.get('getPosition');
-        var myPosition = self.parent.get('getPosition');
-        
-        var direction = vec3.create([0,0,0]);
-        vec3.subtract(targetPosition, myPosition, direction);
-        var rotation = Math.atan2(direction[0], -direction[1]);
-        self.parent.dispatch('rotateTo', [rotation]);
-      });
+      this.parent.dispatch('rotateTowards', [this.currentTargetId]);
     },
     
     performAttackStep: function() {
