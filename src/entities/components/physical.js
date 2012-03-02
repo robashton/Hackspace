@@ -36,12 +36,35 @@ define(function(require) {
       console.log(this.position[0], this.position[1]);
     },
     
-    onCollided: function(data) {
-      this.parent.dispatch('moveTo', [
-        this.position[0] + data.x,
-        this.position[1] + data.y,
-        this.position[2]
-      ]);
+    getCollisionFriction: function() {
+      var e = { score: 0 };
+      this.parent.raise('CollisionFrictionRequested', e); // TODO: Perhaps do something proper here if it's a common scenario
+      return e.score;
+    },
+    
+    collide: function(data) {
+      var self = this;
+      this.scene.withEntity(data.collidedEntityId, function(other) {
+        var x = data.x;
+        var y = data.y;
+      
+        var otherScore = other.get('getCollisionFriction');
+        var thisScore = self.getCollisionFriction();
+        
+        if(otherScore < thisScore) return;
+        
+        if(otherScore === thisScore) {
+          x /= 2.0;
+          y /= 2.0;
+        };
+        
+        self.parent.dispatch('moveTo', [
+          self.position[0] + x,
+          self.position[1] + y,
+          self.position[2]
+        ]);                             
+      });
+      this.parent.raise('Collided', data);
     },
     
     checkLandscapeBounds: function() {

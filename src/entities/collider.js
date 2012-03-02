@@ -19,12 +19,12 @@ define(function(require) {
       var result = this.intersect(boundsOne, boundsTwo);
       
       if(result.intersects) {
-        result.collidedEntityId = entityTwo.id;
-        entityOne.raise('Collided', result);
+        result.collidedEntityId = entityTwo.id;       
+        entityOne.dispatch('collide', [result]);
         result.x = -result.x;
         result.y = -result.y;
         result.collidedEntityId = entityOne.id;
-     //   entityTwo.raise('Collided', result);
+        entityTwo.dispatch('collide', [result]);
       }      
     },
     intersect: function(one, two) {

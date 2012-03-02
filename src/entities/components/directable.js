@@ -95,6 +95,12 @@ define(function(require) {
         this.parent.raise('DestinationReached');
     },
     
+    onCollisionFrictionRequested: function(e) {
+      if(this.moving) {
+        e.score -= 1.0; 
+      }
+    },
+    
     moveTowardsDestination: function() {
       this.parent.dispatch('moveTo', [
         this.position[0] + this.direction[0] * this.speed,

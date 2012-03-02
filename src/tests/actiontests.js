@@ -70,6 +70,17 @@ define(function(require) {
       then("The character stops moving after reaching the new destination", !characterMoved);
     });
   });
+  
+  /*
+  when("An character moves into a monster", function(then) {
+    setup.withACharacterAndMonster(function(scene, character, monster) {
+      character.dispatch("primaryAction
+    
+    });
+    then("The entity that moved is pushed back", false);
+    then("The entity that was still stays in one place", false);
+    then("The entity that moved stops", false);
+  }); */ 
  
 
 });
