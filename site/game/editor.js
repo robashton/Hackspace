@@ -13116,9 +13116,10 @@ define('entities/components/talker',['require','underscore'],function(require) {
   return Talker;
 });
 
-define('entities/components/fighter',['require','underscore'],function(require) {
+define('entities/components/fighter',['require','underscore','glmatrix'],function(require) {
   var _ = require('underscore');
-
+  var vec3 = require('glmatrix').vec3;
+  
   var Fighter = function() {
     this.currentTargetId = null;
     this.frameCount = 0;
@@ -13178,9 +13179,23 @@ define('entities/components/fighter',['require','underscore'],function(require) 
       this.parent.raise('KilledTarget', targetid);
     },
     
+    orientTowardsTarget: function() {
+      var self = this;
+      this.scene.withEntity(this.currentTargetId, function(target) {
+        var targetPosition = target.get('getPosition');
+        var myPosition = self.parent.get('getPosition');
+        
+        var direction = vec3.create([0,0,0]);
+        vec3.subtract(targetPosition, myPosition, direction);
+        var rotation = Math.atan2(direction[0], -direction[1]);
+        self.parent.dispatch('rotateTo', [rotation]);
+      });
+    },
+    
     performAttackStep: function() {
       var self = this;
       this.parent.raise('PunchedTarget');
+      this.orientTowardsTarget();
       
       this.scene.dispatch(this.currentTargetId, 'applyDamage', [{
         dealer: self.parent.id,
