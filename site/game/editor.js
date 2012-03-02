@@ -14976,6 +14976,7 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
     },
     
     getWorldItemAt: function(x, y) {
+    
       // Check dynamic instances first
       for(var i in this.entities) {
         var item = this.entities[i];
@@ -15229,7 +15230,7 @@ define('entities/npc',['require','underscore','./components/physical','./compone
     this.attach(new Renderable('character', true));
     this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(3.0));
-    this.attach(new QuestGiver('fetchducks'));
+    this.attach(new QuestGiver(data.quest));
 
   };  
   Npc.prototype = {};  
@@ -15684,6 +15685,18 @@ define('editor/library',['require','./libraryitemtool','./staticelement','./enti
             texture: 'spider'
           } 
         }
+     }),
+     npc: new EntityElement(editor, {
+      id: "npc",
+      size: [12, 12, 18],
+      collision: [12, 12],
+      texture: "/main/character/static-down.png",
+      type: "npc",
+      data: {
+        z: 0,
+        quest: 'fetchducks' 
+      
+      } 
      })
     };
     this.populate();

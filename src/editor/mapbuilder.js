@@ -31,6 +31,7 @@ define(function(require) {
     },
     
     getWorldItemAt: function(x, y) {
+    
       // Check dynamic instances first
       for(var i in this.entities) {
         var item = this.entities[i];

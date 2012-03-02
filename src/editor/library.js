@@ -30,6 +30,18 @@ define(function(require) {
             texture: 'spider'
           } 
         }
+     }),
+     npc: new EntityElement(editor, {
+      id: "npc",
+      size: [12, 12, 18],
+      collision: [12, 12],
+      texture: "/main/character/static-down.png",
+      type: "npc",
+      data: {
+        z: 0,
+        quest: 'fetchducks' 
+      
+      } 
      })
     };
     this.populate();

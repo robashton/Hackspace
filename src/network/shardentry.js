@@ -41,7 +41,6 @@ define(function(require) {
       this.context.scene.add(this.map);
 
       var entities = mapData.entities;
-      this.addDefaultSceneData(entities);
       for(var id in entities) {
         var item = entities[id];
         var entity = this.context.createEntity(item.type, id, item.data);
@@ -163,16 +162,6 @@ define(function(require) {
         self.context.scene.add(entity);
         callback();
       });
-    },    
-    
-    addDefaultSceneData: function(data) {
-      data['quest-giver'] = {
-        type: 'npc',
-        data: {
-          x: 150,
-          y: 100
-        }
-      };              
     }
   };
   _.extend(ShardEntry.prototype, Eventable.prototype);

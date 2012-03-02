@@ -5636,7 +5636,7 @@ define('entities/npc',['require','underscore','./components/physical','./compone
     this.attach(new Renderable('character', true));
     this.attach(new Tangible(data.x, data.y, 12, 18));
     this.attach(new Directable(3.0));
-    this.attach(new QuestGiver('fetchducks'));
+    this.attach(new QuestGiver(data.quest));
 
   };  
   Npc.prototype = {};  
