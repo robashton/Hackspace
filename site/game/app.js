@@ -3743,82 +3743,6 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('static/tile',['require','underscore','../render/instance','../shared/eventable','../shared/coords'],function(require) {
-
-  var _ = require('underscore');
-  var Instance = require('../render/instance');
-  var Eventable = require('../shared/eventable');
-  var Coords = require('../shared/coords');
-  
-  var Tile = function(map, items, x, y) {
-    Eventable.call(this);
-    
-    this.map = map;
-    this.items = items;
-    this.instances = [];
-    this.floorInstance = null;
-    this.x = x;
-    this.y = y;
-  };
-  
-  Tile.prototype = {
-    addInstancesToGraph: function(graph) {
-      graph.add(this.floorInstance);
-      for(var i in this.instances) {
-        var instance = this.instances[i];
-        if(instance.opacity < 1.0) continue;
-        graph.add(instance);
-      }
-    },
-    createInstances: function() {    
-      for(var i = 0; i < this.items.length ; i++) {
-        this.createInstanceForItem(i);
-      }
-      this.createFloor();
-    },
-    createFloor: function() {
-      var transformedCoords = Coords.worldToIsometric(this.x, this.y);
-      transformedCoords.y += this.map.renderTileHeight / 2.0;
-      
-      var floorCoords = Coords.isometricToWorld(transformedCoords.x, transformedCoords.y);
-      
-      this.floorInstance = new Instance(this.map.models['testtile']);
-      this.floorInstance.scale(this.map.renderTileWidth, 0, this.map.renderTileHeight);
-      this.floorInstance.translate(floorCoords.x , floorCoords.y + this.map.renderTileHeight , 0);
-      this.floorInstance.forceDepth(-10000 + this.floorInstance.depth());
-    },
-    createInstanceForItem: function(i) {
-      var item = this.items[i];        
-      var model = this.map.models[item.template];
-      var template = this.map.templates[item.template];
-      var instance = new Instance(model);
-      instance.scale(template.size[0], template.size[1], template.size[2]);
-      instance.translate(this.x + item.x, this.y + item.y);
-      this.instances[i] = instance;
-      instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
-    },
-    onInstanceOpacityChanged: function(data, sender) {
-      this.raise('InstanceOpacityChanged', sender);
-    },
-    addItem: function(x, y, template) {
-      var i = this.items.length;
-      this.items.push({
-        x: x,
-        y: y,
-        template: template
-      });
-      this.createInstanceForItem(i);      
-    },
-    forEachInstance: function(callback, context) {
-      for(var i = 0; i < this.instances.length; i++) {
-        callback.call(context, this.instances[i]);
-      }
-    },
-  };
-  _.extend(Tile.prototype, Eventable.prototype);
-  return Tile;  
-});
-
 define('shared/bitfield',['require'],function(require) {
 
   var BitField = function(size) {
@@ -3928,7 +3852,100 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
 
 });
 
-define('static/statictilesource',['require','underscore','../shared/coords','../shared/eventable','../render/material','../render/quad','../render/instance','../scene/entity','./tile','./collisionmap'],function(require) {
+define('static/consts',['require','../shared/coords'],function(require) {
+  var Coords = require('../shared/coords');
+  var CONSTS = {};
+
+  CONSTS.TILEWIDTH = 128;
+  CONSTS.TILEHEIGHT = 128;
+      
+  var tileBottomRight = Coords.worldToIsometric(CONSTS.TILEWIDTH, CONSTS.TILEHEIGHT);
+  var tileTopRight = Coords.worldToIsometric(CONSTS.TILEWIDTH, 0);
+  var tileBottomLeft = Coords.worldToIsometric(0, CONSTS.TILEHEIGHT);
+
+  CONSTS.RENDERTILEWIDTH = tileTopRight.x - tileBottomLeft.x;
+  CONSTS.RENDERTILEHEIGHT = tileBottomRight.y;
+
+  return CONSTS;
+});
+define('static/tile',['require','underscore','../render/instance','../shared/eventable','../shared/coords','./consts'],function(require) {
+
+  var _ = require('underscore');
+  var Instance = require('../render/instance');
+  var Eventable = require('../shared/eventable');
+  var Coords = require('../shared/coords');
+  var CONST = require('./consts');
+
+  var Tile = function(map, items, x, y) {
+    Eventable.call(this);
+    
+    this.map = map;
+    this.items = items;
+    this.instances = [];
+    this.floorInstance = null;
+    this.x = x;
+    this.y = y;
+  };
+  
+  Tile.prototype = {
+    addInstancesToGraph: function(graph) {
+      graph.add(this.floorInstance);
+      for(var i in this.instances) {
+        var instance = this.instances[i];
+        if(instance.opacity < 1.0) continue;
+        graph.add(instance);
+      }
+    },
+    createInstances: function() {    
+      for(var i = 0; i < this.items.length ; i++) {
+        this.createInstanceForItem(i);
+      }
+      this.createFloor();
+    },
+    createFloor: function() {
+      var transformedCoords = Coords.worldToIsometric(this.x, this.y);
+      transformedCoords.y += CONST.RENDERTILEHEIGHT / 2.0;
+      
+      var floorCoords = Coords.isometricToWorld(transformedCoords.x, transformedCoords.y);
+      
+      this.floorInstance = new Instance(this.map.models['testtile']);
+      this.floorInstance.scale(CONST.RENDERTILEWIDTH, 0, CONST.RENDERTILEHEIGHT);
+      this.floorInstance.translate(floorCoords.x , floorCoords.y + CONST.RENDERTILEHEIGHT , 0);
+      this.floorInstance.forceDepth(-10000 + this.floorInstance.depth());
+    },
+    createInstanceForItem: function(i) {
+      var item = this.items[i];        
+      var model = this.map.models[item.template];
+      var template = this.map.templates[item.template];
+      var instance = new Instance(model);
+      instance.scale(template.size[0], template.size[1], template.size[2]);
+      instance.translate(this.x + item.x, this.y + item.y);
+      this.instances[i] = instance;
+      instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
+    },
+    onInstanceOpacityChanged: function(data, sender) {
+      this.raise('InstanceOpacityChanged', sender);
+    },
+    addItem: function(x, y, template) {
+      var i = this.items.length;
+      this.items.push({
+        x: x,
+        y: y,
+        template: template
+      });
+      this.createInstanceForItem(i);      
+    },
+    forEachInstance: function(callback, context) {
+      for(var i = 0; i < this.instances.length; i++) {
+        callback.call(context, this.instances[i]);
+      }
+    },
+  };
+  _.extend(Tile.prototype, Eventable.prototype);
+  return Tile;  
+});
+
+define('static/statictilesource',['require','underscore','../shared/coords','../shared/eventable','../render/material','../render/quad','../render/instance','../scene/entity','./tile','./collisionmap','./consts'],function(require) {
   var _ = require('underscore');
   var Coords = require('../shared/coords');
   var Eventable = require('../shared/eventable');
@@ -3939,27 +3956,19 @@ define('static/statictilesource',['require','underscore','../shared/coords','../
   var Entity = require('../scene/entity');
   var Tile = require('./tile');
   var CollisionMap = require('./collisionmap');
+  var CONST = require('./consts');
 
   var StaticTileSource = function(data, resources) {
     Eventable.call(this);
     this.width = data.width;
     this.height = data.height;
 
-    this.tilewidth = data.tilewidth;
-    this.tileheight = data.tileheight;
     this.templates = data.templates;
     this.tiledata = data.tiledata;
     this.tilecountwidth = data.tilecountwidth;
     this.tilecountheight = data.tilecountheight;
-    this.tiles = new Array(this.tilecountwidth * this.tilecountheight);
+    this.tiles = {};
     this.resources = resources;
-
-    var tileBottomRight = Coords.worldToIsometric(this.tilewidth, this.tileheight);
-    var tileTopRight = Coords.worldToIsometric(this.tilewidth, 0);
-    var tileBottomLeft = Coords.worldToIsometric(0, this.tileheight);
-        
-    this.renderTileWidth = tileTopRight.x - tileBottomLeft.x;
-    this.renderTileHeight = tileBottomRight.y;
 
     this.collision = new CollisionMap(data);
     this.models = {};
@@ -3996,7 +4005,7 @@ define('static/statictilesource',['require','underscore','../shared/coords','../
       for(var x = 0; x < this.tilecountwidth; x++) {
         for(var y = 0; y < this.tilecountheight ; y++) {
           var index = this.index(x, y);
-          var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
+          var tile =  new Tile(this, this.tiledata[index], x * CONST.TILEWIDTH, y * CONST.TILEHEIGHT);
           this.tiles[index] = tile;
           tile.createInstances();
         }
@@ -4016,7 +4025,7 @@ define('static/statictilesource',['require','underscore','../shared/coords','../
 
   return StaticTileSource;
 });   
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./statictilesource'],function(require) {
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./statictilesource','./consts'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -4030,22 +4039,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var Coords = require('../shared/coords');
   var Grid = require('../editor/grid');
   var StaticTileSource = require('./statictilesource');
+  var CONST = require('./consts');
 
-
-  var Map = function(data) {
+  var Map = function(tiles) {
     Entity.call(this, "map");    
-    this.data = data;
-
-    // TODO: Remove
-    this.tilewidth = data.tilewidth;
-    this.tileheight = data.tileheight;
-    
-    var tileBottomRight = Coords.worldToIsometric(this.tilewidth, this.tileheight);
-    var tileTopRight = Coords.worldToIsometric(this.tilewidth, 0);
-    var tileBottomLeft = Coords.worldToIsometric(0, this.tileheight);
-        
-    this.renderTileWidth = tileTopRight.x - tileBottomLeft.x;
-    this.renderTileHeight = tileBottomRight.y;
         
     this.scene = null;
     this.instanceTiles = null;
@@ -4053,6 +4050,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.context = null; 
     this.graph = null; 
     this.renderer = null; 
+    this.tiles = tiles;
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -4067,7 +4065,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
   
     onAddedToScene: function(scene) {
       this.scene = scene;
-      this.tiles = new StaticTileSource(this.data, scene.resources);
       this.scene.graph.add(this);   
     },
     
@@ -4082,7 +4079,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     render: function(context) {      
       this.evaluateStatus(context);
       
-      var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
+      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
       
       var offsetInMapCanvas = {
         x: topLeft.x - this.graph.viewport.left,
@@ -4137,10 +4134,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
     forEachVisibleQuad: function(callback) {
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-          var left = i * this.tilewidth;
-          var right = left + this.tilewidth;
-          var top = j * this.tileheight;
-          var bottom = top + this.tileheight;
+          var left = i * CONST.TILEWIDTH;
+          var right = left + CONST.TILEWIDTH;
+          var top = j * CONST.TILEHEIGHT;
+          var bottom = top + CONST.TILEHEIGHT;
           callback(left, top, right, bottom);          
         }      
       }
@@ -4161,10 +4158,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
       var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
       var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
       
-      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
-      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
-      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) ;
-      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) ;
+      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / CONST.TILEWIDTH);
+      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / CONST.TILEHEIGHT);
+      var tileright = parseInt( Math.max(bottomright.x, topright.x) / CONST.TILEWIDTH) ;
+      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / CONST.TILEHEIGHT) ;
            
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 
@@ -4187,12 +4184,12 @@ define('static/map',['require','underscore','../render/material','../render/quad
     redrawBackground: function(mainContext) {
       
       // So we know how many units we'll need in order to render all the  current partially visible tiles
-      var worldWidth = ((this.tileright + 1) - this.tileleft) * this.renderTileWidth;
-      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * this.renderTileHeight;
+      var worldWidth = ((this.tileright + 1) - this.tileleft) * CONST.RENDERTILEWIDTH;
+      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * CONST.RENDERTILEHEIGHT;
       
       // Then of course we need to know where the viewport starts
-      var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
-      var bottomLeft = Coords.worldToIsometric(this.tileleft * this.tilewidth, (this.tilebottom + 1) * this.tileheight);
+      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
+      var bottomLeft = Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, (this.tilebottom + 1) * CONST.TILEHEIGHT);
       
       // That gives us the ability to set up the viewport
       this.graph.updateViewport(
@@ -4265,8 +4262,8 @@ define('static/map',['require','underscore','../render/material','../render/quad
     // },
     
     // tileAtCoords: function(x, y) {
-    //   var tileX = parseInt(x / this.tilewidth);
-    //   var tileY = parseInt(y / this.tileheight);
+    //   var tileX = parseInt(x / CONST.TILEWIDTH);
+    //   var tileY = parseInt(y / CONST.TILEHEIGHT);
     //   var index = this.index(tileX, tileY);
     //   return this.tiles[index];
     // },
@@ -15744,7 +15741,7 @@ define('network/commander',['require','underscore'],function(require) {
   return Commander;
 });
 
-define('network/clientconnector',['require','underscore','../entities/controller','../entities/chasecamera','./commander','../static/map','../editor/grid','../shared/eventable'],function(require) {
+define('network/clientconnector',['require','underscore','../entities/controller','../entities/chasecamera','./commander','../static/map','../editor/grid','../shared/eventable','../static/statictilesource'],function(require) {
   var _ = require('underscore');
   var Controller = require('../entities/controller');
   var ChaseCamera = require('../entities/chasecamera');
@@ -15752,7 +15749,8 @@ define('network/clientconnector',['require','underscore','../entities/controller
   var Map = require('../static/map');
   var Grid = require('../editor/grid');
   var Eventable = require('../shared/eventable');
-  
+  var StaticTileSource = require('../static/statictilesource');
+
   var ClientConnector = function(socket, context) {
     Eventable.call(this);
     this.context = context;
@@ -15801,7 +15799,8 @@ define('network/clientconnector',['require','underscore','../entities/controller
     },
     loadMap: function(path) {
       var mapResource = this.context.resources.get(path);
-      var map = new Map(mapResource.get());
+      var tiles = new StaticTileSource(mapResource.get(), this.context.resources);
+      var map = new Map(tiles);
       this.context.scene.add(map);
       this.grid = new Grid(map);
  //     this.context.scene.add(this.grid); 

@@ -4,7 +4,8 @@ define(function(require) {
   var Instance = require('../render/instance');
   var Eventable = require('../shared/eventable');
   var Coords = require('../shared/coords');
-  
+  var CONST = require('./consts');
+
   var Tile = function(map, items, x, y) {
     Eventable.call(this);
     
@@ -33,13 +34,13 @@ define(function(require) {
     },
     createFloor: function() {
       var transformedCoords = Coords.worldToIsometric(this.x, this.y);
-      transformedCoords.y += this.map.renderTileHeight / 2.0;
+      transformedCoords.y += CONST.RENDERTILEHEIGHT / 2.0;
       
       var floorCoords = Coords.isometricToWorld(transformedCoords.x, transformedCoords.y);
       
       this.floorInstance = new Instance(this.map.models['testtile']);
-      this.floorInstance.scale(this.map.renderTileWidth, 0, this.map.renderTileHeight);
-      this.floorInstance.translate(floorCoords.x , floorCoords.y + this.map.renderTileHeight , 0);
+      this.floorInstance.scale(CONST.RENDERTILEWIDTH, 0, CONST.RENDERTILEHEIGHT);
+      this.floorInstance.translate(floorCoords.x , floorCoords.y + CONST.RENDERTILEHEIGHT , 0);
       this.floorInstance.forceDepth(-10000 + this.floorInstance.depth());
     },
     createInstanceForItem: function(i) {

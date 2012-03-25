@@ -12571,6 +12571,22 @@ define('render/quad',['require','../shared/coords'],function(require) {
   return Quad;
 });
 
+define('static/consts',['require','../shared/coords'],function(require) {
+  var Coords = require('../shared/coords');
+  var CONSTS = {};
+
+  CONSTS.TILEWIDTH = 128;
+  CONSTS.TILEHEIGHT = 128;
+      
+  var tileBottomRight = Coords.worldToIsometric(CONSTS.TILEWIDTH, CONSTS.TILEHEIGHT);
+  var tileTopRight = Coords.worldToIsometric(CONSTS.TILEWIDTH, 0);
+  var tileBottomLeft = Coords.worldToIsometric(0, CONSTS.TILEHEIGHT);
+
+  CONSTS.RENDERTILEWIDTH = tileTopRight.x - tileBottomLeft.x;
+  CONSTS.RENDERTILEHEIGHT = tileBottomRight.y;
+
+  return CONSTS;
+});
 define('entities/components/physical',['require','glmatrix','../../shared/coords'],function(require) {
 
   var vec3 = require('glmatrix').vec3;
@@ -14550,13 +14566,14 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
 
 });
 
-define('static/tile',['require','underscore','../render/instance','../shared/eventable','../shared/coords'],function(require) {
+define('static/tile',['require','underscore','../render/instance','../shared/eventable','../shared/coords','./consts'],function(require) {
 
   var _ = require('underscore');
   var Instance = require('../render/instance');
   var Eventable = require('../shared/eventable');
   var Coords = require('../shared/coords');
-  
+  var CONST = require('./consts');
+
   var Tile = function(map, items, x, y) {
     Eventable.call(this);
     
@@ -14585,13 +14602,13 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
     },
     createFloor: function() {
       var transformedCoords = Coords.worldToIsometric(this.x, this.y);
-      transformedCoords.y += this.map.renderTileHeight / 2.0;
+      transformedCoords.y += CONST.RENDERTILEHEIGHT / 2.0;
       
       var floorCoords = Coords.isometricToWorld(transformedCoords.x, transformedCoords.y);
       
       this.floorInstance = new Instance(this.map.models['testtile']);
-      this.floorInstance.scale(this.map.renderTileWidth, 0, this.map.renderTileHeight);
-      this.floorInstance.translate(floorCoords.x , floorCoords.y + this.map.renderTileHeight , 0);
+      this.floorInstance.scale(CONST.RENDERTILEWIDTH, 0, CONST.RENDERTILEHEIGHT);
+      this.floorInstance.translate(floorCoords.x , floorCoords.y + CONST.RENDERTILEHEIGHT , 0);
       this.floorInstance.forceDepth(-10000 + this.floorInstance.depth());
     },
     createInstanceForItem: function(i) {
@@ -14626,7 +14643,58 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
   return Tile;  
 });
 
-define('static/statictilesource',['require','underscore','../shared/coords','../shared/eventable','../render/material','../render/quad','../render/instance','../scene/entity','./tile','./collisionmap'],function(require) {
+define('editor/editortilesource',['require','underscore','jquery','../static/tile','../static/consts'],function(require) {
+  var _ = require('underscore');
+  var $ = require('jquery');
+  var Tile = require('../static/tile');
+  var CONST = require('../static/consts');
+
+  var EditorTileSource = function() {
+    this.tiles = {};
+    this.loadingTiles = {};
+  };
+
+  EditorTileSource.prototype = {
+    withTile: function(i, j, cb) {
+      var index = this.index(i,j);
+      var tile = this.tiles[index];
+      if(!tile) this.loadTile(i, j);
+      else cb(tile);
+    },
+    index: function(i, j) {
+      var xstr = i.toString(10);
+      var ystr = i.toString(10);
+      return xstr + ystr;
+    },
+    loadTile: function(i, j) {
+      var self = this;
+      this.withTileLoadingLock(i, j, function(cb) {
+        $.getJSON('/services/gettile', {
+          x: i,
+          y: j
+        }, function(data) {
+          var tile = new Tile(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          var index = self.index(i, j);
+          self.tiles[index] = tile;
+          tile.createInstances();
+          cb();
+        });
+      });
+    },
+    withTileLoadingLock: function(i, j, cb) {
+      var index = this.index(i, j);
+      if(this.loadingTiles[index]) return;
+      this.loadingTiles[index] = {};
+      var self = this;
+      cb(function() {
+        delete self.loadingTiles[index];
+      })
+    }
+  };
+
+  return EditorTileSource;
+});
+define('static/statictilesource',['require','underscore','../shared/coords','../shared/eventable','../render/material','../render/quad','../render/instance','../scene/entity','./tile','./collisionmap','./consts'],function(require) {
   var _ = require('underscore');
   var Coords = require('../shared/coords');
   var Eventable = require('../shared/eventable');
@@ -14637,27 +14705,19 @@ define('static/statictilesource',['require','underscore','../shared/coords','../
   var Entity = require('../scene/entity');
   var Tile = require('./tile');
   var CollisionMap = require('./collisionmap');
+  var CONST = require('./consts');
 
   var StaticTileSource = function(data, resources) {
     Eventable.call(this);
     this.width = data.width;
     this.height = data.height;
 
-    this.tilewidth = data.tilewidth;
-    this.tileheight = data.tileheight;
     this.templates = data.templates;
     this.tiledata = data.tiledata;
     this.tilecountwidth = data.tilecountwidth;
     this.tilecountheight = data.tilecountheight;
-    this.tiles = new Array(this.tilecountwidth * this.tilecountheight);
+    this.tiles = {};
     this.resources = resources;
-
-    var tileBottomRight = Coords.worldToIsometric(this.tilewidth, this.tileheight);
-    var tileTopRight = Coords.worldToIsometric(this.tilewidth, 0);
-    var tileBottomLeft = Coords.worldToIsometric(0, this.tileheight);
-        
-    this.renderTileWidth = tileTopRight.x - tileBottomLeft.x;
-    this.renderTileHeight = tileBottomRight.y;
 
     this.collision = new CollisionMap(data);
     this.models = {};
@@ -14694,7 +14754,7 @@ define('static/statictilesource',['require','underscore','../shared/coords','../
       for(var x = 0; x < this.tilecountwidth; x++) {
         for(var y = 0; y < this.tilecountheight ; y++) {
           var index = this.index(x, y);
-          var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
+          var tile =  new Tile(this, this.tiledata[index], x * CONST.TILEWIDTH, y * CONST.TILEHEIGHT);
           this.tiles[index] = tile;
           tile.createInstances();
         }
@@ -14714,7 +14774,7 @@ define('static/statictilesource',['require','underscore','../shared/coords','../
 
   return StaticTileSource;
 });   
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./statictilesource'],function(require) {
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./statictilesource','./consts'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -14728,22 +14788,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var Coords = require('../shared/coords');
   var Grid = require('../editor/grid');
   var StaticTileSource = require('./statictilesource');
+  var CONST = require('./consts');
 
-
-  var Map = function(data) {
+  var Map = function(tiles) {
     Entity.call(this, "map");    
-    this.data = data;
-
-    // TODO: Remove
-    this.tilewidth = data.tilewidth;
-    this.tileheight = data.tileheight;
-    
-    var tileBottomRight = Coords.worldToIsometric(this.tilewidth, this.tileheight);
-    var tileTopRight = Coords.worldToIsometric(this.tilewidth, 0);
-    var tileBottomLeft = Coords.worldToIsometric(0, this.tileheight);
-        
-    this.renderTileWidth = tileTopRight.x - tileBottomLeft.x;
-    this.renderTileHeight = tileBottomRight.y;
         
     this.scene = null;
     this.instanceTiles = null;
@@ -14751,6 +14799,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.context = null; 
     this.graph = null; 
     this.renderer = null; 
+    this.tiles = tiles;
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -14765,7 +14814,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
   
     onAddedToScene: function(scene) {
       this.scene = scene;
-      this.tiles = new StaticTileSource(this.data, scene.resources);
       this.scene.graph.add(this);   
     },
     
@@ -14780,7 +14828,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     render: function(context) {      
       this.evaluateStatus(context);
       
-      var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
+      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
       
       var offsetInMapCanvas = {
         x: topLeft.x - this.graph.viewport.left,
@@ -14835,10 +14883,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
     forEachVisibleQuad: function(callback) {
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-          var left = i * this.tilewidth;
-          var right = left + this.tilewidth;
-          var top = j * this.tileheight;
-          var bottom = top + this.tileheight;
+          var left = i * CONST.TILEWIDTH;
+          var right = left + CONST.TILEWIDTH;
+          var top = j * CONST.TILEHEIGHT;
+          var bottom = top + CONST.TILEHEIGHT;
           callback(left, top, right, bottom);          
         }      
       }
@@ -14859,10 +14907,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
       var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
       var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
       
-      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
-      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
-      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) ;
-      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) ;
+      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / CONST.TILEWIDTH);
+      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / CONST.TILEHEIGHT);
+      var tileright = parseInt( Math.max(bottomright.x, topright.x) / CONST.TILEWIDTH) ;
+      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / CONST.TILEHEIGHT) ;
            
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 
@@ -14885,12 +14933,12 @@ define('static/map',['require','underscore','../render/material','../render/quad
     redrawBackground: function(mainContext) {
       
       // So we know how many units we'll need in order to render all the  current partially visible tiles
-      var worldWidth = ((this.tileright + 1) - this.tileleft) * this.renderTileWidth;
-      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * this.renderTileHeight;
+      var worldWidth = ((this.tileright + 1) - this.tileleft) * CONST.RENDERTILEWIDTH;
+      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * CONST.RENDERTILEHEIGHT;
       
       // Then of course we need to know where the viewport starts
-      var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
-      var bottomLeft = Coords.worldToIsometric(this.tileleft * this.tilewidth, (this.tilebottom + 1) * this.tileheight);
+      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
+      var bottomLeft = Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, (this.tilebottom + 1) * CONST.TILEHEIGHT);
       
       // That gives us the ability to set up the viewport
       this.graph.updateViewport(
@@ -14963,8 +15011,8 @@ define('static/map',['require','underscore','../render/material','../render/quad
     // },
     
     // tileAtCoords: function(x, y) {
-    //   var tileX = parseInt(x / this.tilewidth);
-    //   var tileY = parseInt(y / this.tileheight);
+    //   var tileX = parseInt(x / CONST.TILEWIDTH);
+    //   var tileY = parseInt(y / CONST.TILEHEIGHT);
     //   var index = this.index(tileX, tileY);
     //   return this.tiles[index];
     // },
@@ -14985,16 +15033,17 @@ define('static/map',['require','underscore','../render/material','../render/quad
 
 });
 
-define('editor/mapbuilder',['require','underscore','../static/map','../render/instance','../shared/bitfield','./worlditem'],function(require) {
+define('editor/mapbuilder',['require','underscore','../static/map','../render/instance','../shared/bitfield','./worlditem','./editortilesource'],function(require) {
   
   var _ = require('underscore');
   var Map = require('../static/map');
   var Instance = require('../render/instance');
   var BitField = require('../shared/bitfield');
   var WorldItem = require('./worlditem');
+  var EditorTileSource = require('./editortilesource');
 
   var MapBuilder = function(data, entityInstanceFactory) {
-    Map.call(this, data);
+    Map.call(this, new EditorTileSource());
     this.entityInstanceFactory = entityInstanceFactory;
     this.entities = {};
     this.addEntities(data.entities);
@@ -15038,7 +15087,6 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
   
     getMapData: function() {
       var map = {};  
-      this.populateMapMetadata(map);
       this.populateMapTemplates(map);
       this.populateMapTiles(map);
       this.populateMapCollision(map);
@@ -15052,17 +15100,7 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
         var item = this.entities[i];
         map.entities[i] = item.entity;  
       }
-    },
-    
-    populateMapMetadata: function(map) {
-      map.width = this.width;
-      map.height = this.height;
-      map.tilewidth = this.tilewidth;
-      map.tileheight = this.tileheight;
-
-      map.tilecountwidth = this.tilecountwidth;
-      map.tilecountheight = this.tilecountheight;
-    },
+    },    
     
     populateMapTemplates: function(map) {
       map.templates = this.templates;
@@ -16111,8 +16149,9 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
     },
     initializeMap: function() {
 
-      var mapResource = this.context.resources.get('/main/world.json');      
-      this.map = new MapBuilder(mapResource.get(), this.library);
+      var mapResource = this.context.resources.get('/main/world.json'); 
+     
+      this.map = new MapBuilder(mapResource.get(),  this.library);
       this.context.scene.add(this.map);
       this.map.initializeEditables(); // TODO: This is probably temporary and an anti-pattern and everything else ;-)
 

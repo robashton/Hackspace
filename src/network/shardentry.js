@@ -9,6 +9,7 @@ define(function(require) {
   var InventoryWatcher = require('../entities/inventorywatcher');
   var EntitySpawner = require('../entities/entityspawner');
   var Map = require('../static/map');
+  var StaticTileSource = require('../static/statictilesource');
   
   var ShardEntry = function(map, persistence) {
     Eventable.call(this);
@@ -37,7 +38,9 @@ define(function(require) {
     
       var mapResource = this.context.resources.get('/main/world.json');
       var mapData = mapResource.get();
-      this.map = new Map(mapData);
+      var tiles = new StaticTileSource(mapData, this.context.resources);
+
+      this.map = new Map(tiles);
       this.context.scene.add(this.map);
 
       var entities = mapData.entities;

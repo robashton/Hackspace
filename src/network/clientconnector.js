@@ -6,7 +6,8 @@ define(function(require) {
   var Map = require('../static/map');
   var Grid = require('../editor/grid');
   var Eventable = require('../shared/eventable');
-  
+  var StaticTileSource = require('../static/statictilesource');
+
   var ClientConnector = function(socket, context) {
     Eventable.call(this);
     this.context = context;
@@ -55,7 +56,8 @@ define(function(require) {
     },
     loadMap: function(path) {
       var mapResource = this.context.resources.get(path);
-      var map = new Map(mapResource.get());
+      var tiles = new StaticTileSource(mapResource.get(), this.context.resources);
+      var map = new Map(tiles);
       this.context.scene.add(map);
       this.grid = new Grid(map);
  //     this.context.scene.add(this.grid); 

@@ -1,6 +1,7 @@
 define(function(require) {
   var qs = require('querystring');
-  
+  var url = require('url');
+
   var Handler = function() {
     this.routes = {};
   };
@@ -40,7 +41,11 @@ define(function(require) {
           callback.call(self);
         });
       } 
-    else callback.call(self);
+    else {
+      var url_parts = url.parse(req.url, true);
+      req.query = url_parts.query;
+      callback.call(self);
+      }
     }
   };
   

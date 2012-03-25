@@ -5,9 +5,10 @@ define(function(require) {
   var Instance = require('../render/instance');
   var BitField = require('../shared/bitfield');
   var WorldItem = require('./worlditem');
+  var EditorTileSource = require('./editortilesource');
 
   var MapBuilder = function(data, entityInstanceFactory) {
-    Map.call(this, data);
+    Map.call(this, new EditorTileSource());
     this.entityInstanceFactory = entityInstanceFactory;
     this.entities = {};
     this.addEntities(data.entities);
@@ -51,7 +52,6 @@ define(function(require) {
   
     getMapData: function() {
       var map = {};  
-      this.populateMapMetadata(map);
       this.populateMapTemplates(map);
       this.populateMapTiles(map);
       this.populateMapCollision(map);
@@ -65,17 +65,7 @@ define(function(require) {
         var item = this.entities[i];
         map.entities[i] = item.entity;  
       }
-    },
-    
-    populateMapMetadata: function(map) {
-      map.width = this.width;
-      map.height = this.height;
-      map.tilewidth = this.tilewidth;
-      map.tileheight = this.tileheight;
-
-      map.tilecountwidth = this.tilecountwidth;
-      map.tilecountheight = this.tilecountheight;
-    },
+    },    
     
     populateMapTemplates: function(map) {
       map.templates = this.templates;

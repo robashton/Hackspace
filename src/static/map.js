@@ -12,22 +12,10 @@ define(function(require) {
   var Coords = require('../shared/coords');
   var Grid = require('../editor/grid');
   var StaticTileSource = require('./statictilesource');
+  var CONST = require('./consts');
 
-
-  var Map = function(data) {
+  var Map = function(tiles) {
     Entity.call(this, "map");    
-    this.data = data;
-
-    // TODO: Remove
-    this.tilewidth = data.tilewidth;
-    this.tileheight = data.tileheight;
-    
-    var tileBottomRight = Coords.worldToIsometric(this.tilewidth, this.tileheight);
-    var tileTopRight = Coords.worldToIsometric(this.tilewidth, 0);
-    var tileBottomLeft = Coords.worldToIsometric(0, this.tileheight);
-        
-    this.renderTileWidth = tileTopRight.x - tileBottomLeft.x;
-    this.renderTileHeight = tileBottomRight.y;
         
     this.scene = null;
     this.instanceTiles = null;
@@ -35,6 +23,7 @@ define(function(require) {
     this.context = null; 
     this.graph = null; 
     this.renderer = null; 
+    this.tiles = tiles;
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -49,7 +38,6 @@ define(function(require) {
   
     onAddedToScene: function(scene) {
       this.scene = scene;
-      this.tiles = new StaticTileSource(this.data, scene.resources);
       this.scene.graph.add(this);   
     },
     
@@ -64,7 +52,7 @@ define(function(require) {
     render: function(context) {      
       this.evaluateStatus(context);
       
-      var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
+      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
       
       var offsetInMapCanvas = {
         x: topLeft.x - this.graph.viewport.left,
@@ -119,10 +107,10 @@ define(function(require) {
     forEachVisibleQuad: function(callback) {
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-          var left = i * this.tilewidth;
-          var right = left + this.tilewidth;
-          var top = j * this.tileheight;
-          var bottom = top + this.tileheight;
+          var left = i * CONST.TILEWIDTH;
+          var right = left + CONST.TILEWIDTH;
+          var top = j * CONST.TILEHEIGHT;
+          var bottom = top + CONST.TILEHEIGHT;
           callback(left, top, right, bottom);          
         }      
       }
@@ -143,10 +131,10 @@ define(function(require) {
       var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
       var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
       
-      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / this.tilewidth);
-      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
-      var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) ;
-      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) ;
+      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / CONST.TILEWIDTH);
+      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / CONST.TILEHEIGHT);
+      var tileright = parseInt( Math.max(bottomright.x, topright.x) / CONST.TILEWIDTH) ;
+      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / CONST.TILEHEIGHT) ;
            
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 
@@ -169,12 +157,12 @@ define(function(require) {
     redrawBackground: function(mainContext) {
       
       // So we know how many units we'll need in order to render all the  current partially visible tiles
-      var worldWidth = ((this.tileright + 1) - this.tileleft) * this.renderTileWidth;
-      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * this.renderTileHeight;
+      var worldWidth = ((this.tileright + 1) - this.tileleft) * CONST.RENDERTILEWIDTH;
+      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * CONST.RENDERTILEHEIGHT;
       
       // Then of course we need to know where the viewport starts
-      var topLeft =  Coords.worldToIsometric(this.tileleft * this.tilewidth, this.tiletop * this.tileheight);
-      var bottomLeft = Coords.worldToIsometric(this.tileleft * this.tilewidth, (this.tilebottom + 1) * this.tileheight);
+      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
+      var bottomLeft = Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, (this.tilebottom + 1) * CONST.TILEHEIGHT);
       
       // That gives us the ability to set up the viewport
       this.graph.updateViewport(
@@ -247,8 +235,8 @@ define(function(require) {
     // },
     
     // tileAtCoords: function(x, y) {
-    //   var tileX = parseInt(x / this.tilewidth);
-    //   var tileY = parseInt(y / this.tileheight);
+    //   var tileX = parseInt(x / CONST.TILEWIDTH);
+    //   var tileY = parseInt(y / CONST.TILEHEIGHT);
     //   var index = this.index(tileX, tileY);
     //   return this.tiles[index];
     // },

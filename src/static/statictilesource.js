@@ -9,27 +9,19 @@ define(function(require) {
   var Entity = require('../scene/entity');
   var Tile = require('./tile');
   var CollisionMap = require('./collisionmap');
+  var CONST = require('./consts');
 
   var StaticTileSource = function(data, resources) {
     Eventable.call(this);
     this.width = data.width;
     this.height = data.height;
 
-    this.tilewidth = data.tilewidth;
-    this.tileheight = data.tileheight;
     this.templates = data.templates;
     this.tiledata = data.tiledata;
     this.tilecountwidth = data.tilecountwidth;
     this.tilecountheight = data.tilecountheight;
-    this.tiles = new Array(this.tilecountwidth * this.tilecountheight);
+    this.tiles = {};
     this.resources = resources;
-
-    var tileBottomRight = Coords.worldToIsometric(this.tilewidth, this.tileheight);
-    var tileTopRight = Coords.worldToIsometric(this.tilewidth, 0);
-    var tileBottomLeft = Coords.worldToIsometric(0, this.tileheight);
-        
-    this.renderTileWidth = tileTopRight.x - tileBottomLeft.x;
-    this.renderTileHeight = tileBottomRight.y;
 
     this.collision = new CollisionMap(data);
     this.models = {};
@@ -66,7 +58,7 @@ define(function(require) {
       for(var x = 0; x < this.tilecountwidth; x++) {
         for(var y = 0; y < this.tilecountheight ; y++) {
           var index = this.index(x, y);
-          var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
+          var tile =  new Tile(this, this.tiledata[index], x * CONST.TILEWIDTH, y * CONST.TILEHEIGHT);
           this.tiles[index] = tile;
           tile.createInstances();
         }
