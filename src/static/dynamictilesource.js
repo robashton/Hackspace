@@ -5,6 +5,7 @@ define(function(require) {
   var CONST = require('./consts');
   var Material = require('../render/material');
   var Quad = require('../render/quad');
+  var Tile = require('./tile');
 
   var DynamicTileSource = function(resources, scene) {
     this.tiles = {};
@@ -61,7 +62,7 @@ define(function(require) {
           x: i,
           y: j
         }, function(data) {
-          var tile = new Tile(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          var tile = new Tile(self, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
           var index = self.index(i, j);
           self.tiles[index] = tile;
           tile.createInstances();
@@ -77,6 +78,19 @@ define(function(require) {
       cb(function() {
         delete self.loadingTiles[index];
       })
+    },
+    solidAt: function(x, y) {
+      var tileX = parseInt(x / CONST.TILEWIDTH);
+      var tileY = parseInt(y / CONST.TILEHEIGHT);
+      var index = this.index(tileX, tileY);
+      var tile = this.tiles[index];
+      if(!tile) return false;
+      return tile.solidAt(x, y);
+    },
+    withTileAtCoords: function(x, y, cb) {
+      var tileX = parseInt(x / CONST.TILEWIDTH);
+      var tileY = parseInt(y / CONST.TILEHEIGHT);
+      this.tiles.withTile(tileX, tileY, cb);
     }
   };
 

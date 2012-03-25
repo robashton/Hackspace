@@ -2,11 +2,11 @@ define(function(require) {
 
   var BitField = require('../shared/bitfield');
 
-  var CollisionMap = function(data) {
+  var CollisionMap = function(values, width, height) {
     this.bitfield = new BitField();
-    this.width = data.width;
-    this.height = data.height;
-    this.bitfield.values = data.collision;  
+    this.width = width;
+    this.height = height;
+    this.bitfield.values = values;  
   };
   
   CollisionMap.prototype = {

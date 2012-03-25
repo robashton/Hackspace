@@ -3779,11 +3779,11 @@ define('static/collisionmap',['require','../shared/bitfield'],function(require) 
 
   var BitField = require('../shared/bitfield');
 
-  var CollisionMap = function(data) {
+  var CollisionMap = function(values, width, height) {
     this.bitfield = new BitField();
-    this.width = data.width;
-    this.height = data.height;
-    this.bitfield.values = data.collision;  
+    this.width = width;
+    this.height = height;
+    this.bitfield.values = values;  
   };
   
   CollisionMap.prototype = {
@@ -3868,19 +3868,20 @@ define('static/consts',['require','../shared/coords'],function(require) {
 
   return CONSTS;
 });
-define('static/tile',['require','underscore','../render/instance','../shared/eventable','../shared/coords','./consts'],function(require) {
+define('static/tile',['require','underscore','../render/instance','../shared/eventable','../shared/coords','./consts','./collisionmap'],function(require) {
 
   var _ = require('underscore');
   var Instance = require('../render/instance');
   var Eventable = require('../shared/eventable');
   var Coords = require('../shared/coords');
   var CONST = require('./consts');
+  var CollisionMap = require('./collisionmap');
 
-  var Tile = function(map, items, x, y) {
-    Eventable.call(this);
-    
+  var Tile = function(map, items, collision, x, y) {
+    Eventable.call(this);    
     this.map = map;
     this.items = items;
+    this.collision = new CollisionMap(collision, CONST.TILEWIDTH, CONST.TILEHEIGHT);
     this.instances = [];
     this.floorInstance = null;
     this.x = x;
@@ -3931,92 +3932,17 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
         callback.call(context, this.instances[i]);
       }
     },
+    solidAt: function(x, y) {
+      var localx = parseInt(x - this.x);
+      var localy = parseInt(y - this.y);
+      return this.collision.solidAt(localx, localy);
+    }
   };
   _.extend(Tile.prototype, Eventable.prototype);
   return Tile;  
 });
 
-define('static/statictilesource',['require','underscore','../shared/coords','../shared/eventable','../render/material','../render/quad','../render/instance','../scene/entity','./tile','./collisionmap','./consts'],function(require) {
-  var _ = require('underscore');
-  var Coords = require('../shared/coords');
-  var Eventable = require('../shared/eventable');
-
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  var Instance = require('../render/instance');
-  var Entity = require('../scene/entity');
-  var Tile = require('./tile');
-  var CollisionMap = require('./collisionmap');
-  var CONST = require('./consts');
-
-  var StaticTileSource = function(data, resources) {
-    Eventable.call(this);
-    this.width = data.width;
-    this.height = data.height;
-
-    this.templates = data.templates;
-    this.tiledata = data.tiledata;
-    this.tilecountwidth = data.tilecountwidth;
-    this.tilecountheight = data.tilecountheight;
-    this.tiles = {};
-    this.resources = resources;
-
-    this.collision = new CollisionMap(data);
-    this.models = {};
-    this.createModels();
-    this.createInstances();
-  };
-
-  StaticTileSource.prototype = {
-    withTile: function(i, j, cb) {
-      var index =  this.index(i, j);
-      var tile = this.tiles[index];
-      if(tile)
-        cb(tile);
-    },
-    createModels: function() {
-      for(var t in this.templates) {
-        var template = this.templates[t];
-        this.createModelForTemplate(template);  
-      }
-      this.createModelForTemplate({
-        id: 'testtile',
-        texture: '/main/testtile.png'
-      });
-    },
-
-    createModelForTemplate: function(template) {
-      var material = new Material();
-      material.diffuseTexture = this.resources.get(template.texture);
-      this.models[template.id] = new Quad(material);
-      return this.models[template.id];
-    },
- 
-    createInstances: function() {    
-      for(var x = 0; x < this.tilecountwidth; x++) {
-        for(var y = 0; y < this.tilecountheight ; y++) {
-          var index = this.index(x, y);
-          var tile =  new Tile(this, this.tiledata[index], x * CONST.TILEWIDTH, y * CONST.TILEHEIGHT);
-          this.tiles[index] = tile;
-          tile.createInstances();
-        }
-      }
-    },
-
-    index: function(x, y) {
-      return x + y * this.tilecountwidth;
-    },
-    
-    solidAt: function(x, y) {
-      return this.collision.solidAt(parseInt(x), parseInt(y));
-    }
-  };
-
-  _.extend(StaticTileSource.prototype, Eventable.prototype);
-
-  return StaticTileSource;
-});   
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./statictilesource','./consts'],function(require) {
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./consts'],function(require) {
 
   var _ = require('underscore');
   var Material = require('../render/material');
@@ -4029,7 +3955,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var CollisionMap = require('./collisionmap');
   var Coords = require('../shared/coords');
   var Grid = require('../editor/grid');
-  var StaticTileSource = require('./statictilesource');
   var CONST = require('./consts');
 
   var Map = function(tiles) {
@@ -15720,13 +15645,14 @@ define('network/commander',['require','underscore'],function(require) {
   return Commander;
 });
 
-define('static/dynamictilesource',['require','underscore','jquery','./consts','../render/material','../render/quad'],function(require) {
+define('static/dynamictilesource',['require','underscore','jquery','./consts','../render/material','../render/quad','./tile'],function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
 
   var CONST = require('./consts');
   var Material = require('../render/material');
   var Quad = require('../render/quad');
+  var Tile = require('./tile');
 
   var DynamicTileSource = function(resources, scene) {
     this.tiles = {};
@@ -15783,7 +15709,7 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
           x: i,
           y: j
         }, function(data) {
-          var tile = new Tile(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          var tile = new Tile(self, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
           var index = self.index(i, j);
           self.tiles[index] = tile;
           tile.createInstances();
@@ -15799,6 +15725,19 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
       cb(function() {
         delete self.loadingTiles[index];
       })
+    },
+    solidAt: function(x, y) {
+      var tileX = parseInt(x / CONST.TILEWIDTH);
+      var tileY = parseInt(y / CONST.TILEHEIGHT);
+      var index = this.index(tileX, tileY);
+      var tile = this.tiles[index];
+      if(!tile) return false;
+      return tile.solidAt(x, y);
+    },
+    withTileAtCoords: function(x, y, cb) {
+      var tileX = parseInt(x / CONST.TILEWIDTH);
+      var tileY = parseInt(y / CONST.TILEHEIGHT);
+      this.tiles.withTile(tileX, tileY, cb);
     }
   };
 

@@ -11,7 +11,6 @@ define(function(require) {
   var CollisionMap = require('./collisionmap');
   var Coords = require('../shared/coords');
   var Grid = require('../editor/grid');
-  var StaticTileSource = require('./statictilesource');
   var CONST = require('./consts');
 
   var Map = function(tiles) {

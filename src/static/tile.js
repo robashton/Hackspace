@@ -5,12 +5,13 @@ define(function(require) {
   var Eventable = require('../shared/eventable');
   var Coords = require('../shared/coords');
   var CONST = require('./consts');
+  var CollisionMap = require('./collisionmap');
 
-  var Tile = function(map, items, x, y) {
-    Eventable.call(this);
-    
+  var Tile = function(map, items, collision, x, y) {
+    Eventable.call(this);    
     this.map = map;
     this.items = items;
+    this.collision = new CollisionMap(collision, CONST.TILEWIDTH, CONST.TILEHEIGHT);
     this.instances = [];
     this.floorInstance = null;
     this.x = x;
@@ -61,6 +62,11 @@ define(function(require) {
         callback.call(context, this.instances[i]);
       }
     },
+    solidAt: function(x, y) {
+      var localx = parseInt(x - this.x);
+      var localy = parseInt(y - this.y);
+      return this.collision.solidAt(localx, localy);
+    }
   };
   _.extend(Tile.prototype, Eventable.prototype);
   return Tile;  

@@ -6,9 +6,8 @@ define(function(require) {
   var CONST = require('../static/consts')
 
   var TileBuilder = function(parent, data, x, y) {
-    Tile.call(this, parent, data.items, x, y);
+    Tile.call(this, parent, data.items, data.collision, x, y);
     this.parent = parent;
-    this.collision = data.collision;
     this.entities = {};
     this.addEntitiesFromData(data.entities || {});
   };
@@ -62,12 +61,10 @@ define(function(require) {
       
       for(var x = 0 ; x < this.items.length; x++) {
         var item = this.items[x];
-
-        // Urgh
         var template = this.parent.templates[item.template];
 
-        var realx = item.x + (template.size[0] / 2.0);
-        var realy = item.y + (template.size[1] / 2.0);
+        var realx = (item.x - this.x) + (template.size[0] / 2.0);
+        var realy = (item.y - this.y) + (template.size[1] / 2.0);
         var width = template.collision[0];
         var height = template.collision[1];
         

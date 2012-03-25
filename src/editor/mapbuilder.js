@@ -35,14 +35,14 @@ define(function(require) {
     },
   
     addStatic: function(template, x, y) {
-      this.withTileAtCoords(x, y, function(tile) {
+      this.tiles.withTileAtCoords(x, y, function(tile) {
         tile.addStatic(x, y, template.id);
       });
       this.needsRedrawing = true;            
     },
 
     addEntity: function(id, type, data) {
-      this.withTileAtCoords(data.x, data.y, function(tile) {
+      this.tiles.withTileAtCoords(data.x, data.y, function(tile) {
         tile.addEntity(id, type, data);
       });
       this.needsRedrawing = true;
@@ -53,11 +53,6 @@ define(function(require) {
         x: x - (parseInt(x / CONST.TILEWIDTH) * CONST.TILEWIDTH),
         y: y - (parseInt(y / CONST.TILEHEIGHT) * CONST.TILEHEIGHT)
       };
-    },
-    withTileAtCoords: function(x, y, cb) {
-      var tileX = parseInt(x / CONST.TILEWIDTH);
-      var tileY = parseInt(y / CONST.TILEHEIGHT);
-      this.tiles.withTile(tileX, tileY, cb);
     }
   };
   
