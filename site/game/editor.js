@@ -15719,15 +15719,21 @@ define('editor/topbar',['require','jquery'],function(require) {
       });
     },
     saveMap: function() {
-      var data = this.editor.map.getMapData();
-      $.ajax({
-        type: 'POST',
-        url: 'services/savemap',
-        data: { map: JSON.stringify(data) },
-        success: function() {
-          alert('saved');
-        },
-        dataType: "json"
+      var waiting = 0;
+      this.editor.map.eachLoadedTile(function(i, j, tile) {
+         var data = tile.getData();
+         waiting++;
+         $.ajax({
+          type: 'POST',
+          url: 'services/savetile',
+          data: { map: data, x: i, y: j},
+          success: function() {
+            waiting--;
+            if(waiting === 0)
+              alert('Saved');
+          },
+          dataType: 'json'
+         });
       });
     }
   };
@@ -15880,14 +15886,16 @@ define('editor/dataeditor',['require','underscore','../shared/eventable','jquery
   return DataEditor;
 });
 
-define('editor/tilebuilder',['require','underscore','../static/tile','./worlditem'],function(require) {
+define('editor/tilebuilder',['require','underscore','../static/tile','./worlditem','../shared/bitfield','../static/consts'],function(require) {
   var _ = require('underscore');
   var Tile = require('../static/tile');
   var WorldItem = require('./worlditem');
+  var BitField = require('../shared/bitfield');
+  var CONST = require('../static/consts')
 
-  var TileBuilder = function(map, data, x, y) {
-    Tile.call(this, map, data.items, x, y);
-    this.builder = map;
+  var TileBuilder = function(parent, data, x, y) {
+    Tile.call(this, parent, data.items, x, y);
+    this.parent = parent;
     this.collision = data.collision;
     this.entities = {};
     this.addEntitiesFromData(data.entities || {});
@@ -15897,11 +15905,11 @@ define('editor/tilebuilder',['require','underscore','../static/tile','./worldite
     addEntitiesFromData: function(entities) {
       for(var i in entities) {
         var entity = entities[i];
-        this.entities[i] = new WorldItem(this.builder, i, entity);
+        this.entities[i] = new WorldItem(this.parent, i, entity);
       }
     },
     addEntity: function(id, type, data) {
-      this.entities[id] = new WorldItem(this.builder, id, {
+      this.entities[id] = new WorldItem(this.parent, id, {
         type: type,
         data: data
       });
@@ -15917,65 +15925,55 @@ define('editor/tilebuilder',['require','underscore','../static/tile','./worldite
       this.createInstanceForItem(i);      
     },
     getData: function() {
-
+      var data = {};
+      this.populateEntities(data);
+      this.populateItems(data);
+      this.populateCollision(data);
+      return data;
     },
-    /*
-    populateEntities: function(map) {
-      map.entities = {};
+    
+    populateEntities: function(data) {
+      data.entities = {};
       for(var i in this.entities) {
         var item = this.entities[i];
-        map.entities[i] = item.entity;  
+        data.entities[i] = item.entity;  
       }
     },    
-    
-    populateMapTemplates: function(map) {
-      map.templates = this.templates;
+ 
+    populateItems: function(data) {
+      data.items = this.items;
     },
-    
-    populateMapTiles: function(map) {
-      map.tiledata = new Array(this.tilecountwidth * this.tilecountheight);
-      for(var i = 0; i < this.tiles.length; i++) {
-        map.tiledata[i] = this.tiles[i].items;
-      }
-    },
-    
-    populateMapCollision: function(map) {
-      var field = new BitField(this.width * this.height);
+
+    populateCollision: function(data) {
+      var field = new BitField(CONST.TILEWIDTH * CONST.TILEHEIGHT);
       field.zero();
       
-      for(var i = 0; i < this.tilecountwidth; i++) {
-        for(var j = 0; j < this.tilecountheight; j++) {
-          var index = this.index(i, j);
-          var startx = i * CONST.TILEWIDTH;
-          var starty = j * CONST.TILEHEIGHT;          
-          var tile = map.tiledata[index];
-          
-          for(var x = 0 ; x < tile.length; x++) {
-            var item = tile[x];
-            var template = map.templates[item.template];
-            var realx = item.x + startx + (template.size[0] / 2.0);
-            var realy = item.y + starty + (template.size[1] / 2.0);
-            var width = template.collision[0];
-            var height = template.collision[1];
-            
-            realx += width / 2.0;
-            realy += height / 2.0;
-            
-            realx = parseInt(realx);
-            realy = parseInt(realy);
-            
-            for(var a = realx ; a < realx + width ; a++) {
-              for(var b = realy ; b < realy + height; b++) {
-                var index = a + b * this.width;
-                field.set(index, 1);
-              }
-            }
-          }          
-        }
-      };
-      
-      map.collision = field.values;     
-    }*/
+      for(var x = 0 ; x < this.items.length; x++) {
+        var item = this.items[x];
+
+        // Urgh
+        var template = this.parent.templates[item.template];
+
+        var realx = item.x + (template.size[0] / 2.0);
+        var realy = item.y + (template.size[1] / 2.0);
+        var width = template.collision[0];
+        var height = template.collision[1];
+        
+        realx += width / 2.0;
+        realy += height / 2.0;
+        
+        realx = parseInt(realx);
+        realy = parseInt(realy);
+        
+        for(var a = realx ; a < realx + width ; a++) {
+          for(var b = realy ; b < realy + height; b++) {
+            var index = a + b * CONST.TILEWIDTH;
+            field.set(index, 1);
+          }
+        }   
+      }; 
+      data.collision = field.values;     
+    }
   };
   _.extend(TileBuilder.prototype, Tile.prototype);
 
@@ -16032,6 +16030,12 @@ define('editor/editortilesource',['require','underscore','jquery','./tilebuilder
       var ystr = j.toString(10);
       return xstr + ystr;
     },
+    eachTile: function(cb) {
+      for(var index in this.tiles) {
+        var tile = this.tiles[index];
+        cb(tile.i, tile.j, tile);
+      }
+    },
     loadTile: function(i, j) {
       var self = this;
       this.withTileLoadingLock(i, j, function(cb) {
@@ -16040,6 +16044,8 @@ define('editor/editortilesource',['require','underscore','jquery','./tilebuilder
           y: j
         }, function(data) {
           var tile = new TileBuilder(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          tile.i = i;
+          tile.j = j;
           var index = self.index(i, j);
           self.tiles[index] = tile;
           tile.createInstances();
@@ -16091,14 +16097,9 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
       // Then check static
       return null; // Not now ;-)      
     },
-  
-    getMapData: function() {
-      var map = {};  
-     /* this.populateMapTemplates(map);
-      this.populateMapTiles(map);
-      this.populateMapCollision(map);
-      this.populateEntities(map);
-      return map; */
+
+    eachLoadedTile: function(cb) {
+      this.tiles.eachTile(cb);
     },
   
     addStatic: function(template, x, y) {

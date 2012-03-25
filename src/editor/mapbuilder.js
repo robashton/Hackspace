@@ -29,14 +29,9 @@ define(function(require) {
       // Then check static
       return null; // Not now ;-)      
     },
-  
-    getMapData: function() {
-      var map = {};  
-     /* this.populateMapTemplates(map);
-      this.populateMapTiles(map);
-      this.populateMapCollision(map);
-      this.populateEntities(map);
-      return map; */
+
+    eachLoadedTile: function(cb) {
+      this.tiles.eachTile(cb);
     },
   
     addStatic: function(template, x, y) {

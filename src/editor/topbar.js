@@ -15,15 +15,21 @@ define(function(require) {
       });
     },
     saveMap: function() {
-      var data = this.editor.map.getMapData();
-      $.ajax({
-        type: 'POST',
-        url: 'services/savemap',
-        data: { map: JSON.stringify(data) },
-        success: function() {
-          alert('saved');
-        },
-        dataType: "json"
+      var waiting = 0;
+      this.editor.map.eachLoadedTile(function(i, j, tile) {
+         var data = tile.getData();
+         waiting++;
+         $.ajax({
+          type: 'POST',
+          url: 'services/savetile',
+          data: { map: data, x: i, y: j},
+          success: function() {
+            waiting--;
+            if(waiting === 0)
+              alert('Saved');
+          },
+          dataType: 'json'
+         });
       });
     }
   };

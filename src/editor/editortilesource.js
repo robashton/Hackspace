@@ -49,6 +49,12 @@ define(function(require) {
       var ystr = j.toString(10);
       return xstr + ystr;
     },
+    eachTile: function(cb) {
+      for(var index in this.tiles) {
+        var tile = this.tiles[index];
+        cb(tile.i, tile.j, tile);
+      }
+    },
     loadTile: function(i, j) {
       var self = this;
       this.withTileLoadingLock(i, j, function(cb) {
@@ -57,6 +63,8 @@ define(function(require) {
           y: j
         }, function(data) {
           var tile = new TileBuilder(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          tile.i = i;
+          tile.j = j;
           var index = self.index(i, j);
           self.tiles[index] = tile;
           tile.createInstances();

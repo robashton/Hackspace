@@ -8,14 +8,18 @@ define(function(require) {
   var Services = function(baseDir) {
     Handler.call(this);
     this.baseDir = baseDir;
-    this.route('POST', '/services/savemap', this.savemap);
+    this.route('POST', '/services/savetile', this.savetile);
     this.route('GET', '/services/gettile', this.gettile)
   };
   
   Services.prototype = {
-    savemap: function(req, res) {
+    savetile: function(req, res) {
       var self = this;
-      fs.writeFile(path.join(this.baseDir, 'apps/demo/assets/main/world.json'), req.body.map, function() {
+      var x = req.body.x;
+      var y = req.body.y;      
+      var filename = Paths.filenameForTile(x, y);
+      filename = path.join(this.baseDir, 'apps/demo/dynamic/world/') + filename;
+      fs.writeFile(filename, req.body.map, function() {
         self.success(req, res);
       });
     },
