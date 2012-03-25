@@ -19,6 +19,7 @@ define(function(require) {
       var y = req.body.y;      
       var filename = Paths.filenameForTile(x, y);
       filename = path.join(this.baseDir, 'apps/demo/dynamic/world/') + filename;
+      console.log(req.body);
       fs.writeFile(filename, req.body.map, function() {
         self.success(req, res);
       });

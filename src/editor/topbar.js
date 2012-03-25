@@ -22,7 +22,7 @@ define(function(require) {
          $.ajax({
           type: 'POST',
           url: 'services/savetile',
-          data: { map: data, x: i, y: j},
+          data: { map: JSON.stringify(data), x: i, y: j},
           success: function() {
             waiting--;
             if(waiting === 0)

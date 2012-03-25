@@ -15726,7 +15726,7 @@ define('editor/topbar',['require','jquery'],function(require) {
          $.ajax({
           type: 'POST',
           url: 'services/savetile',
-          data: { map: data, x: i, y: j},
+          data: { map: JSON.stringify(data), x: i, y: j},
           success: function() {
             waiting--;
             if(waiting === 0)
@@ -15979,19 +15979,18 @@ define('editor/tilebuilder',['require','underscore','../static/tile','./worldite
 
   return TileBuilder;
 });
-define('editor/editortilesource',['require','underscore','jquery','./tilebuilder','../static/consts','../render/material','../render/quad'],function(require) {
+define('static/dynamictilesource',['require','underscore','jquery','./consts','../render/material','../render/quad'],function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
-  var TileBuilder = require('./tilebuilder');
-  var CONST = require('../static/consts');
+
+  var CONST = require('./consts');
   var Material = require('../render/material');
   var Quad = require('../render/quad');
 
-  var EditorTileSource = function(resources, scene, entityInstanceFactory) {
+  var DynamicTileSource = function(resources, scene) {
     this.tiles = {};
     this.loadingTiles = {};
     this.resources = resources;
-    this.entityInstanceFactory = entityInstanceFactory;
     this.scene = scene;
     this.templates = null;
     this.models = {};
@@ -15999,7 +15998,7 @@ define('editor/editortilesource',['require','underscore','jquery','./tilebuilder
     this.createModels();
   };
 
-  EditorTileSource.prototype = {
+  DynamicTileSource.prototype = {
     createTemplates: function() {
       this.templates = this.resources.get('/main/templates.json').get();
     },
@@ -16043,9 +16042,7 @@ define('editor/editortilesource',['require','underscore','jquery','./tilebuilder
           x: i,
           y: j
         }, function(data) {
-          var tile = new TileBuilder(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
-          tile.i = i;
-          tile.j = j;
+          var tile = new Tile(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
           var index = self.index(i, j);
           self.tiles[index] = tile;
           tile.createInstances();
@@ -16063,6 +16060,47 @@ define('editor/editortilesource',['require','underscore','jquery','./tilebuilder
       })
     }
   };
+
+  return DynamicTileSource;
+});
+define('editor/editortilesource',['require','underscore','jquery','./tilebuilder','../static/consts','../render/material','../render/quad','../static/dynamictilesource'],function(require) {
+  var _ = require('underscore');
+  var $ = require('jquery');
+  var TileBuilder = require('./tilebuilder');
+  var CONST = require('../static/consts');
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var DynamicTileSource = require('../static/dynamictilesource');
+
+  var EditorTileSource = function(resources, scene, entityInstanceFactory) {
+    DynamicTileSource.call(this, resources, scene);
+    this.entityInstanceFactory = entityInstanceFactory;
+  };
+
+  EditorTileSource.prototype = {};
+
+  _.extend(EditorTileSource.prototype, 
+      DynamicTileSource.prototype, 
+      {
+        loadTile: function(i, j) {
+          var self = this;
+          this.withTileLoadingLock(i, j, function(cb) {
+            $.getJSON('/services/gettile', {
+              x: i,
+              y: j
+            }, function(data) {
+              var tile = new TileBuilder(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+              tile.i = i;
+              tile.j = j;
+              var index = self.index(i, j);
+              self.tiles[index] = tile;
+              tile.createInstances();
+              cb();
+            });
+          });
+        }
+      }
+    );
 
   return EditorTileSource;
 });

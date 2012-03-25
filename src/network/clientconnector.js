@@ -6,7 +6,7 @@ define(function(require) {
   var Map = require('../static/map');
   var Grid = require('../editor/grid');
   var Eventable = require('../shared/eventable');
-  var StaticTileSource = require('../static/statictilesource');
+  var DynamicTileSource = require('../static/dynamictilesource');
 
   var ClientConnector = function(socket, context) {
     Eventable.call(this);
@@ -55,8 +55,7 @@ define(function(require) {
       this.loadMap(data.map); 
     },
     loadMap: function(path) {
-      var mapResource = this.context.resources.get(path);
-      var tiles = new StaticTileSource(mapResource.get(), this.context.resources);
+      var tiles = new DynamicTileSource(this.context.resources, this.context.scene);
       var map = new Map(tiles);
       this.context.scene.add(map);
       this.grid = new Grid(map);
