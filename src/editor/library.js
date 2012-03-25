@@ -38,7 +38,7 @@ define(function(require) {
       texture: "/main/character/static-down.png",
       type: "npc",
       data: {
-        quest: 'fetchducks' 
+        quest: 'fetchducks', 
         z: 0      
       } 
      })

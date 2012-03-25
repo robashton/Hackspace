@@ -85,7 +85,7 @@ define(function(require) {
       map.tiledata = new Array(this.tilecountwidth * this.tilecountheight);
       for(var i = 0; i < this.tiles.length; i++) {
         map.tiledata[i] = this.tiles[i].items;
-      }      
+      }
     },
     
     populateMapCollision: function(map) {

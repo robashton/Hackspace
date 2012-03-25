@@ -11,19 +11,16 @@ define(function(require) {
   var CollisionMap = require('./collisionmap');
   var Coords = require('../shared/coords');
   var Grid = require('../editor/grid');
+  var StaticTileSource = require('./statictilesource');
 
 
   var Map = function(data) {
-    Entity.call(this, "map");
-    
-    this.width = data.width;
-    this.height = data.height;
+    Entity.call(this, "map");    
+    this.data = data;
+
+    // TODO: Remove
     this.tilewidth = data.tilewidth;
     this.tileheight = data.tileheight;
-    this.templates = data.templates;
-    this.tiledata = data.tiledata;
-    this.tilecountwidth = data.tilecountwidth;
-    this.tilecountheight = data.tilecountheight;
     
     var tileBottomRight = Coords.worldToIsometric(this.tilewidth, this.tileheight);
     var tileTopRight = Coords.worldToIsometric(this.tilewidth, 0);
@@ -31,9 +28,7 @@ define(function(require) {
         
     this.renderTileWidth = tileTopRight.x - tileBottomLeft.x;
     this.renderTileHeight = tileBottomRight.y;
-    
-    this.tiles = new Array(this.tilecountwidth * this.tilecountheight);
-    this.models = {};  
+        
     this.scene = null;
     this.instanceTiles = null;
     this.canvas = null; 
@@ -45,7 +40,6 @@ define(function(require) {
     this.tiletop = -1;
     this.tilebottom = -1;
     this.tileright = -1;
-    this.collision = new CollisionMap(data);
     this.needsRedrawing = false;
     
     this.on('AddedToScene', this.onAddedToScene);
@@ -54,9 +48,8 @@ define(function(require) {
   Map.prototype = {
   
     onAddedToScene: function(scene) {
-      this.scene = scene; 
-      this.createModels(scene.resources);
-      this.createInstances();
+      this.scene = scene;
+      this.tiles = new StaticTileSource(this.data, scene.resources);
       this.scene.graph.add(this);   
     },
     
@@ -118,9 +111,7 @@ define(function(require) {
       if(this.tileleft < 0) return;
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-          var index = this.index(i, j);
-          var tile = this.tiles[index];
-          callback(tile);
+           this.tiles.withTile(i, j, callback)
         }
       }
     },
@@ -138,7 +129,7 @@ define(function(require) {
     },
     
     initializeContext: function() {
-      this.canvas = document.createElement('canvas'); // document.getElementById('source');  // 
+      this.canvas = document.createElement('canvas');
       this.context = this.canvas.getContext('2d');
       this.graph = new RenderGraph();
       this.renderer = new CanvasRender(this.context);  
@@ -156,12 +147,7 @@ define(function(require) {
       var tiletop = parseInt(  Math.min(topright.y, topleft.y) / this.tileheight);
       var tileright = parseInt( Math.max(bottomright.x, topright.x) / this.tilewidth) ;
       var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / this.tileheight) ;
-      
-      tileleft = Math.max(tileleft, 0);
-      tiletop = Math.max(tiletop, 0);
-      tileright = Math.min(tileright, this.tilecountwidth-1);
-      tilebottom = Math.min(tilebottom, this.tilecountheight-1);
-      
+           
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 
          tileright !== this.tileright ||
@@ -239,73 +225,41 @@ define(function(require) {
     populateGraph: function() {             
       this.graph.clear();
       this.graph.beginUpdate();
-      
+      var self = this;
       for(var i = this.tileleft ; i <= this.tileright; i++) {
         for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-          var index = this.index(i, j);
-          var tile = this.tiles[index];
-          tile.addInstancesToGraph(this.graph);
+          this.tiles.withTile(i, j, function(tile) {
+            tile.addInstancesToGraph(self.graph);
+          });
         }
       }
-
       this.graph.endUpdate();      
     },
+ 
+    // onTileInstanceOpacityChanged: function(instance) {
+    //   if(instance.opacity < 1.0) {
+    //     this.scene.graph.add(instance);
+    //   } else {
+    //     this.scene.graph.remove(instance);
+    //   }
     
-    createModels: function(resources) {
-      this.models = {};
-      for(var t in this.templates) {
-        var template = this.templates[t];
-        this.createModelForTemplate(template);     
-      }
-      this.createModelForTemplate({
-        id: 'testtile',
-        texture: '/main/testtile.png'
-      });
-    },
+    //   this.needsRedrawing = true;
+    // },
     
-    createModelForTemplate: function(template) {
-      var material = new Material();
-      material.diffuseTexture = this.scene.resources.get(template.texture);
-      this.models[template.id] = new Quad(material);
-      return this.models[template.id];
-    },
-    
-    createInstances: function() {    
-      for(var x = 0; x < this.tilecountwidth; x++) {
-        for(var y = 0; y < this.tilecountheight ; y++) {
-          var index = this.index(x, y);
-          var tile =  new Tile(this, this.tiledata[index], x * this.tilewidth, y * this.tileheight);
-          this.tiles[index] = tile;
-          tile.createInstances();
-          tile.on('InstanceOpacityChanged', this.onTileInstanceOpacityChanged, this);
-        }
-      }
-    },
-    
-    onTileInstanceOpacityChanged: function(instance) {
-      if(instance.opacity < 1.0) {
-        this.scene.graph.add(instance);
-      } else {
-        this.scene.graph.remove(instance);
-      }
-    
-      this.needsRedrawing = true;
-    },
-    
-    tileAtCoords: function(x, y) {
-      var tileX = parseInt(x / this.tilewidth);
-      var tileY = parseInt(y / this.tileheight);
-      var index = this.index(tileX, tileY);
-      return this.tiles[index];
-    },
+    // tileAtCoords: function(x, y) {
+    //   var tileX = parseInt(x / this.tilewidth);
+    //   var tileY = parseInt(y / this.tileheight);
+    //   var index = this.index(tileX, tileY);
+    //   return this.tiles[index];
+    // },
           
 
-    index: function(x, y) {
-      return x + y * this.tilecountwidth;
-    },
+    // index: function(x, y) {
+    //   return x + y * this.tilecountwidth;
+    // },
     
     solidAt: function(x, y) {
-      return this.collision.solidAt(parseInt(x), parseInt(y));
+      return this.tiles.solidAt(x, y);
     }
   };
   
