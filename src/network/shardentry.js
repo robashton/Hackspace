@@ -1,5 +1,7 @@
 define(function(require) {
   var _ = require('underscore');
+  var fs = require('fs');
+
   var Eventable = require('../shared/eventable');
   var ServerContext = require('../harness/servercontext');
   var Collider = require('../entities/collider');
@@ -10,6 +12,7 @@ define(function(require) {
   var EntitySpawner = require('../entities/entityspawner');
   var Map = require('../static/map');
   var StaticTileSource = require('../static/statictilesource');
+  var Paths = require('../shared/paths');
   
   var ShardEntry = function(map, persistence) {
     Eventable.call(this);
@@ -35,20 +38,60 @@ define(function(require) {
     },
     
     initializeScene: function() {
-    
-      var mapResource = this.context.resources.get('/main/world.json');
-      var mapData = mapResource.get();
-      var tiles = new StaticTileSource(mapData, this.context.resources);
+      var self = this;
+      self.loadMap(function() {
+        self.populateScene(function() {
 
-      this.map = new Map(tiles);
-      this.context.scene.add(this.map);
+        });
+      });
+    },
 
-      var entities = mapData.entities;
-      for(var id in entities) {
-        var item = entities[id];
-        var entity = this.context.createEntity(item.type, id, item.data);
-        this.context.scene.add(entity);       
-      }
+    loadMap: function(cb) {
+      this.tileData = [];
+
+      // Obviously this is temporary, we'll do a pre-build
+      // of tiles for a shard
+      var loadMapTile = function(x, y) {
+          var filename = Paths.filenameForTile(x, y);
+          filename = 'src/apps/demo/dynamic/world/' + filename; 
+          fs.readFile(filename, 'utf8', function(err, data) {
+            if(err) throw err;
+
+            var data = JSON.parse(data);
+            this.tileData[x + y * 32] = data;
+            x++;
+            if(x === 32) {
+              if(y === 31) {
+                var tiles = new StaticTileSource({
+                  tiledata: this.tileData,
+                  tilecountwidth: 32,
+                  tilecountheight: 32
+                }, this.context.resources);
+                this.map = new Map(tiles);
+                this.context.scene.add(this.map);
+                cb();
+                return;
+              } else {
+                y++;
+                x = 0;
+              }
+            }
+            loadMapTile(x, y);
+          }.bind(this));
+      }.bind(this);
+      loadMapTile(0,0);
+    },
+
+    populateScene: function() {
+      for(var i in this.tileData) {
+        var entities = this.tileData[i].entities;
+        for(var id in entities) {
+          var item = entities[id];
+          var entity = this.context.createEntity(item.type, id, item.data);
+          this.context.scene.add(entity);
+          console.log('Added entity', id);  
+        }
+      } 
       
       this.context.scene.on('CommandDispatched', this.onSceneCommandDispatched, this);
            

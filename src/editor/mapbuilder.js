@@ -14,20 +14,11 @@ define(function(require) {
   
   MapBuilder.prototype = {
     
-    getWorldItemAt: function(x, y) {
-
-      // TODO: Make this async
-      return null;
-      /*
-      // Check dynamic instances first
-      for(var i in this.entities) {
-        var item = this.entities[i];
-        if(!item.intersectWithWorldCoords(x, y)) continue;
-        return item;
-      }
-      */
-      // Then check static
-      return null; // Not now ;-)      
+    withWorldItemAt: function(x, y, cb) {
+      this.tiles.withTileAtCoords(x, y, function(tile) {
+        var item = tile.itemAt(x, y);
+        if(item) { cb(item); }
+      });    
     },
 
     eachLoadedTile: function(cb) {

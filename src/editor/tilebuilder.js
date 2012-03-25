@@ -17,6 +17,7 @@ define(function(require) {
       for(var i in entities) {
         var entity = entities[i];
         this.entities[i] = new WorldItem(this.parent, i, entity);
+        this.entities[i].createInstance();
       }
     },
     addEntity: function(id, type, data) {
@@ -34,6 +35,13 @@ define(function(require) {
         template: template
       });
       this.createInstanceForItem(i);      
+    },
+    itemAt: function(x, y) {
+      for(var i in this.entities) {
+        var item = this.entities[i];
+        if(!item.intersectWithWorldCoords(x, y)) continue;
+        return item;
+      }
     },
     getData: function() {
       var data = {};

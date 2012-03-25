@@ -13,17 +13,12 @@ define(function(require) {
 
   var StaticTileSource = function(data, resources) {
     Eventable.call(this);
-    this.width = data.width;
-    this.height = data.height;
-
-    this.templates = data.templates;
     this.tiledata = data.tiledata;
     this.tilecountwidth = data.tilecountwidth;
     this.tilecountheight = data.tilecountheight;
-    this.tiles = {};
+    this.tiles = new Array(data.tilecountwidth * data.tilecountheight);
     this.resources = resources;
-
-    this.collision = new CollisionMap(data);
+    this.templates = this.resources.get('/main/templates.json').get();
     this.models = {};
     this.createModels();
     this.createInstances();
@@ -58,7 +53,7 @@ define(function(require) {
       for(var x = 0; x < this.tilecountwidth; x++) {
         for(var y = 0; y < this.tilecountheight ; y++) {
           var index = this.index(x, y);
-          var tile =  new Tile(this, this.tiledata[index], x * CONST.TILEWIDTH, y * CONST.TILEHEIGHT);
+          var tile =  new Tile(this, this.tiledata[index].items, this.tiledata[index].collision, x * CONST.TILEWIDTH, y * CONST.TILEHEIGHT);
           this.tiles[index] = tile;
           tile.createInstances();
         }
@@ -70,7 +65,11 @@ define(function(require) {
     },
     
     solidAt: function(x, y) {
-      return this.collision.solidAt(parseInt(x), parseInt(y));
+      var tileX = parseInt(x / CONST.TILEWIDTH);
+      var tileY = parseInt(y / CONST.TILEHEIGHT);
+      var index = this.index(tileX, tileY);
+      var tile = this.tiles[index];
+      return tile.solidAt(x, y);
     }
   };
 

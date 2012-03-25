@@ -26,7 +26,7 @@ server.listen(8000);
 var frontendServer = new FrontEnd(server);
 
 try {
-  build('demo');
+   build('demo');
 } catch (ex) {
   console.error(ex);
 }

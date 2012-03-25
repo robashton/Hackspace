@@ -90,7 +90,7 @@ define(function(require) {
     withTileAtCoords: function(x, y, cb) {
       var tileX = parseInt(x / CONST.TILEWIDTH);
       var tileY = parseInt(y / CONST.TILEHEIGHT);
-      this.tiles.withTile(tileX, tileY, cb);
+      this.withTile(tileX, tileY, cb);
     }
   };
 

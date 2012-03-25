@@ -14,12 +14,10 @@ define(function(require) {
      this.deselectCurrent();
     },
     onAttemptToSelect: function(e) {
-      var worldItem = this.editor.map.getWorldItemAt(e.x, e.y);
-      
-      if(worldItem) {
+      this.editor.map.withWorldItemAt(e.x, e.y, function(item) {
         this.deselectCurrent();
-        this.select(worldItem);
-      } 
+        this.select(item);
+      }.bind(this)); 
     },
     onEditorDataChanged: function(data) {
       this.selectedItem.updateData(data);

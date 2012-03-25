@@ -15535,12 +15535,10 @@ define('editor/selecttool',['require'],function(require) {
      this.deselectCurrent();
     },
     onAttemptToSelect: function(e) {
-      var worldItem = this.editor.map.getWorldItemAt(e.x, e.y);
-      
-      if(worldItem) {
+      this.editor.map.withWorldItemAt(e.x, e.y, function(item) {
         this.deselectCurrent();
-        this.select(worldItem);
-      } 
+        this.select(item);
+      }.bind(this)); 
     },
     onEditorDataChanged: function(data) {
       this.selectedItem.updateData(data);
@@ -15830,6 +15828,7 @@ define('editor/tilebuilder',['require','underscore','../static/tile','./worldite
       for(var i in entities) {
         var entity = entities[i];
         this.entities[i] = new WorldItem(this.parent, i, entity);
+        this.entities[i].createInstance();
       }
     },
     addEntity: function(id, type, data) {
@@ -15847,6 +15846,13 @@ define('editor/tilebuilder',['require','underscore','../static/tile','./worldite
         template: template
       });
       this.createInstanceForItem(i);      
+    },
+    itemAt: function(x, y) {
+      for(var i in this.entities) {
+        var item = this.entities[i];
+        if(!item.intersectWithWorldCoords(x, y)) continue;
+        return item;
+      }
     },
     getData: function() {
       var data = {};
@@ -15993,7 +15999,7 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
     withTileAtCoords: function(x, y, cb) {
       var tileX = parseInt(x / CONST.TILEWIDTH);
       var tileY = parseInt(y / CONST.TILEHEIGHT);
-      this.tiles.withTile(tileX, tileY, cb);
+      this.withTile(tileX, tileY, cb);
     }
   };
 
@@ -16056,20 +16062,11 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
   
   MapBuilder.prototype = {
     
-    getWorldItemAt: function(x, y) {
-
-      // TODO: Make this async
-      return null;
-      /*
-      // Check dynamic instances first
-      for(var i in this.entities) {
-        var item = this.entities[i];
-        if(!item.intersectWithWorldCoords(x, y)) continue;
-        return item;
-      }
-      */
-      // Then check static
-      return null; // Not now ;-)      
+    withWorldItemAt: function(x, y, cb) {
+      this.tiles.withTileAtCoords(x, y, function(tile) {
+        var item = tile.itemAt(x, y);
+        if(item) { cb(item); }
+      });    
     },
 
     eachLoadedTile: function(cb) {
