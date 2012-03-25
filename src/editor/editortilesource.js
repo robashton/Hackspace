@@ -3,13 +3,39 @@ define(function(require) {
   var $ = require('jquery');
   var Tile = require('../static/tile');
   var CONST = require('../static/consts');
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
 
-  var EditorTileSource = function() {
+  var EditorTileSource = function(resources) {
     this.tiles = {};
     this.loadingTiles = {};
+    this.resources = resources;
+    this.templates = null;
+    this.models = {};
+    this.createTemplates();
+    this.createModels();
   };
 
   EditorTileSource.prototype = {
+    createTemplates: function() {
+      this.templates = this.resources.get('/main/templates.json').get();
+    },
+    createModels: function() {
+      for(var t in this.templates) {
+        var template = this.templates[t];
+        this.createModelForTemplate(template);  
+      }
+      this.createModelForTemplate({
+        id: 'testtile',
+        texture: '/main/testtile.png'
+      });
+    },
+    createModelForTemplate: function(template) {
+      var material = new Material();
+      material.diffuseTexture = this.resources.get(template.texture);
+      this.models[template.id] = new Quad(material);
+      return this.models[template.id];
+    },
     withTile: function(i, j, cb) {
       var index = this.index(i,j);
       var tile = this.tiles[index];
@@ -18,7 +44,7 @@ define(function(require) {
     },
     index: function(i, j) {
       var xstr = i.toString(10);
-      var ystr = i.toString(10);
+      var ystr = j.toString(10);
       return xstr + ystr;
     },
     loadTile: function(i, j) {
@@ -31,6 +57,7 @@ define(function(require) {
           var tile = new Tile(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
           var index = self.index(i, j);
           self.tiles[index] = tile;
+          console.log('Loaded:', i, j);
           tile.createInstances();
           cb();
         });

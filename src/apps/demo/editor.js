@@ -11,7 +11,8 @@ define(function(require) {
   var Toolbar = require('../../editor/toolbar');
   var TopBar = require('../../editor/topbar');
   var DataEditor = require('../../editor/dataeditor');
-  
+  var EditorTileSource = require('../../editor/editortilesource');
+
   $(document).ready(function() {
     var canvasElement = document.getElementById('target');
     var context = new Context(canvasElement, new Editor(canvasElement));  
@@ -36,8 +37,8 @@ define(function(require) {
     initializeMap: function() {
 
       var mapResource = this.context.resources.get('/main/world.json'); 
-     
-      this.map = new MapBuilder(mapResource.get(),  this.library);
+      var editorTileSource = new EditorTileSource(this.context.resources);
+      this.map = new MapBuilder(mapResource.get(), editorTileSource, this.library);
       this.context.scene.add(this.map);
       this.map.initializeEditables(); // TODO: This is probably temporary and an anti-pattern and everything else ;-)
 

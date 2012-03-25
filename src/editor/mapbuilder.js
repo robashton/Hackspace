@@ -7,8 +7,8 @@ define(function(require) {
   var WorldItem = require('./worlditem');
   var EditorTileSource = require('./editortilesource');
 
-  var MapBuilder = function(data, entityInstanceFactory) {
-    Map.call(this, new EditorTileSource());
+  var MapBuilder = function(data, tileSource, entityInstanceFactory) {
+    Map.call(this, tileSource);
     this.entityInstanceFactory = entityInstanceFactory;
     this.entities = {};
     this.addEntities(data.entities);

@@ -14643,57 +14643,6 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
   return Tile;  
 });
 
-define('editor/editortilesource',['require','underscore','jquery','../static/tile','../static/consts'],function(require) {
-  var _ = require('underscore');
-  var $ = require('jquery');
-  var Tile = require('../static/tile');
-  var CONST = require('../static/consts');
-
-  var EditorTileSource = function() {
-    this.tiles = {};
-    this.loadingTiles = {};
-  };
-
-  EditorTileSource.prototype = {
-    withTile: function(i, j, cb) {
-      var index = this.index(i,j);
-      var tile = this.tiles[index];
-      if(!tile) this.loadTile(i, j);
-      else cb(tile);
-    },
-    index: function(i, j) {
-      var xstr = i.toString(10);
-      var ystr = i.toString(10);
-      return xstr + ystr;
-    },
-    loadTile: function(i, j) {
-      var self = this;
-      this.withTileLoadingLock(i, j, function(cb) {
-        $.getJSON('/services/gettile', {
-          x: i,
-          y: j
-        }, function(data) {
-          var tile = new Tile(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
-          var index = self.index(i, j);
-          self.tiles[index] = tile;
-          tile.createInstances();
-          cb();
-        });
-      });
-    },
-    withTileLoadingLock: function(i, j, cb) {
-      var index = this.index(i, j);
-      if(this.loadingTiles[index]) return;
-      this.loadingTiles[index] = {};
-      var self = this;
-      cb(function() {
-        delete self.loadingTiles[index];
-      })
-    }
-  };
-
-  return EditorTileSource;
-});
 define('static/statictilesource',['require','underscore','../shared/coords','../shared/eventable','../render/material','../render/quad','../render/instance','../scene/entity','./tile','./collisionmap','./consts'],function(require) {
   var _ = require('underscore');
   var Coords = require('../shared/coords');
@@ -15030,166 +14979,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
   _.extend(Map.prototype, Entity.prototype);
   
   return Map;
-
-});
-
-define('editor/mapbuilder',['require','underscore','../static/map','../render/instance','../shared/bitfield','./worlditem','./editortilesource'],function(require) {
-  
-  var _ = require('underscore');
-  var Map = require('../static/map');
-  var Instance = require('../render/instance');
-  var BitField = require('../shared/bitfield');
-  var WorldItem = require('./worlditem');
-  var EditorTileSource = require('./editortilesource');
-
-  var MapBuilder = function(data, entityInstanceFactory) {
-    Map.call(this, new EditorTileSource());
-    this.entityInstanceFactory = entityInstanceFactory;
-    this.entities = {};
-    this.addEntities(data.entities);
-  };
-  
-  MapBuilder.prototype = {
-  
-    addEntities: function(entities) {
-      for(var i in entities) {
-        var entity = entities[i];
-        this.entities[i] = new WorldItem(this, i, entity);
-      }
-    },
-  
-    addEntity: function(id, type, data) {
-      this.entities[id] = new WorldItem(this, id, {
-        type: type,
-        data: data
-      });
-      this.entities[id].createInstance();
-    },
-    
-    getWorldItemAt: function(x, y) {
-    
-      // Check dynamic instances first
-      for(var i in this.entities) {
-        var item = this.entities[i];
-        if(!item.intersectWithWorldCoords(x, y)) continue;
-        return item;
-      }
-      
-      // Then check static
-      return null; // Not now ;-)      
-    },
-        
-    initializeEditables: function() {
-      for(var i in this.entities) {
-        this.entities[i].createInstance();  
-      }
-    },
-  
-    getMapData: function() {
-      var map = {};  
-      this.populateMapTemplates(map);
-      this.populateMapTiles(map);
-      this.populateMapCollision(map);
-      this.populateEntities(map);
-      return map;
-    },
-    
-    populateEntities: function(map) {
-      map.entities = {};
-      for(var i in this.entities) {
-        var item = this.entities[i];
-        map.entities[i] = item.entity;  
-      }
-    },    
-    
-    populateMapTemplates: function(map) {
-      map.templates = this.templates;
-    },
-    
-    populateMapTiles: function(map) {
-      map.tiledata = new Array(this.tilecountwidth * this.tilecountheight);
-      for(var i = 0; i < this.tiles.length; i++) {
-        map.tiledata[i] = this.tiles[i].items;
-      }
-    },
-    
-    populateMapCollision: function(map) {
-      var field = new BitField(this.width * this.height);
-      field.zero();
-      
-      for(var i = 0; i < this.tilecountwidth; i++) {
-        for(var j = 0; j < this.tilecountheight; j++) {
-          var index = this.index(i, j);
-          var startx = i * this.tilewidth;
-          var starty = j * this.tileheight;          
-          var tile = map.tiledata[index];
-          
-          for(var x = 0 ; x < tile.length; x++) {
-            var item = tile[x];
-            var template = map.templates[item.template];
-            var realx = item.x + startx + (template.size[0] / 2.0);
-            var realy = item.y + starty + (template.size[1] / 2.0);
-            var width = template.collision[0];
-            var height = template.collision[1];
-            
-            realx += width / 2.0;
-            realy += height / 2.0;
-            
-            realx = parseInt(realx);
-            realy = parseInt(realy);
-            
-            for(var a = realx ; a < realx + width ; a++) {
-              for(var b = realy ; b < realy + height; b++) {
-                var index = a + b * this.width;
-                field.set(index, 1);
-              }
-            }
-          }          
-        }
-      };
-      
-      map.collision = field.values;     
-    },
-  
-    addStatic: function(template, x, y) {
-      var tile = this.tileAtCoords(x, y);
-      var local = this.globalCoordsToTileCoords(x, y);
-
-      if(!this.templates[template.id])
-        this.addTemplate(template);
-     
-      tile.addItem(local.x, local.y, template.id);
-      
-      this.needsRedrawing = true;            
-    },
-    
-    addTemplate: function(template) {
-      this.templates[template.id] = template;
-      this.createModelForTemplate(template);
-    },
-    globalCoordsToTileCoords: function(x, y) {
-      return {
-        x: x - (parseInt(x / this.tilewidth) * this.tilewidth),
-        y: y - (parseInt(y / this.tileheight) * this.tileheight)
-      };
-    },
-    removeStatic: function(tile, instance) {
-      
-    },
-    getInstanceAt: function(x, y) {
-      // Work out which tile this intersects
-      
-      // Adjust for the tile
-      
-      // Find an instance that intersects with that point
-      
-      // Return it
-    }    
-  };
-  
-  _.extend(MapBuilder.prototype, Map.prototype);
-  
-  return MapBuilder;
 
 });
 
@@ -16112,7 +15901,245 @@ define('editor/dataeditor',['require','underscore','../shared/eventable','jquery
   return DataEditor;
 });
 
-define('apps/demo/editor',['require','jquery','underscore','../../harness/context','../../editor/mapbuilder','../../editor/grid','../../shared/eventable','../../editor/input','../../editor/library','../../editor/toolbar','../../editor/topbar','../../editor/dataeditor'],function(require) {
+define('editor/editortilesource',['require','underscore','jquery','../static/tile','../static/consts','../render/material','../render/quad'],function(require) {
+  var _ = require('underscore');
+  var $ = require('jquery');
+  var Tile = require('../static/tile');
+  var CONST = require('../static/consts');
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+
+  var EditorTileSource = function(resources) {
+    this.tiles = {};
+    this.loadingTiles = {};
+    this.resources = resources;
+    this.templates = null;
+    this.models = {};
+    this.createTemplates();
+    this.createModels();
+  };
+
+  EditorTileSource.prototype = {
+    createTemplates: function() {
+      this.templates = this.resources.get('/main/templates.json').get();
+    },
+    createModels: function() {
+      for(var t in this.templates) {
+        var template = this.templates[t];
+        this.createModelForTemplate(template);  
+      }
+      this.createModelForTemplate({
+        id: 'testtile',
+        texture: '/main/testtile.png'
+      });
+    },
+    createModelForTemplate: function(template) {
+      var material = new Material();
+      material.diffuseTexture = this.resources.get(template.texture);
+      this.models[template.id] = new Quad(material);
+      return this.models[template.id];
+    },
+    withTile: function(i, j, cb) {
+      var index = this.index(i,j);
+      var tile = this.tiles[index];
+      if(!tile) this.loadTile(i, j);
+      else cb(tile);
+    },
+    index: function(i, j) {
+      var xstr = i.toString(10);
+      var ystr = j.toString(10);
+      return xstr + ystr;
+    },
+    loadTile: function(i, j) {
+      var self = this;
+      this.withTileLoadingLock(i, j, function(cb) {
+        $.getJSON('/services/gettile', {
+          x: i,
+          y: j
+        }, function(data) {
+          var tile = new Tile(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          var index = self.index(i, j);
+          self.tiles[index] = tile;
+          console.log('Loaded:', i, j);
+          tile.createInstances();
+          cb();
+        });
+      });
+    },
+    withTileLoadingLock: function(i, j, cb) {
+      var index = this.index(i, j);
+      if(this.loadingTiles[index]) return;
+      this.loadingTiles[index] = {};
+      var self = this;
+      cb(function() {
+        delete self.loadingTiles[index];
+      })
+    }
+  };
+
+  return EditorTileSource;
+});
+define('editor/mapbuilder',['require','underscore','../static/map','../render/instance','../shared/bitfield','./worlditem','./editortilesource'],function(require) {
+  
+  var _ = require('underscore');
+  var Map = require('../static/map');
+  var Instance = require('../render/instance');
+  var BitField = require('../shared/bitfield');
+  var WorldItem = require('./worlditem');
+  var EditorTileSource = require('./editortilesource');
+
+  var MapBuilder = function(data, tileSource, entityInstanceFactory) {
+    Map.call(this, tileSource);
+    this.entityInstanceFactory = entityInstanceFactory;
+    this.entities = {};
+    this.addEntities(data.entities);
+  };
+  
+  MapBuilder.prototype = {
+  
+    addEntities: function(entities) {
+      for(var i in entities) {
+        var entity = entities[i];
+        this.entities[i] = new WorldItem(this, i, entity);
+      }
+    },
+  
+    addEntity: function(id, type, data) {
+      this.entities[id] = new WorldItem(this, id, {
+        type: type,
+        data: data
+      });
+      this.entities[id].createInstance();
+    },
+    
+    getWorldItemAt: function(x, y) {
+    
+      // Check dynamic instances first
+      for(var i in this.entities) {
+        var item = this.entities[i];
+        if(!item.intersectWithWorldCoords(x, y)) continue;
+        return item;
+      }
+      
+      // Then check static
+      return null; // Not now ;-)      
+    },
+        
+    initializeEditables: function() {
+      for(var i in this.entities) {
+        this.entities[i].createInstance();  
+      }
+    },
+  
+    getMapData: function() {
+      var map = {};  
+      this.populateMapTemplates(map);
+      this.populateMapTiles(map);
+      this.populateMapCollision(map);
+      this.populateEntities(map);
+      return map;
+    },
+    
+    populateEntities: function(map) {
+      map.entities = {};
+      for(var i in this.entities) {
+        var item = this.entities[i];
+        map.entities[i] = item.entity;  
+      }
+    },    
+    
+    populateMapTemplates: function(map) {
+      map.templates = this.templates;
+    },
+    
+    populateMapTiles: function(map) {
+      map.tiledata = new Array(this.tilecountwidth * this.tilecountheight);
+      for(var i = 0; i < this.tiles.length; i++) {
+        map.tiledata[i] = this.tiles[i].items;
+      }
+    },
+    
+    populateMapCollision: function(map) {
+      var field = new BitField(this.width * this.height);
+      field.zero();
+      
+      for(var i = 0; i < this.tilecountwidth; i++) {
+        for(var j = 0; j < this.tilecountheight; j++) {
+          var index = this.index(i, j);
+          var startx = i * this.tilewidth;
+          var starty = j * this.tileheight;          
+          var tile = map.tiledata[index];
+          
+          for(var x = 0 ; x < tile.length; x++) {
+            var item = tile[x];
+            var template = map.templates[item.template];
+            var realx = item.x + startx + (template.size[0] / 2.0);
+            var realy = item.y + starty + (template.size[1] / 2.0);
+            var width = template.collision[0];
+            var height = template.collision[1];
+            
+            realx += width / 2.0;
+            realy += height / 2.0;
+            
+            realx = parseInt(realx);
+            realy = parseInt(realy);
+            
+            for(var a = realx ; a < realx + width ; a++) {
+              for(var b = realy ; b < realy + height; b++) {
+                var index = a + b * this.width;
+                field.set(index, 1);
+              }
+            }
+          }          
+        }
+      };
+      
+      map.collision = field.values;     
+    },
+  
+    addStatic: function(template, x, y) {
+      var tile = this.tileAtCoords(x, y);
+      var local = this.globalCoordsToTileCoords(x, y);
+
+      if(!this.templates[template.id])
+        this.addTemplate(template);
+     
+      tile.addItem(local.x, local.y, template.id);
+      
+      this.needsRedrawing = true;            
+    },
+    
+    addTemplate: function(template) {
+      this.templates[template.id] = template;
+      this.createModelForTemplate(template);
+    },
+    globalCoordsToTileCoords: function(x, y) {
+      return {
+        x: x - (parseInt(x / this.tilewidth) * this.tilewidth),
+        y: y - (parseInt(y / this.tileheight) * this.tileheight)
+      };
+    },
+    removeStatic: function(tile, instance) {
+      
+    },
+    getInstanceAt: function(x, y) {
+      // Work out which tile this intersects
+      
+      // Adjust for the tile
+      
+      // Find an instance that intersects with that point
+      
+      // Return it
+    }    
+  };
+  
+  _.extend(MapBuilder.prototype, Map.prototype);
+  
+  return MapBuilder;
+
+});
+
+define('apps/demo/editor',['require','jquery','underscore','../../harness/context','../../editor/mapbuilder','../../editor/grid','../../shared/eventable','../../editor/input','../../editor/library','../../editor/toolbar','../../editor/topbar','../../editor/dataeditor','../../editor/editortilesource'],function(require) {
   
   var $ = require('jquery');
   var _ = require('underscore');
@@ -16125,7 +16152,8 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
   var Toolbar = require('../../editor/toolbar');
   var TopBar = require('../../editor/topbar');
   var DataEditor = require('../../editor/dataeditor');
-  
+  var EditorTileSource = require('../../editor/editortilesource');
+
   $(document).ready(function() {
     var canvasElement = document.getElementById('target');
     var context = new Context(canvasElement, new Editor(canvasElement));  
@@ -16150,8 +16178,8 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
     initializeMap: function() {
 
       var mapResource = this.context.resources.get('/main/world.json'); 
-     
-      this.map = new MapBuilder(mapResource.get(),  this.library);
+      var editorTileSource = new EditorTileSource(this.context.resources);
+      this.map = new MapBuilder(mapResource.get(), editorTileSource, this.library);
       this.context.scene.add(this.map);
       this.map.initializeEditables(); // TODO: This is probably temporary and an anti-pattern and everything else ;-)
 
