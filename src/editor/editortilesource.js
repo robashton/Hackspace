@@ -1,15 +1,17 @@
 define(function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
-  var Tile = require('../static/tile');
+  var TileBuilder = require('./tilebuilder');
   var CONST = require('../static/consts');
   var Material = require('../render/material');
   var Quad = require('../render/quad');
 
-  var EditorTileSource = function(resources) {
+  var EditorTileSource = function(resources, scene, entityInstanceFactory) {
     this.tiles = {};
     this.loadingTiles = {};
     this.resources = resources;
+    this.entityInstanceFactory = entityInstanceFactory;
+    this.scene = scene;
     this.templates = null;
     this.models = {};
     this.createTemplates();
@@ -54,10 +56,9 @@ define(function(require) {
           x: i,
           y: j
         }, function(data) {
-          var tile = new Tile(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          var tile = new TileBuilder(self, data, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
           var index = self.index(i, j);
           self.tiles[index] = tile;
-          console.log('Loaded:', i, j);
           tile.createInstances();
           cb();
         });

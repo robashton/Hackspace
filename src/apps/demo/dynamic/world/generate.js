@@ -6,7 +6,7 @@ var height = 32;
 
 var empty = {
   collision: [],
-  items: {}
+  items: []
 };
 
 var emptyString = JSON.stringify(empty);

@@ -234,18 +234,6 @@ define(function(require) {
     //   this.needsRedrawing = true;
     // },
     
-    // tileAtCoords: function(x, y) {
-    //   var tileX = parseInt(x / CONST.TILEWIDTH);
-    //   var tileY = parseInt(y / CONST.TILEHEIGHT);
-    //   var index = this.index(tileX, tileY);
-    //   return this.tiles[index];
-    // },
-          
-
-    // index: function(x, y) {
-    //   return x + y * this.tilecountwidth;
-    // },
-    
     solidAt: function(x, y) {
       return this.tiles.solidAt(x, y);
     }

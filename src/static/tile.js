@@ -49,21 +49,12 @@ define(function(require) {
       var template = this.map.templates[item.template];
       var instance = new Instance(model);
       instance.scale(template.size[0], template.size[1], template.size[2]);
-      instance.translate(this.x + item.x, this.y + item.y);
+      instance.translate(item.x, item.y);
       this.instances[i] = instance;
       instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
     },
     onInstanceOpacityChanged: function(data, sender) {
       this.raise('InstanceOpacityChanged', sender);
-    },
-    addItem: function(x, y, template) {
-      var i = this.items.length;
-      this.items.push({
-        x: x,
-        y: y,
-        template: template
-      });
-      this.createInstanceForItem(i);      
     },
     forEachInstance: function(callback, context) {
       for(var i = 0; i < this.instances.length; i++) {

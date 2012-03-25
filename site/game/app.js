@@ -3919,21 +3919,12 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
       var template = this.map.templates[item.template];
       var instance = new Instance(model);
       instance.scale(template.size[0], template.size[1], template.size[2]);
-      instance.translate(this.x + item.x, this.y + item.y);
+      instance.translate(item.x, item.y);
       this.instances[i] = instance;
       instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
     },
     onInstanceOpacityChanged: function(data, sender) {
       this.raise('InstanceOpacityChanged', sender);
-    },
-    addItem: function(x, y, template) {
-      var i = this.items.length;
-      this.items.push({
-        x: x,
-        y: y,
-        template: template
-      });
-      this.createInstanceForItem(i);      
     },
     forEachInstance: function(callback, context) {
       for(var i = 0; i < this.instances.length; i++) {
@@ -4259,18 +4250,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
     //   }
     
     //   this.needsRedrawing = true;
-    // },
-    
-    // tileAtCoords: function(x, y) {
-    //   var tileX = parseInt(x / CONST.TILEWIDTH);
-    //   var tileY = parseInt(y / CONST.TILEHEIGHT);
-    //   var index = this.index(tileX, tileY);
-    //   return this.tiles[index];
-    // },
-          
-
-    // index: function(x, y) {
-    //   return x + y * this.tilecountwidth;
     // },
     
     solidAt: function(x, y) {
