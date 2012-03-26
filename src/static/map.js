@@ -33,6 +33,7 @@ define(function(require) {
     
     this.on('AddedToScene', this.onAddedToScene);
     this.tiles.on('TileLoaded', this.onTileLoaded, this);
+    this.tiles.on('InstanceOpacityChanged', this.onTileInstanceOpacityChanged, this);
   };
   
   Map.prototype = {
@@ -229,15 +230,14 @@ define(function(require) {
       this.graph.endUpdate();      
     },
  
-    // onTileInstanceOpacityChanged: function(instance) {
-    //   if(instance.opacity < 1.0) {
-    //     this.scene.graph.add(instance);
-    //   } else {
-    //     this.scene.graph.remove(instance);
-    //   }
-    
-    //   this.needsRedrawing = true;
-    // },
+    onTileInstanceOpacityChanged: function(instance) {
+      if(instance.opacity < 1.0) {
+        this.scene.graph.add(instance);
+      } else {
+        this.scene.graph.remove(instance);
+      }    
+      this.needsRedrawing = true;
+    },
     
     solidAt: function(x, y) {
       return this.tiles.solidAt(x, y);

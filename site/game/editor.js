@@ -14675,6 +14675,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     
     this.on('AddedToScene', this.onAddedToScene);
     this.tiles.on('TileLoaded', this.onTileLoaded, this);
+    this.tiles.on('InstanceOpacityChanged', this.onTileInstanceOpacityChanged, this);
   };
   
   Map.prototype = {
@@ -14871,15 +14872,14 @@ define('static/map',['require','underscore','../render/material','../render/quad
       this.graph.endUpdate();      
     },
  
-    // onTileInstanceOpacityChanged: function(instance) {
-    //   if(instance.opacity < 1.0) {
-    //     this.scene.graph.add(instance);
-    //   } else {
-    //     this.scene.graph.remove(instance);
-    //   }
-    
-    //   this.needsRedrawing = true;
-    // },
+    onTileInstanceOpacityChanged: function(instance) {
+      if(instance.opacity < 1.0) {
+        this.scene.graph.add(instance);
+      } else {
+        this.scene.graph.remove(instance);
+      }    
+      this.needsRedrawing = true;
+    },
     
     solidAt: function(x, y) {
       return this.tiles.solidAt(x, y);
@@ -15984,6 +15984,7 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
           var index = this.index(i, j);
           this.tiles[index] = tile;
           tile.createInstances();
+          tile.on('InstanceOpacityChanged', this.onInstanceOpacityChanged, this);
           cb();
           this.raise('TileLoaded', tile);
         }.bind(self));
@@ -16010,6 +16011,9 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
       var tileX = parseInt(x / CONST.TILEWIDTH);
       var tileY = parseInt(y / CONST.TILEHEIGHT);
       this.withTile(tileX, tileY, cb);
+    },
+    onInstanceOpacityChanged: function(instance) {
+      this.raise('InstanceOpacityChanged', instance)
     }
   };
 

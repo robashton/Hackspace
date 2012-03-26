@@ -69,6 +69,7 @@ define(function(require) {
           var index = this.index(i, j);
           this.tiles[index] = tile;
           tile.createInstances();
+          tile.on('InstanceOpacityChanged', this.onInstanceOpacityChanged, this);
           cb();
           this.raise('TileLoaded', tile);
         }.bind(self));
@@ -95,6 +96,9 @@ define(function(require) {
       var tileX = parseInt(x / CONST.TILEWIDTH);
       var tileY = parseInt(y / CONST.TILEHEIGHT);
       this.withTile(tileX, tileY, cb);
+    },
+    onInstanceOpacityChanged: function(instance) {
+      this.raise('InstanceOpacityChanged', instance)
     }
   };
 
