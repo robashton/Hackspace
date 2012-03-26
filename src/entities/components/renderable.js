@@ -87,11 +87,11 @@ define(function(require) {
     },
     
     determineFixedTexture: function() {
-      this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '.png');
+      this.material.diffuseTexture = this.scene.resources.get('main/' + this.textureName + '.png');
     },
     
     determineTextureFromRotation: function(rotation) {
-      var path = '/main/' + this.textureName + '/' + this.animationName + '-';
+      var path = 'main/' + this.textureName + '/' + this.animationName + '-';
     
       var textureSuffix = 'up';
       var rotation = ExtraMath.clampRotation(this.rotation);

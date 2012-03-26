@@ -23,16 +23,16 @@ var server = http.createServer(function(req, res) {
 });
 server.listen(8000);
 
-var frontendServer = new FrontEnd(server);
-
 try {
-   build('demo');
+   build(function() {
+     var frontendServer = new FrontEnd(server);
+   });
 } catch (ex) {
   console.error(ex);
 }
-/*
+
 process.on('uncaughtException', function (err) {
   console.log('Caught exception: ' + err);
   process.exit();
-});*/
+});
 

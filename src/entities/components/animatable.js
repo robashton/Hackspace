@@ -62,7 +62,7 @@ define(function(require) {
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
-      this.meta = scene.resources.get('/main/' + this.textureName + '/meta.json');
+      this.meta = scene.resources.get('main/' + this.textureName + '/meta.json');
     }
   };
   

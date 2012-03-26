@@ -1,0 +1,14 @@
+{
+  "type": "entity",
+  "template": {
+    "id": "npc",
+    "size": [12, 12, 18],
+    "collision": [12, 12],
+    "texture": "/main/character/static-down.png",
+    "type": "npc",
+    "data": {
+      "quest": "fetchducks", 
+      "z": 0      
+    }
+  }
+}

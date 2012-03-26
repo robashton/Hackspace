@@ -23,7 +23,7 @@ define(function(require) {
 
   DynamicTileSource.prototype = {
     createTemplates: function() {
-      this.templates = this.resources.get('/main/templates.json').get();
+      this.templates = this.resources.get('main/templates.json').get();
     },
     createModels: function() {
       for(var t in this.templates) {
@@ -32,7 +32,7 @@ define(function(require) {
       }
       this.createModelForTemplate({
         id: 'testtile',
-        texture: '/main/testtile.png'
+        texture: 'main/testtile.png'
       });
     },
     createModelForTemplate: function(template) {

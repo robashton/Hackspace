@@ -1,44 +1,24 @@
 (function() {
-  var requirejs = require('requirejs');
-  
-  var SwallowConfig = require('swallow/config').Config;
-  var Swallow = require('swallow').Runner;
+  var requirejs = require('./bootstrap');
   var exec = require('child_process').exec;
-  
-  module.exports = function(appName) {
-    var config = {
-        baseUrl: './src',
-        name: 'apps/' + appName + '/app',
-        out: './site/game/app.js',
-        optimize: 'none',
-        paths: {
-          'glmatrix': './libs/glmatrix',
-          'underscore': '../node_modules/underscore/underscore',
-          'jquery': './libs/jquery'
-        }
-    };
-    
-    requirejs.optimize(config, function(res) {});
-    
-    config.name = 'apps/' + appName + '/editor';
-    config.out = './site/game/editor.js';
-    
-    requirejs.optimize(config, function(res) {});
+  var packageEntryPoint = requirejs('./build/packageentrypoint');
+  var packageResources = requirejs('./build/packageresources');
+  var packageTemplates = requirejs('./build/packagetemplates');
+  var runTests = requirejs('./build/runtests');
 
-    var swallow = new Swallow(new SwallowConfig({
-      in: './src/apps/' + appName + '/assets',
-      out: './site/game/assets.json'
-    }));
-    swallow.run();
-    
-    exec('node src/tests',
-      function (error, stdout, stderr) {
-        console.log(stdout);
-        if (error !== null)
-          console.log('exec error: ' + error);        
-    });  
+  function build(cb) {
+    packageEntryPoint('demo', 'app', function() {
+      packageEntryPoint('demo', 'editor', function() {
+        packageTemplates('./src/apps/demo/library', './src/apps/demo/assets/main/templates.json', function(){
+          packageResources('./src/apps/demo/assets', './site/game/assets.json', function() {
+            runTests(cb);
+          });
+        })
+      });
+    });
   };
-   
+  module.exports = build;
+
 }).call(this);
 
 

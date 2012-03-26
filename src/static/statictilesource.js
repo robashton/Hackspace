@@ -18,7 +18,7 @@ define(function(require) {
     this.tilecountheight = data.tilecountheight;
     this.tiles = new Array(data.tilecountwidth * data.tilecountheight);
     this.resources = resources;
-    this.templates = this.resources.get('/main/templates.json').get();
+    this.templates = this.resources.get('main/templates.json').get();
     this.models = {};
     this.createModels();
     this.createInstances();
@@ -38,7 +38,7 @@ define(function(require) {
       }
       this.createModelForTemplate({
         id: 'testtile',
-        texture: '/main/testtile.png'
+        texture: 'main/testtile.png'
       });
     },
 

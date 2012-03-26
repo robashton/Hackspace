@@ -2,11 +2,11 @@
     "name": "Hackspace",
     "version": "0.0.1",
     "dependencies": {
-      "underscore": "",
+      "underscore": "git+https://github.com/amdjs/underscore.git",
       "socket.io": "",
 	    "paperboy": "",
       "requirejs": "",
       "when": "",
-      "swallow": ""
+      "swallow": "git+ssh://git@github.com:robashton/swallow.git"
     }
 }

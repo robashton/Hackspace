@@ -36,7 +36,7 @@ define(function(require) {
     },
     initializeMap: function() {
 
-      var mapResource = this.context.resources.get('/main/world.json'); 
+      var mapResource = this.context.resources.get('main/world.json'); 
       var editorTileSource = new EditorTileSource(this.context.resources, this.context.scene, this.library);
       this.map = new MapBuilder(mapResource.get(), editorTileSource);
       this.context.scene.add(this.map);

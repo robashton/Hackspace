@@ -23,7 +23,7 @@
       });
       var self = this;
       
-      var shard = new ShardEntry('/main/world.json', this.persistence);
+      var shard = new ShardEntry('main/world.json', this.persistence);
       var login = new LoginServer(); 
       
       shard.on('SceneLoaded', function() {

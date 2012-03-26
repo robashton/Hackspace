@@ -32,8 +32,8 @@ define('shared/coords',['require'],function(require) {
 
 });
 
-//     Underscore.js 1.2.3
-//     (c) 2009-2011 Jeremy Ashkenas, DocumentCloud Inc.
+//     Underscore.js 1.3.1
+//     (c) 2009-2012 Jeremy Ashkenas, DocumentCloud Inc.
 //     Underscore is freely distributable under the MIT license.
 //     Portions of Underscore are inspired or borrowed from Prototype,
 //     Oliver Steele's Functional, and John Resig's Micro-Templating.
@@ -59,7 +59,6 @@ define('shared/coords',['require'],function(require) {
 
   // Create quick reference variables for speed access to core prototypes.
   var slice            = ArrayProto.slice,
-      concat           = ArrayProto.concat,
       unshift          = ArrayProto.unshift,
       toString         = ObjProto.toString,
       hasOwnProperty   = ObjProto.hasOwnProperty;
@@ -85,24 +84,20 @@ define('shared/coords',['require'],function(require) {
 
   // Export the Underscore object for **Node.js** and **"CommonJS"**, with
   // backwards-compatibility for the old `require()` API. If we're not in
-  // CommonJS, add `_` to the global object.
+  // CommonJS, add `_` to the global object via a string identifier for
+  // the Closure Compiler "advanced" mode. Registration as an AMD module
+  // via define() happens at the end of this file.
   if (typeof exports !== 'undefined') {
     if (typeof module !== 'undefined' && module.exports) {
       exports = module.exports = _;
     }
     exports._ = _;
-  } else if (typeof define === 'function' && define.amd) {
-    // Register as a named module with AMD.
-    define('underscore',[], function() {
-      return _;
-    });
   } else {
-    // Exported as a string, for Closure Compiler "advanced" mode.
     root['_'] = _;
   }
 
   // Current version.
-  _.VERSION = '1.2.3';
+  _.VERSION = '1.3.1';
 
   // Collection Functions
   // --------------------
@@ -120,7 +115,7 @@ define('shared/coords',['require'],function(require) {
       }
     } else {
       for (var key in obj) {
-        if (hasOwnProperty.call(obj, key)) {
+        if (_.has(obj, key)) {
           if (iterator.call(context, obj[key], key, obj) === breaker) return;
         }
       }
@@ -129,13 +124,14 @@ define('shared/coords',['require'],function(require) {
 
   // Return the results of applying the iterator to each element.
   // Delegates to **ECMAScript 5**'s native `map` if available.
-  _.map = function(obj, iterator, context) {
+  _.map = _.collect = function(obj, iterator, context) {
     var results = [];
     if (obj == null) return results;
     if (nativeMap && obj.map === nativeMap) return obj.map(iterator, context);
     each(obj, function(value, index, list) {
       results[results.length] = iterator.call(context, value, index, list);
     });
+    if (obj.length === +obj.length) results.length = obj.length;
     return results;
   };
 
@@ -252,7 +248,7 @@ define('shared/coords',['require'],function(require) {
   _.invoke = function(obj, method) {
     var args = slice.call(arguments, 2);
     return _.map(obj, function(value) {
-      return (method.call ? method || value : value[method]).apply(value, args);
+      return (_.isFunction(method) ? method || value : value[method]).apply(value, args);
     });
   };
 
@@ -545,7 +541,7 @@ define('shared/coords',['require'],function(require) {
     hasher || (hasher = _.identity);
     return function() {
       var key = hasher.apply(this, arguments);
-      return hasOwnProperty.call(memo, key) ? memo[key] : (memo[key] = func.apply(this, arguments));
+      return _.has(memo, key) ? memo[key] : (memo[key] = func.apply(this, arguments));
     };
   };
 
@@ -617,7 +613,7 @@ define('shared/coords',['require'],function(require) {
   // conditionally execute the original function.
   _.wrap = function(func, wrapper) {
     return function() {
-      var args = concat.apply([func], arguments);
+      var args = [func].concat(slice.call(arguments, 0));
       return wrapper.apply(this, args);
     };
   };
@@ -651,7 +647,7 @@ define('shared/coords',['require'],function(require) {
   _.keys = nativeKeys || function(obj) {
     if (obj !== Object(obj)) throw new TypeError('Invalid object');
     var keys = [];
-    for (var key in obj) if (hasOwnProperty.call(obj, key)) keys[keys.length] = key;
+    for (var key in obj) if (_.has(obj, key)) keys[keys.length] = key;
     return keys;
   };
 
@@ -674,7 +670,7 @@ define('shared/coords',['require'],function(require) {
   _.extend = function(obj) {
     each(slice.call(arguments, 1), function(source) {
       for (var prop in source) {
-        if (source[prop] !== void 0) obj[prop] = source[prop];
+        obj[prop] = source[prop];
       }
     });
     return obj;
@@ -772,17 +768,17 @@ define('shared/coords',['require'],function(require) {
       if ('constructor' in a != 'constructor' in b || a.constructor != b.constructor) return false;
       // Deep compare objects.
       for (var key in a) {
-        if (hasOwnProperty.call(a, key)) {
+        if (_.has(a, key)) {
           // Count the expected number of properties.
           size++;
           // Deep compare each member.
-          if (!(result = hasOwnProperty.call(b, key) && eq(a[key], b[key], stack))) break;
+          if (!(result = _.has(b, key) && eq(a[key], b[key], stack))) break;
         }
       }
       // Ensure that both objects contain the same number of properties.
       if (result) {
         for (key in b) {
-          if (hasOwnProperty.call(b, key) && !(size--)) break;
+          if (_.has(b, key) && !(size--)) break;
         }
         result = !size;
       }
@@ -801,7 +797,7 @@ define('shared/coords',['require'],function(require) {
   // An "empty" object has no enumerable own-properties.
   _.isEmpty = function(obj) {
     if (_.isArray(obj) || _.isString(obj)) return obj.length === 0;
-    for (var key in obj) if (hasOwnProperty.call(obj, key)) return false;
+    for (var key in obj) if (_.has(obj, key)) return false;
     return true;
   };
 
@@ -827,7 +823,7 @@ define('shared/coords',['require'],function(require) {
   };
   if (!_.isArguments(arguments)) {
     _.isArguments = function(obj) {
-      return !!(obj && hasOwnProperty.call(obj, 'callee'));
+      return !!(obj && _.has(obj, 'callee'));
     };
   }
 
@@ -875,6 +871,11 @@ define('shared/coords',['require'],function(require) {
   // Is a given variable undefined?
   _.isUndefined = function(obj) {
     return obj === void 0;
+  };
+
+  // Has own property?
+  _.has = function(obj, key) {
+    return hasOwnProperty.call(obj, key);
   };
 
   // Utility Functions
@@ -926,6 +927,17 @@ define('shared/coords',['require'],function(require) {
     escape      : /<%-([\s\S]+?)%>/g
   };
 
+  // When customizing `templateSettings`, if you don't want to define an
+  // interpolation, evaluation or escaping regex, we need one that is
+  // guaranteed not to match.
+  var noMatch = /.^/;
+
+  // Within an interpolation, evaluation, or escaping, remove HTML escaping
+  // that had been previously added.
+  var unescape = function(code) {
+    return code.replace(/\\\\/g, '\\').replace(/\\'/g, "'");
+  };
+
   // JavaScript micro-templating, similar to John Resig's implementation.
   // Underscore templating handles arbitrary delimiters, preserves whitespace,
   // and correctly escapes quotes within interpolated code.
@@ -935,15 +947,14 @@ define('shared/coords',['require'],function(require) {
       'with(obj||{}){__p.push(\'' +
       str.replace(/\\/g, '\\\\')
          .replace(/'/g, "\\'")
-         .replace(c.escape, function(match, code) {
-           return "',_.escape(" + code.replace(/\\'/g, "'") + "),'";
+         .replace(c.escape || noMatch, function(match, code) {
+           return "',_.escape(" + unescape(code) + "),'";
          })
-         .replace(c.interpolate, function(match, code) {
-           return "'," + code.replace(/\\'/g, "'") + ",'";
+         .replace(c.interpolate || noMatch, function(match, code) {
+           return "'," + unescape(code) + ",'";
          })
-         .replace(c.evaluate || null, function(match, code) {
-           return "');" + code.replace(/\\'/g, "'")
-                              .replace(/[\r\n\t]/g, ' ') + ";__p.push('";
+         .replace(c.evaluate || noMatch, function(match, code) {
+           return "');" + unescape(code).replace(/[\r\n\t]/g, ' ') + ";__p.push('";
          })
          .replace(/\r/g, '\\r')
          .replace(/\n/g, '\\n')
@@ -954,6 +965,11 @@ define('shared/coords',['require'],function(require) {
     return function(data) {
       return func.call(this, data, _);
     };
+  };
+
+  // Add a "chain" function, which will delegate to the wrapper.
+  _.chain = function(obj) {
+    return _(obj).chain();
   };
 
   // The OOP Wrapper
@@ -988,8 +1004,11 @@ define('shared/coords',['require'],function(require) {
   each(['pop', 'push', 'reverse', 'shift', 'sort', 'splice', 'unshift'], function(name) {
     var method = ArrayProto[name];
     wrapper.prototype[name] = function() {
-      method.apply(this._wrapped, arguments);
-      return result(this._wrapped, this._chain);
+      var wrapped = this._wrapped;
+      method.apply(wrapped, arguments);
+      var length = wrapped.length;
+      if ((name == 'shift' || name == 'splice') && length === 0) delete wrapped[0];
+      return result(wrapped, this._chain);
     };
   });
 
@@ -1011,6 +1030,14 @@ define('shared/coords',['require'],function(require) {
   wrapper.prototype.value = function() {
     return this._wrapped;
   };
+
+  // AMD define happens at the end for compatibility with AMD loaders
+  // that don't enforce next-turn semantics on modules.
+  if (typeof define === 'function' && define.amd) {
+    define('underscore',[], function() {
+      return _;
+    });
+  }
 
 }).call(this);
 
@@ -4457,11 +4484,11 @@ define('entities/components/renderable',['require','../../render/instance','../.
     },
     
     determineFixedTexture: function() {
-      this.material.diffuseTexture = this.scene.resources.get('/main/' + this.textureName + '.png');
+      this.material.diffuseTexture = this.scene.resources.get('main/' + this.textureName + '.png');
     },
     
     determineTextureFromRotation: function(rotation) {
-      var path = '/main/' + this.textureName + '/' + this.animationName + '-';
+      var path = 'main/' + this.textureName + '/' + this.animationName + '-';
     
       var textureSuffix = 'up';
       var rotation = ExtraMath.clampRotation(this.rotation);
@@ -5119,7 +5146,7 @@ define('entities/components/animatable',['require','underscore'],function(requir
     },
     onAddedToScene: function(scene) {
       this.scene = scene;
-      this.meta = scene.resources.get('/main/' + this.textureName + '/meta.json');
+      this.meta = scene.resources.get('main/' + this.textureName + '/meta.json');
     }
   };
   
@@ -15679,7 +15706,7 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
 
   DynamicTileSource.prototype = {
     createTemplates: function() {
-      this.templates = this.resources.get('/main/templates.json').get();
+      this.templates = this.resources.get('main/templates.json').get();
     },
     createModels: function() {
       for(var t in this.templates) {
@@ -15688,7 +15715,7 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
       }
       this.createModelForTemplate({
         id: 'testtile',
-        texture: '/main/testtile.png'
+        texture: 'main/testtile.png'
       });
     },
     createModelForTemplate: function(template) {

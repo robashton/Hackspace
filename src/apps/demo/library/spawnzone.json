@@ -1,0 +1,20 @@
+{
+  "type": "entity",
+  "template": {
+    "id": "spawnzone",
+    "size": [ 12, 12, 25 ],
+    "collision": [12, 12],    
+    "texture": "/main/spider.png",
+    "type": "spawner",
+    "data": {
+      "z": 0,
+      "radius": 100,
+      "type": "monster",
+      "rate": 30,
+      "maxcount": 5,
+      "template": {
+        "texture": "spider"
+        } 
+      }
+  }
+}
