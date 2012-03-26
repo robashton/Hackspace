@@ -14,8 +14,9 @@ define(function(require) {
   
   Quest.prototype = {
   
-    start: function(entity) {
+    start: function(entity, giverId) {
       this.entity = entity;
+      this.giverid = giverId;
       this.scene = entity.scene;
       this.init(); 
       this.hookEntityEvents();
@@ -53,12 +54,14 @@ define(function(require) {
     
     _setQuestData: function(data) {
       this.complete = data.complete;
+      this.giverid = data.giverid;
       this._in(data);
     },
     
     _getQuestData: function(data) {
       data.complete = this.complete;
       data.meta = this.meta;
+      data.giverid = this.giverid;
       this._out(data);
     }
   };

@@ -3384,6 +3384,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
     
     dispatch: function(id, command, args) {
       if(!this.renderer) { // if IsServer (TODO)
+        console.log('DISPATCHED', id, command);
         this.raise('CommandDispatched', {
           id: id, command: command, args: args
         });        
@@ -5484,8 +5485,9 @@ define('scripting/quest',['require','underscore','../shared/eventable'],function
   
   Quest.prototype = {
   
-    start: function(entity) {
+    start: function(entity, giverId) {
       this.entity = entity;
+      this.giverid = giverId;
       this.scene = entity.scene;
       this.init(); 
       this.hookEntityEvents();
@@ -5523,12 +5525,14 @@ define('scripting/quest',['require','underscore','../shared/eventable'],function
     
     _setQuestData: function(data) {
       this.complete = data.complete;
+      this.giverid = data.giverid;
       this._in(data);
     },
     
     _getQuestData: function(data) {
       data.complete = this.complete;
       data.meta = this.meta;
+      data.giverid = this.giverid;
       this._out(data);
     }
   };

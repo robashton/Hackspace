@@ -69,6 +69,10 @@ define(function(require) {
       var tileY = parseInt(y / CONST.TILEHEIGHT);
       var index = this.index(tileX, tileY);
       var tile = this.tiles[index];
+      if(!tile) {
+      //  console.warn("Couldn't find  tile", tileX, tileY);
+        return false;
+      }
       return tile.solidAt(x, y);
     }
   };

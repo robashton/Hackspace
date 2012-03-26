@@ -17,24 +17,24 @@ define(function(require) {
       this.scene.on('Discussion', this.onEntityTalkedToNpc, this);
     },
     
-    onEntityTalkedToNpc: function(targetId, sender) {
-      var questId = this.findQuestToStart(targetId, sender.id);
+    onEntityTalkedToNpc: function(npcId, sender) {
+      var questId = this.findQuestToStart(npcId, sender.id);
       if(!questId) return;
-      this.startQuestForEntity(sender.id, questId);
+      this.startQuestForEntity(sender.id, questId, npcId);
     },
     
-    findQuestToStart: function(giverId, receiverId) {
-      var giver = this.scene.get(giverId);
+    findQuestToStart: function(npcId, receiverId) {
+      var giver = this.scene.get(npcId);
       var questId = giver.get('getQuest');
       if(this.hasQuestBeenStartedForEntity(receiverId, questId)) return null;
       return questId;
     },
     
-    startQuestForEntity: function(entityId, questId) {
+    startQuestForEntity: function(entityId, questId, npcId) {
       var template = this.questFactory.get(questId);
       var quest = new Quest(template);
       var entity = this.scene.get(entityId);
-      quest.start(entity);
+      quest.start(entity, npcId);
       this.updateQuestForPlayer(entityId, quest); 
       this.notifyEntityOfQuestStart(entityId, quest);
       this.trackQuest(entityId, quest);    

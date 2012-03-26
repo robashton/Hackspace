@@ -100,6 +100,7 @@ define(function(require) {
     
     dispatch: function(id, command, args) {
       if(!this.renderer) { // if IsServer (TODO)
+        console.log('DISPATCHED', id, command);
         this.raise('CommandDispatched', {
           id: id, command: command, args: args
         });        

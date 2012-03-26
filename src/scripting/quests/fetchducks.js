@@ -17,7 +17,7 @@ define(function(require) {
       this.markUpdated();
     },
     onDiscussion: function(entityId) {
-      if(entityId === 'quest-giver') {
+      if(entityId === this.giverid) {
         this.determineIfQuestFinished();      
       }
     },
@@ -42,6 +42,7 @@ define(function(require) {
         this.removeDucksFromPlayer();
         this.markComplete();
       } else {
+       console.log('Talking');
        this.talk('Please find my ducks, I miss my ducks');
       }
     },

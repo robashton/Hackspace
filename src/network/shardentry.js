@@ -89,7 +89,6 @@ define(function(require) {
           var item = entities[id];
           var entity = this.context.createEntity(item.type, id, item.data);
           this.context.scene.add(entity);
-          console.log('Added entity', id);  
         }
       } 
       
