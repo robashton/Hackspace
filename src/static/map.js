@@ -23,6 +23,7 @@ define(function(require) {
     this.graph = null; 
     this.renderer = null; 
     this.tiles = tiles;
+
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -31,6 +32,7 @@ define(function(require) {
     this.needsRedrawing = false;
     
     this.on('AddedToScene', this.onAddedToScene);
+    this.tiles.on('TileLoaded', this.onTileLoaded, this);
   };
   
   Map.prototype = {
@@ -38,6 +40,10 @@ define(function(require) {
     onAddedToScene: function(scene) {
       this.scene = scene;
       this.scene.graph.add(this);   
+    },
+
+    onTileLoaded: function(tile) {
+      this.needsRedrawing = true;
     },
     
     depth: function() {

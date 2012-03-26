@@ -14665,6 +14665,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.graph = null; 
     this.renderer = null; 
     this.tiles = tiles;
+
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -14673,6 +14674,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.needsRedrawing = false;
     
     this.on('AddedToScene', this.onAddedToScene);
+    this.tiles.on('TileLoaded', this.onTileLoaded, this);
   };
   
   Map.prototype = {
@@ -14680,6 +14682,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
     onAddedToScene: function(scene) {
       this.scene = scene;
       this.scene.graph.add(this);   
+    },
+
+    onTileLoaded: function(tile) {
+      this.needsRedrawing = true;
     },
     
     depth: function() {
@@ -15907,7 +15913,7 @@ define('editor/tilebuilder',['require','underscore','../static/tile','./worldite
 
   return TileBuilder;
 });
-define('static/dynamictilesource',['require','underscore','jquery','./consts','../render/material','../render/quad','./tile'],function(require) {
+define('static/dynamictilesource',['require','underscore','jquery','./consts','../render/material','../render/quad','./tile','../shared/eventable'],function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
 
@@ -15915,8 +15921,11 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
   var Material = require('../render/material');
   var Quad = require('../render/quad');
   var Tile = require('./tile');
+  var Eventable = require('../shared/eventable');
 
   var DynamicTileSource = function(resources, scene) {
+    Eventable.call(this);
+
     this.tiles = {};
     this.loadingTiles = {};
     this.resources = resources;
@@ -15971,12 +15980,13 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
           x: i,
           y: j
         }, function(data) {
-          var tile = new Tile(self, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
-          var index = self.index(i, j);
-          self.tiles[index] = tile;
+          var tile = new Tile(this, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          var index = this.index(i, j);
+          this.tiles[index] = tile;
           tile.createInstances();
           cb();
-        });
+          this.raise('TileLoaded', tile);
+        }.bind(self));
       });
     },
     withTileLoadingLock: function(i, j, cb) {
@@ -16002,6 +16012,8 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
       this.withTile(tileX, tileY, cb);
     }
   };
+
+  _.extend(DynamicTileSource.prototype, Eventable.prototype);
 
   return DynamicTileSource;
 });
@@ -16038,6 +16050,8 @@ define('editor/editortilesource',['require','underscore','jquery','./tilebuilder
               self.tiles[index] = tile;
               tile.createInstances();
               cb();
+              self.raise('TileLoaded', tile);
+
             });
           });
         }

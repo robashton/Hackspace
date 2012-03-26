@@ -6,8 +6,11 @@ define(function(require) {
   var Material = require('../render/material');
   var Quad = require('../render/quad');
   var Tile = require('./tile');
+  var Eventable = require('../shared/eventable');
 
   var DynamicTileSource = function(resources, scene) {
+    Eventable.call(this);
+
     this.tiles = {};
     this.loadingTiles = {};
     this.resources = resources;
@@ -62,12 +65,13 @@ define(function(require) {
           x: i,
           y: j
         }, function(data) {
-          var tile = new Tile(self, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
-          var index = self.index(i, j);
-          self.tiles[index] = tile;
+          var tile = new Tile(this, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          var index = this.index(i, j);
+          this.tiles[index] = tile;
           tile.createInstances();
           cb();
-        });
+          this.raise('TileLoaded', tile);
+        }.bind(self));
       });
     },
     withTileLoadingLock: function(i, j, cb) {
@@ -93,6 +97,8 @@ define(function(require) {
       this.withTile(tileX, tileY, cb);
     }
   };
+
+  _.extend(DynamicTileSource.prototype, Eventable.prototype);
 
   return DynamicTileSource;
 });

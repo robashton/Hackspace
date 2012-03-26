@@ -31,6 +31,8 @@ define(function(require) {
               self.tiles[index] = tile;
               tile.createInstances();
               cb();
+              self.raise('TileLoaded', tile);
+
             });
           });
         }
