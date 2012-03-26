@@ -11,7 +11,7 @@ define(function(require) {
 
   var buildTemplates = function(directory, cb) {
     var templates = {};
-    library.visitLibrary(directory, function(str, visited) {
+    library.visitLibrary(directory, function(file, str, visited) {
       var data = JSON.parse(str);
       if(data.type === 'static') {
         templates[data.template.id] = data.template;

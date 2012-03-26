@@ -8,7 +8,7 @@ define(function(require) {
     var file = path.join(root, children[current]);
     fs.readFile(file, 'utf8', function(err, str) {
       if(err) throw err;
-      processor(str, function() {
+      processor(children[current], str, function() {
         processLibraryItem(root, children, ++current, processor, cb);
       });      
     });

@@ -15462,59 +15462,43 @@ define('editor/entityelement',['require','underscore','../render/material','../r
   return EntityElement;
 });
 
-define('editor/library',['require','./libraryitemtool','./staticelement','./entityelement'],function(require) {
+define('editor/library',['require','./libraryitemtool','./staticelement','./entityelement','jquery'],function(require) {
   var LibraryItemTool = require('./libraryitemtool');
   var StaticElement = require('./staticelement');
   var EntityElement = require('./entityelement');
-  
+  var $ = require('jquery');
+
   var Library = function(editor) {
     this.editor = editor;
     this.element = $('#library');
-    this.ConstLibraryElements = {
-     tree: new StaticElement({
-        id: "tree",
-        size: [ 25, 25, 50 ],
-        collision: [12, 12],    
-        texture: "/main/tree.png",
-        solid: true
-      }),
-     spawner: new EntityElement(editor, {
-        id: "spawnzone",
-        size: [ 12, 12, 25 ],
-        collision: [12, 12],    
-        texture: "/main/spider.png",
-        type: 'spawner',
-        data: {
-          z: 0,
-          radius: 100,
-          type: 'monster',
-          rate: 30,
-          maxcount: 5,
-          template: {
-            texture: 'spider'
-          } 
-        }
-     }),
-     npc: new EntityElement(editor, {
-      id: "npc",
-      size: [12, 12, 18],
-      collision: [12, 12],
-      texture: "/main/character/static-down.png",
-      type: "npc",
-      data: {
-        quest: 'fetchducks', 
-        z: 0      
-      } 
-     })
-    };
-    this.populate();
+    this.ConstLibraryElements = {};
+    this.loadLibrary();
   };
   
   Library.prototype = {
+    loadLibrary: function() {
+      $.getJSON('services/getlibrary', this.populateLibrary.bind(this));
+    },
+    populateLibrary: function(data) {
+      for(var i in data) {
+        var item = data[i];
+        switch(item.type) {
+          case 'static':
+            this.ConstLibraryElements[i] = new StaticElement(item.template);
+            break;
+          case 'entity':
+            this.ConstLibraryElements[i] = new EntityElement(this.editor, item.template);
+            break;
+          default:
+            throw "Unrecognised library item type";
+        }
+      }
+      this.populateDisplay();
+    },
     getLibraryElement: function(id) {
       return this.ConstLibraryElements[id];
     },
-    populate: function() {
+    populateDisplay: function() {
       var self = this;
       
       this.element.html('');

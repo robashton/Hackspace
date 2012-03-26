@@ -1,3 +1,4 @@
 site/*
 data/*
 src/apps/demo/assets/main/templates.json
+src/apps/demo/assets/editor/library.json

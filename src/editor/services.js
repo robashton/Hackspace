@@ -9,7 +9,8 @@ define(function(require) {
     Handler.call(this);
     this.baseDir = baseDir;
     this.route('POST', '/services/savetile', this.savetile);
-    this.route('GET', '/services/gettile', this.gettile)
+    this.route('GET', '/services/gettile', this.gettile);
+    this.route('GET', '/services/getlibrary', this.getlibrary);
   };
   
   Services.prototype = {
@@ -21,6 +22,13 @@ define(function(require) {
       filename = path.join(this.baseDir, 'apps/demo/dynamic/world/') + filename;
       fs.writeFile(filename, req.body.map, function() {
         self.success(req, res);
+      });
+    },
+    getlibrary: function(req, res) {
+      var self = this;
+      fs.readFile(path.join(this.baseDir, 'apps/demo/assets/editor/library.json'), function(err, data) {
+        if(err) throw err;
+        self.success(req, res, data);
       });
     },
     gettile: function(req, res) {
