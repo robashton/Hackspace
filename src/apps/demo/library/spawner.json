@@ -4,7 +4,7 @@
     "id": "spawnzone",
     "size": [ 12, 12, 25 ],
     "collision": [12, 12],    
-    "texture": "/main/spider.png",
+    "texture": "main/spider.png",
     "type": "spawner",
     "data": {
       "z": 0,
