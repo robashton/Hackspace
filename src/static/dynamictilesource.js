@@ -65,15 +65,15 @@ define(function(require) {
           x: i,
           y: j
         }, function(data) {
-          var tile = new Tile(this, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
-          var index = this.index(i, j);
-          this.tiles[index] = tile;
+          var tile = new Tile(self, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          var index = self.index(i, j);
+          self.tiles[index] = tile;
           tile.createInstances();
-          tile.on('InstanceOpacityChanged', this.onInstanceOpacityChanged, this);
+          tile.on('InstanceOpacityChanged', self.onInstanceOpacityChanged, self);
           cb();
-          this.raise('TileLoaded', tile);
-        }.bind(self));
-      });
+          self.raise('TileLoaded', tile);
+        });
+      }); 
     },
     withTileLoadingLock: function(i, j, cb) {
       var index = this.index(i, j);

@@ -20,6 +20,20 @@ define(function(require) {
         self.raiseHover(e.pageX - offset.left, e.pageY - offset.top);
       }
     });
+    
+    element.addEventListener('touchstart', function(e) {
+      if(!e) var e = event;
+      e.preventDefault();
+      var offset = self.element.offset();
+      var touch = e.touches[0];
+      self.raisePrimaryAction(touch.pageX - offset.left, touch.pageY - offset.top);
+    }, true);
+
+     element.addEventListener('touchend', function(e) {
+      if(!e) var e = event;
+      e.preventDefault();
+     }, true);
+
     $(document).on({
       keydown: function(e) {
         switch(e.keyCode) {

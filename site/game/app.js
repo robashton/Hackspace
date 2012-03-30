@@ -1276,6 +1276,7 @@ define('resources/texture',['require'],function(require) {
   return Texture;
 });
 
+
 define('resources/jsondata',['require'],function(require) {
   var JsonData = function(pkg, path) {
     this.path = path;
@@ -3994,7 +3995,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.graph = null; 
     this.renderer = null; 
     this.tiles = tiles;
-
+    this.qualityScale = 3.0;
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -4040,14 +4041,16 @@ define('static/map',['require','underscore','../render/material','../render/quad
         x: topLeft.x - this.scene.graph.viewport.left,
         y: topLeft.y - this.scene.graph.viewport.top
       };     
+
       
       var offset = {
         x: offsetInMapCanvas.x - offsetInWorldCanvas.x,
         y: offsetInMapCanvas.y - offsetInWorldCanvas.y
       };
       
-      var scale = this.scene.graph.getScaleForDimensions(context.canvas.width, context.canvas.height);
-      
+      var destinationScale = this.scene.graph.getScaleForDimensions(context.canvas.width, context.canvas.height);
+      var sourceScale = this.graph.getScaleForDimensions(this.canvas.width, this.canvas.height);
+
       var sx = offset.x, sy = offset.y;
       var sw = context.canvas.width, sh = context.canvas.height;
       var dx = 0, dy = 0;
@@ -4067,9 +4070,38 @@ define('static/map',['require','underscore','../render/material','../render/quad
       }
       
       context.save();
-      context.setTransform(1,0,0,1,0,0);  
-      context.drawImage(this.canvas, sx * scale.x, sy * scale.y , sw, sh, dx * scale.x, dy * scale.y , dw, dh);
+      context.setTransform(1,0,0,1,0,0);
+
+      sx = sx * sourceScale.x;
+      sy = sy * sourceScale.y;
+      sw = sw / this.qualityScale;
+      sh = sh / this.qualityScale;
+
+      dx = dx * destinationScale.x;
+      dy = dy * destinationScale.y;
+
+      context.drawImage(this.canvas, sx, sy, sw, sh, dx, dy , dw, dh);
       context.restore();
+
+      this.renderSourceGrid(context, sx, sy, sw, sh);
+    },
+
+    renderSourceGrid: function(mainContext, sx, sy, sw, sh) {
+      this.redrawBackground(mainContext);
+      this.context.save(); 
+      
+      this.context.strokeStyle = 'rgba(255, 100, 100, 1.0)';
+      this.context.lineWidth = 1.25;
+          
+      this.context.beginPath();
+      this.context.moveTo(sx, sy);
+      this.context.lineTo(sx + sw, sy);
+      this.context.lineTo(sx + sw, sy + sh);
+      this.context.lineTo(sx, sy + sh);
+      this.context.lineTo(sx, sy);
+      
+      this.context.stroke();
+      this.context.restore();
     },
     
     forEachVisibleTile: function(callback) {
@@ -4094,7 +4126,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     },
     
     initializeContext: function() {
-      this.canvas = document.createElement('canvas');
+      this.canvas =  document.getElementById('source'); // document.createElement('canvas');
       this.context = this.canvas.getContext('2d');
       this.graph = new RenderGraph();
       this.renderer = new CanvasRender(this.context);  
@@ -4151,14 +4183,14 @@ define('static/map',['require','underscore','../render/material','../render/quad
            
       // This is very well and good, but our personal canvas needs to be sized appropriately for this so sizes match up
       var mainScaleFactor = this.scene.graph.getScaleForDimensions(mainContext.canvas.width, mainContext.canvas.height);
-      this.canvas.width = this.graph.width() * mainScaleFactor.x;
-      this.canvas.height = this.graph.height() * mainScaleFactor.y;
+      this.canvas.width = (this.graph.width() * (mainScaleFactor.x / this.qualityScale));
+      this.canvas.height = (this.graph.height() * (mainScaleFactor.y / this.qualityScale));
         
       // And with that all set, we can render all the visible tiles
       this.populateGraph();      
       this.renderer.clear();
       this.renderer.draw(this.graph);      
- //     this.renderDebugGrid(this.context);
+      this.renderDebugGrid(this.context);
     },
     
     renderDebugGrid: function(context) {
@@ -15036,6 +15068,20 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
         self.raiseHover(e.pageX - offset.left, e.pageY - offset.top);
       }
     });
+    
+    element.addEventListener('touchstart', function(e) {
+      if(!e) var e = event;
+      e.preventDefault();
+      var offset = self.element.offset();
+      var touch = e.touches[0];
+      self.raisePrimaryAction(touch.pageX - offset.left, touch.pageY - offset.top);
+    }, true);
+
+     element.addEventListener('touchend', function(e) {
+      if(!e) var e = event;
+      e.preventDefault();
+     }, true);
+
     $(document).on({
       keydown: function(e) {
         switch(e.keyCode) {
@@ -15090,7 +15136,7 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
     this.translator.on('PrimaryAction', function(data) {
       self.onPrimaryAction(data);
     });
-        this.translator.on('Hover', function(data) {
+    this.translator.on('Hover', function(data) {
       self.onHover(data);
     });
   };
@@ -15748,15 +15794,15 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
           x: i,
           y: j
         }, function(data) {
-          var tile = new Tile(this, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
-          var index = this.index(i, j);
-          this.tiles[index] = tile;
+          var tile = new Tile(self, data.items, data.collision, i * CONST.TILEWIDTH, j * CONST.TILEHEIGHT);
+          var index = self.index(i, j);
+          self.tiles[index] = tile;
           tile.createInstances();
-          tile.on('InstanceOpacityChanged', this.onInstanceOpacityChanged, this);
+          tile.on('InstanceOpacityChanged', self.onInstanceOpacityChanged, self);
           cb();
-          this.raise('TileLoaded', tile);
-        }.bind(self));
-      });
+          self.raise('TileLoaded', tile);
+        });
+      }); 
     },
     withTileLoadingLock: function(i, j, cb) {
       var index = this.index(i, j);

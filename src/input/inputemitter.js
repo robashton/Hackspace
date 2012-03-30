@@ -12,7 +12,7 @@ define(function(require) {
     this.translator.on('PrimaryAction', function(data) {
       self.onPrimaryAction(data);
     });
-        this.translator.on('Hover', function(data) {
+    this.translator.on('Hover', function(data) {
       self.onHover(data);
     });
   };
