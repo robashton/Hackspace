@@ -56,7 +56,7 @@ define(function(require) {
     },
     loadMap: function(path) {
       var tiles = new DynamicTileSource(this.context.resources, this.context.scene);
-      var map = new Map(tiles);
+      var map = new Map(tiles, this.context.renderSettings);
       this.context.scene.add(map);
       this.grid = new Grid(map);
  //     this.context.scene.add(this.grid); 

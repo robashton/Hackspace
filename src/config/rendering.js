@@ -9,6 +9,7 @@ define(function(require) {
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
     this.quality = 0.5;
+    this.update();
   };
 
   RenderingSettings.prototype = {
@@ -19,7 +20,7 @@ define(function(require) {
     },
     updateAvailableDimensions: function() {
       this.availableWidth = this.container.width();
-      this.availableHeight = this.container.availableHeight();
+      this.availableHeight = this.container.height();
     },
     updateAspectRatio: function() {
       this.aspectRatio = this.availableWidth / this.availableHeight;
@@ -31,10 +32,10 @@ define(function(require) {
 
     outputScaleFactor: function() {
       return 1.0 / this.quality;
-    }
+    },
 
     backgroundScaleFactor: function() {
-      return 1.0 / this.quality;
+      return this.quality * 0.75;
     }
   };
 

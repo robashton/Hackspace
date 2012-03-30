@@ -13610,6 +13610,49 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   return Seeker;
 });
 
+define('config/rendering',['require','jquery'],function(require) {
+  var $ = require('jquery');
+
+  var RenderingSettings = function(container) {
+    this.container = container;
+    this.aspectRatio = 0;
+    this.availableWidth = 0;
+    this.availableHeight = 0;
+    this.resolutionWidth = 0;
+    this.resolutionHeight = 0;
+    this.quality = 0.5;
+    this.update();
+  };
+
+  RenderingSettings.prototype = {
+    update: function() {
+      this.updateAvailableDimensions();
+      this.updateAspectRatio();
+      this.findAppropriateResolution();
+    },
+    updateAvailableDimensions: function() {
+      this.availableWidth = this.container.width();
+      this.availableHeight = this.container.height();
+    },
+    updateAspectRatio: function() {
+      this.aspectRatio = this.availableWidth / this.availableHeight;
+    },
+    findAppropriateResolution: function() {
+      this.resolutionWidth = this.availableWidth * this.quality;
+      this.resolutionHeight = this.resolutionWidth / this.aspectRatio;
+    },
+
+    outputScaleFactor: function() {
+      return 1.0 / this.quality;
+    },
+
+    backgroundScaleFactor: function() {
+      return this.quality * 0.75;
+    }
+  };
+
+  return RenderingSettings;
+});
 define('editor/worlditem',['require','underscore'],function(require) {
   var _ = require('underscore');
 
@@ -14683,9 +14726,11 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var Grid = require('../editor/grid');
   var CONST = require('./consts');
 
-  var Map = function(tiles) {
+  var Map = function(tiles, settings) {
     Entity.call(this, "map");    
         
+
+    this.settings = settings;
     this.scene = null;
     this.instanceTiles = null;
     this.canvas = null; 
@@ -14693,7 +14738,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.graph = null; 
     this.renderer = null; 
     this.tiles = tiles;
-    this.qualityScale = 3.0;
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -14772,8 +14816,8 @@ define('static/map',['require','underscore','../render/material','../render/quad
 
       sx = sx * sourceScale.x;
       sy = sy * sourceScale.y;
-      sw = sw / this.qualityScale;
-      sh = sh / this.qualityScale;
+      sw = sw * this.settings.backgroundScaleFactor();
+      sh = sh * this.settings.backgroundScaleFactor();
 
       dx = dx * destinationScale.x;
       dy = dy * destinationScale.y;
@@ -14881,8 +14925,8 @@ define('static/map',['require','underscore','../render/material','../render/quad
            
       // This is very well and good, but our personal canvas needs to be sized appropriately for this so sizes match up
       var mainScaleFactor = this.scene.graph.getScaleForDimensions(mainContext.canvas.width, mainContext.canvas.height);
-      this.canvas.width = (this.graph.width() * (mainScaleFactor.x / this.qualityScale));
-      this.canvas.height = (this.graph.height() * (mainScaleFactor.y / this.qualityScale));
+      this.canvas.width = (this.graph.width() * (mainScaleFactor.x * this.settings.backgroundScaleFactor()));
+      this.canvas.height = (this.graph.height() * (mainScaleFactor.y * this.settings.backgroundScaleFactor()));
         
       // And with that all set, we can render all the visible tiles
       this.populateGraph();      
@@ -15133,7 +15177,7 @@ define('entities/entityfactory',['require','underscore','./characterfactory','./
   return EntityFactory;
 });
 
-define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../resources/package','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory'],function(require) {
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../resources/package','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory','../config/rendering'],function(require) {
 
   var CanvasRender = require('../render/canvasrender');
   var PackagedResources = require('../resources/packagedresources');
@@ -15143,7 +15187,8 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   var Map = require('../static/map');
   var Coords = require('../shared/coords');
   var EntityFactory = require('../entities/entityfactory');
-  
+  var RenderSettings = require('../config/rendering');
+
   var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
       window.webkitRequestAnimationFrame  || 
@@ -15164,6 +15209,7 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
     this.entityFactory = new EntityFactory();
+    this.renderSettings = new RenderSettings(this.wrappedElement.parent());
   };
   
   Context.prototype = {    

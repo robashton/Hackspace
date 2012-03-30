@@ -13,9 +13,11 @@ define(function(require) {
   var Grid = require('../editor/grid');
   var CONST = require('./consts');
 
-  var Map = function(tiles) {
+  var Map = function(tiles, settings) {
     Entity.call(this, "map");    
         
+
+    this.settings = settings;
     this.scene = null;
     this.instanceTiles = null;
     this.canvas = null; 
@@ -23,7 +25,6 @@ define(function(require) {
     this.graph = null; 
     this.renderer = null; 
     this.tiles = tiles;
-    this.qualityScale = 3.0;
     
     this.tileleft = -1;
     this.tiletop = -1;
@@ -102,8 +103,8 @@ define(function(require) {
 
       sx = sx * sourceScale.x;
       sy = sy * sourceScale.y;
-      sw = sw / this.qualityScale;
-      sh = sh / this.qualityScale;
+      sw = sw * this.settings.backgroundScaleFactor();
+      sh = sh * this.settings.backgroundScaleFactor();
 
       dx = dx * destinationScale.x;
       dy = dy * destinationScale.y;
@@ -211,8 +212,8 @@ define(function(require) {
            
       // This is very well and good, but our personal canvas needs to be sized appropriately for this so sizes match up
       var mainScaleFactor = this.scene.graph.getScaleForDimensions(mainContext.canvas.width, mainContext.canvas.height);
-      this.canvas.width = (this.graph.width() * (mainScaleFactor.x / this.qualityScale));
-      this.canvas.height = (this.graph.height() * (mainScaleFactor.y / this.qualityScale));
+      this.canvas.width = (this.graph.width() * (mainScaleFactor.x * this.settings.backgroundScaleFactor()));
+      this.canvas.height = (this.graph.height() * (mainScaleFactor.y * this.settings.backgroundScaleFactor()));
         
       // And with that all set, we can render all the visible tiles
       this.populateGraph();      

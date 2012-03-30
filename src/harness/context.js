@@ -8,7 +8,8 @@ define(function(require) {
   var Map = require('../static/map');
   var Coords = require('../shared/coords');
   var EntityFactory = require('../entities/entityfactory');
-  
+  var RenderSettings = require('../config/rendering');
+
   var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
       window.webkitRequestAnimationFrame  || 
@@ -29,6 +30,7 @@ define(function(require) {
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
     this.entityFactory = new EntityFactory();
+    this.renderSettings = new RenderSettings(this.wrappedElement.parent());
   };
   
   Context.prototype = {    
