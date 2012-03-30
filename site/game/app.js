@@ -4083,7 +4083,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       context.drawImage(this.canvas, sx, sy, sw, sh, dx, dy , dw, dh);
       context.restore();
 
-      this.renderSourceGrid(context, sx, sy, sw, sh);
+//      this.renderSourceGrid(context, sx, sy, sw, sh);
     },
 
     renderSourceGrid: function(mainContext, sx, sy, sw, sh) {
@@ -4126,7 +4126,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     },
     
     initializeContext: function() {
-      this.canvas =  document.getElementById('source'); // document.createElement('canvas');
+      this.canvas =  document.createElement('canvas') // document.getElementById('source');;
       this.context = this.canvas.getContext('2d');
       this.graph = new RenderGraph();
       this.renderer = new CanvasRender(this.context);  
@@ -4190,7 +4190,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       this.populateGraph();      
       this.renderer.clear();
       this.renderer.draw(this.graph);      
-      this.renderDebugGrid(this.context);
+    //  this.renderDebugGrid(this.context);
     },
     
     renderDebugGrid: function(context) {

@@ -3,6 +3,12 @@ body {
   padding: 0;
 }
 
+#container {
+  -webkit-transform-origin-x: 0px;
+  -webkit-transform-origin-y: 0px;
+  -webkit-transform: scale(1.0, 1.0);  
+}
+
 #debug {
   float: left;
   margin-left: 10px;
