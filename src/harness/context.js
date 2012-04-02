@@ -30,7 +30,7 @@ define(function(require) {
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
     this.entityFactory = new EntityFactory();
-    this.renderSettings = new RenderSettings(this.wrappedElement.parent());
+    this.renderSettings = new RenderSettings(this.wrappedElement);
   };
   
   Context.prototype = {    
