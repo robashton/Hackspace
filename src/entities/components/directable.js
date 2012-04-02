@@ -73,8 +73,8 @@ define(function(require) {
       var self = this;
       if(!this.targetId) return;
                   
-      var bounds = this.scene.fromEntity(this.targetId, 'getBounds');
-      var myBounds = this.parent.get('getBounds');
+      var bounds = this.scene.fromEntity(this.targetId, 'Bounds');
+      var myBounds = this.parent.get('Bounds');
       if(!bounds) return;
       
       this.desiredDistanceFromTarget = (bounds.circle.radius + myBounds.circle.radius) + 2;

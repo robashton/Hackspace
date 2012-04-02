@@ -9,8 +9,8 @@ define(function(require) {
     getFaction: function() {
       return this.faction;
     },
-    isEnemyWith: function(other) {
-      var otherFaction = other.get('getFaction', [], null);
+    getIsEnemyWith: function(other) {
+      var otherFaction = other.get('Faction', [], null);
       if(!otherFaction) return false;
       return otherFaction !== this.faction;
     },    

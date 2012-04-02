@@ -12676,7 +12676,7 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         var x = data.x;
         var y = data.y;
       
-        var otherScore = other.get('getCollisionFriction');
+        var otherScore = other.get('CollisionFriction');
         var thisScore = self.getCollisionFriction();
         
         if(otherScore < thisScore) return;
@@ -12837,7 +12837,7 @@ define('entities/components/tangible',['require','glmatrix'],function(require) {
     rotateTowards: function(targetId) {
       var self = this;
       this.scene.withEntity(targetId, function(target) {
-        var targetPosition = target.get('getPosition');
+        var targetPosition = target.get('Position');
         var myPosition = self.position;
         
         var direction = vec3.create([0,0,0]);
@@ -12966,8 +12966,8 @@ define('entities/components/directable',['require','glmatrix'],function(require)
       var self = this;
       if(!this.targetId) return;
                   
-      var bounds = this.scene.fromEntity(this.targetId, 'getBounds');
-      var myBounds = this.parent.get('getBounds');
+      var bounds = this.scene.fromEntity(this.targetId, 'Bounds');
+      var myBounds = this.parent.get('Bounds');
       if(!bounds) return;
       
       this.desiredDistanceFromTarget = (bounds.circle.radius + myBounds.circle.radius) + 2;
@@ -13050,11 +13050,11 @@ define('entities/components/actionable',['require'],function(require) {
       var self = this;
       this.targetId = targetId;
       this.scene.withEntity(targetId, function(target) {
-        if(target.get('canTalk', [self], false))
+        if(target.get('CanTalk', [self], false))
           self.moveToAndExecute(target, self.discussWithTarget);
-        if(self.parent.get('isEnemyWith', [target], false))
+        if(self.parent.get('IsEnemyWith', [target], false))
           self.moveToAndExecute(target, self.attackTarget);
-        else if(target.get('hasPickup', [], false))
+        else if(target.get('HasPickup', [], false))
            self.moveToAndExecute(target, self.pickupTarget);
       });
     },
@@ -13279,8 +13279,8 @@ define('entities/components/factionable',['require','underscore'],function(requi
     getFaction: function() {
       return this.faction;
     },
-    isEnemyWith: function(other) {
-      var otherFaction = other.get('getFaction', [], null);
+    getIsEnemyWith: function(other) {
+      var otherFaction = other.get('Faction', [], null);
       if(!otherFaction) return false;
       return otherFaction !== this.faction;
     },    
@@ -13588,7 +13588,7 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
       if(!this.targetId) return;
       var target = this.scene.get(this.targetId);
       if(target) {
-        var targetPosition = target.get('getPosition');
+        var targetPosition = target.get('Position');
         vec3.set( targetPosition, this.targetPosition);
       } else {
         this.targetId = null;
@@ -13599,7 +13599,7 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
       if(this.targetId) return;
       var self = this;
       var availableTargets = this.scene.entitiesWithinRadius(this.position, 100.0, function(entity) {
-        return entity.get('isEnemyWith', [self.parent]);
+        return entity.get('IsEnemyWith', [self.parent]);
       });
       if(availableTargets.length > 0) {
         this.targetId = availableTargets[0].id;
@@ -13901,7 +13901,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
     entityAtMouse: function(x, y, filter) {
       return _(this.entities).find(function(entity){
         if(filter && !filter(entity)) return false;
-        return entity.get('intersectWithMouse', [x, y], false);
+        return entity.get('IntersectWithMouse', [x, y], false);
       });
     },
     entitiesWithinRadius: function(centre, radius, filter) {
@@ -13909,7 +13909,7 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
       return _(this.entities).filter(function(entity){
         if(filter && !filter(entity)) return false;
         
-        var entityPosition = entity.get('getPosition');
+        var entityPosition = entity.get('Position');
         if(!entityPosition) return false;
         
         vec3.subtract(entityPosition, centre, self.buffer);
@@ -14116,7 +14116,7 @@ define('entities/components/renderable',['require','../../render/instance','../.
       this.createModel();
     }, 
     
-    intersectWithMouse: function(x, y) {
+    getIntersectWithMouse: function(x, y) {
       return this.instance.intersectWithWorldCoords(x, y);
     }, 
     
@@ -14131,11 +14131,11 @@ define('entities/components/renderable',['require','../../render/instance','../.
         this.determineFixedTexture();
     },
     
-    coversQuad: function(quad) {
+    getCoversQuad: function(quad) {
       return this.instance.coversQuad(quad);
     },
     
-    isBehind: function(depth) {
+    getIsBehind: function(depth) {
       return this.instance.depth() <= depth;
     },
     
@@ -14190,6 +14190,7 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
     this.components = [];
     this.eventHandlers = {};
     this.commandHandlers = {};
+    this.queryHandlers = {};
     this.queuedCommands = [];
     this.on('EventHandled', this.onEventHandled);
     this.currentCommandDepth = 0;
@@ -14223,12 +14224,21 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
     tryRegisterHandler: function(component, key, handler) {
       if(key.indexOf('on') === 0)
         this.registerEventHandler(component, key, handler);
+      else if(key.indexOf('get') === 0)
+        this.registerQueryHandler(component, key, handler);
       else
         this.registerCommandHandler(component, key, handler);
     },
     
     registerEventHandler: function(component, key, handler) {
       this.on(key.substr(2), handler, component);
+    },
+
+    registerQueryHandler: function(component, key, handler) {
+      this.queryHandlers[key.substr(3)] = {
+        component: component,
+        method: handler
+      };
     },
     
     registerCommandHandler: function(component, key, handler) {      
@@ -14272,11 +14282,15 @@ define('scene/componentbag',['require','underscore','../shared/eventable'],funct
     },
     
     get: function(query, data, defaultValue) {
-      var handler = this.findCommandHandler(query);
+      var handler = this.findQueryHandler(query);
       if(!handler) {
          return defaultValue;
       }
       return handler.method.apply(handler.component, data); 
+    },
+
+    findQueryHandler: function(key) {
+      return this.queryHandlers[key];
     },
     
     findCommandHandler: function(key) {
@@ -15136,7 +15150,7 @@ define('entities/components/questgiver',['require','underscore','../../scripting
       this.scene = scene;
     },
     
-    canTalk: function(entity) {
+    getCanTalk: function(entity) {
       return true;
     },
     

@@ -48,7 +48,7 @@ define(function(require) {
         var x = data.x;
         var y = data.y;
       
-        var otherScore = other.get('getCollisionFriction');
+        var otherScore = other.get('CollisionFriction');
         var thisScore = self.getCollisionFriction();
         
         if(otherScore < thisScore) return;

@@ -14,7 +14,7 @@ define(function(require) {
       this.scene = scene;
     },
     
-    canTalk: function(entity) {
+    getCanTalk: function(entity) {
       return true;
     },
     

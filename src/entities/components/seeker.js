@@ -53,7 +53,7 @@ define(function(require) {
       if(!this.targetId) return;
       var target = this.scene.get(this.targetId);
       if(target) {
-        var targetPosition = target.get('getPosition');
+        var targetPosition = target.get('Position');
         vec3.set( targetPosition, this.targetPosition);
       } else {
         this.targetId = null;
@@ -64,7 +64,7 @@ define(function(require) {
       if(this.targetId) return;
       var self = this;
       var availableTargets = this.scene.entitiesWithinRadius(this.position, 100.0, function(entity) {
-        return entity.get('isEnemyWith', [self.parent]);
+        return entity.get('IsEnemyWith', [self.parent]);
       });
       if(availableTargets.length > 0) {
         this.targetId = availableTargets[0].id;

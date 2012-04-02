@@ -29,7 +29,7 @@ define(function(require) {
     },
     determineIfEntityIntersectingWithInstance: function(entity, instance) {
       var quad = instance.getQuad();
-      if(entity.get('coversQuad', [ quad ]) && entity.get('isBehind', [instance.depth()]) ) {
+      if(entity.get('CoversQuad', [ quad ]) && entity.get('IsBehind', [instance.depth()]) ) {
         instance.setOpacity(0.5);
       } else {
         instance.setOpacity(1.0);

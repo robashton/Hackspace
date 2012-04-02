@@ -12,8 +12,8 @@ define(function(require) {
       this.scene.crossEach(this.collideEntities, this);
     },
     collideEntities: function(i, j, entityOne, entityTwo) {
-      var boundsOne = entityOne.get('getBounds');
-      var boundsTwo = entityTwo.get('getBounds');
+      var boundsOne = entityOne.get('Bounds');
+      var boundsTwo = entityTwo.get('Bounds');
       if(!boundsOne || !boundsTwo) return;
       
       var result = this.intersect(boundsOne, boundsTwo);

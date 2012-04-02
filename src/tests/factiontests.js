@@ -5,7 +5,7 @@ define(function(require) {
 
   setup.withACharacterAndMonster(function(scene, character, monster) {   
     when("A character and monster are together", function(then) {
-      var value = character.get('isEnemyWith', [monster]);
+      var value = character.get('IsEnemyWith', [monster]);
       then("They are enemies", value);
     });  
   });

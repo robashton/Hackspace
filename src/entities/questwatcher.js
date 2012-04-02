@@ -25,7 +25,7 @@ define(function(require) {
     
     findQuestToStart: function(npcId, receiverId) {
       var giver = this.scene.get(npcId);
-      var questId = giver.get('getQuest');
+      var questId = giver.get('Quest');
       if(this.hasQuestBeenStartedForEntity(receiverId, questId)) return null;
       return questId;
     },

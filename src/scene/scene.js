@@ -52,7 +52,7 @@ define(function(require) {
     entityAtMouse: function(x, y, filter) {
       return _(this.entities).find(function(entity){
         if(filter && !filter(entity)) return false;
-        return entity.get('intersectWithMouse', [x, y], false);
+        return entity.get('IntersectWithMouse', [x, y], false);
       });
     },
     entitiesWithinRadius: function(centre, radius, filter) {
@@ -60,7 +60,7 @@ define(function(require) {
       return _(this.entities).filter(function(entity){
         if(filter && !filter(entity)) return false;
         
-        var entityPosition = entity.get('getPosition');
+        var entityPosition = entity.get('Position');
         if(!entityPosition) return false;
         
         vec3.subtract(entityPosition, centre, self.buffer);

@@ -8,6 +8,7 @@ define(function(require) {
     this.components = [];
     this.eventHandlers = {};
     this.commandHandlers = {};
+    this.queryHandlers = {};
     this.queuedCommands = [];
     this.on('EventHandled', this.onEventHandled);
     this.currentCommandDepth = 0;
@@ -56,7 +57,7 @@ define(function(require) {
         component: component,
         method: handler
       };
-    }
+    },
     
     registerCommandHandler: function(component, key, handler) {      
       this.commandHandlers[key] = {

@@ -26,7 +26,7 @@ define(function(require) {
       console.log('Genning item for ' + targetId);
       this.scene.withEntity(targetId, function(target) {
         // Check some value         
-        var targetPosition = target.get('getPosition');        
+        var targetPosition = target.get('Position');        
         
         // TODO: This needs to come via item generation  
         self.scene.dispatch('god', 'createPickup', [ { 

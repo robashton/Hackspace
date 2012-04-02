@@ -24,7 +24,7 @@ define(function(require) {
         giveItemTo: function(entityId) {
           self.putItemInEntity(entityId);
         },
-        hasPickup: function() {
+        getHasPickup: function() {
           return true;
         }    
       });

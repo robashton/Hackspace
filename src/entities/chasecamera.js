@@ -11,7 +11,7 @@ define(function(require) {
     onScenePreRender: function() {
       var self = this;
       this.scene.withEntity(this.targetId, function(target) {
-        var position = target.get('getPosition');
+        var position = target.get('Position');
         self.scene.camera.lookAt(position[0], position[1], position[2]);
       });
 

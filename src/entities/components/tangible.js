@@ -35,7 +35,7 @@ define(function(require) {
     rotateTowards: function(targetId) {
       var self = this;
       this.scene.withEntity(targetId, function(target) {
-        var targetPosition = target.get('getPosition');
+        var targetPosition = target.get('Position');
         var myPosition = self.position;
         
         var direction = vec3.create([0,0,0]);

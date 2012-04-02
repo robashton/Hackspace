@@ -63,7 +63,7 @@ define(function(require) {
       this.createModel();
     }, 
     
-    intersectWithMouse: function(x, y) {
+    getIntersectWithMouse: function(x, y) {
       return this.instance.intersectWithWorldCoords(x, y);
     }, 
     
@@ -78,11 +78,11 @@ define(function(require) {
         this.determineFixedTexture();
     },
     
-    coversQuad: function(quad) {
+    getCoversQuad: function(quad) {
       return this.instance.coversQuad(quad);
     },
     
-    isBehind: function(depth) {
+    getIsBehind: function(depth) {
       return this.instance.depth() <= depth;
     },
     

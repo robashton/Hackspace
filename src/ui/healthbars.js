@@ -34,10 +34,10 @@ define(function(require) {
         this.removeHealthBar(id);
         return;
       }
-      var currentHealth = entity.get('getCurrentHealth');
-      var maxHealth = entity.get('getMaxHealth');
+      var currentHealth = entity.get('CurrentHealth');
+      var maxHealth = entity.get('MaxHealth');
       var percentage = (currentHealth / maxHealth);
-      var bounds = entity.get('getBounds');
+      var bounds = entity.get('Bounds');
       var screen = this.context.worldCoordsToPageCoords(bounds.x - bounds.width / 4.0, bounds.y + bounds.height / 4.0);
       var size = this.context.worldScaleToPage(bounds.width, bounds.height);
       var colour = ''

@@ -16,11 +16,11 @@ define(function(require) {
       var self = this;
       this.targetId = targetId;
       this.scene.withEntity(targetId, function(target) {
-        if(target.get('canTalk', [self], false))
+        if(target.get('CanTalk', [self], false))
           self.moveToAndExecute(target, self.discussWithTarget);
-        if(self.parent.get('isEnemyWith', [target], false))
+        if(self.parent.get('IsEnemyWith', [target], false))
           self.moveToAndExecute(target, self.attackTarget);
-        else if(target.get('hasPickup', [], false))
+        else if(target.get('HasPickup', [], false))
            self.moveToAndExecute(target, self.pickupTarget);
       });
     },
