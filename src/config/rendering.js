@@ -48,7 +48,6 @@ define(function(require) {
         '-webkit-transform': 'scale(' + this.outputScaleFactor() + ',' + this.outputScaleFactor() + ')'
       });
     },
-
     outputScaleFactor: function() {
       return 0.9 / this.quality;
     },
@@ -56,7 +55,12 @@ define(function(require) {
     backgroundScaleFactor: function() {
       return this.quality * 0.75;
     },
-
+    scaledCanvasWidth: function() {
+      return this.resolutionWidth * this.outputScaleFactor();
+    },
+    scaledCanvasHeight: function() {
+      return this.resolutionHeight * this.outputScaleFactor();
+    },
     hookEvents: function() {
       var self = this;
 

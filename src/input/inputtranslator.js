@@ -9,7 +9,7 @@ define(function(require) {
      var self = this;
      
      this.element = $(element);
-     
+
      this.element.on({
       click: function(e) {
         var offset = self.element.offset();     

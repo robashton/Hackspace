@@ -71,8 +71,8 @@ define(function(require) {
     getScaleComponent: function() {
       var viewport = this.scene.graph.viewport;
       
-      var canvasWidth = this.element.width;
-      var canvasHeight = this.element.height;
+      var canvasWidth = this.renderSettings.scaledCanvasWidth();
+      var canvasHeight = this.renderSettings.scaledCanvasHeight(); 
            
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);

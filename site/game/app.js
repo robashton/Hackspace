@@ -15069,7 +15069,7 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
      var self = this;
      
      this.element = $(element);
-     
+
      this.element.on({
       click: function(e) {
         var offset = self.element.offset();     
@@ -15254,17 +15254,6 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
       // TODO: Maybe only support a range
       this.availableWidth = rawWidth;
       this.availableHeight = rawHeight;
-
-      // var heightWhenWidthIsDecidingFactor = rawWidth / (16.0/9.0);
-      // var widthWhenHeightIsDecidingFactor = rawHeight * (16.0/9.0);     
-
-      // if(heightWhenWidthIsDecidingFactor < rawHeight) {
-      //   this.availableWidth = rawWidth;
-      //   this.availableHeight = heightWhenWidthIsDecidingFactor;
-      // } else {
-      //   this.availableHeight = rawHeight;
-      //   this.availableWidth = widthWhenHeightIsDecidingFactor;
-      // }
     },
     updateAspectRatio: function() {
       this.aspectRatio = this.availableWidth / this.availableHeight;
@@ -15283,7 +15272,6 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
         '-webkit-transform': 'scale(' + this.outputScaleFactor() + ',' + this.outputScaleFactor() + ')'
       });
     },
-
     outputScaleFactor: function() {
       return 0.9 / this.quality;
     },
@@ -15291,7 +15279,12 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
     backgroundScaleFactor: function() {
       return this.quality * 0.75;
     },
-
+    scaledCanvasWidth: function() {
+      return this.resolutionWidth * this.outputScaleFactor();
+    },
+    scaledCanvasHeight: function() {
+      return this.resolutionHeight * this.outputScaleFactor();
+    },
     hookEvents: function() {
       var self = this;
 
@@ -15383,8 +15376,8 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
     getScaleComponent: function() {
       var viewport = this.scene.graph.viewport;
       
-      var canvasWidth = this.element.width;
-      var canvasHeight = this.element.height;
+      var canvasWidth = this.renderSettings.scaledCanvasWidth();
+      var canvasHeight = this.renderSettings.scaledCanvasHeight(); 
            
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
