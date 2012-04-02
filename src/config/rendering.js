@@ -1,7 +1,10 @@
 define(function(require) {
   var $ = require('jquery');
+  var Eventable = require('../shared/eventable');
 
   var RenderingSettings = function(canvas) {
+    Eventable.call(this);
+
     this.canvas = canvas;
     this.aspectRatio = 0;
     this.availableWidth = 0;
@@ -21,20 +24,23 @@ define(function(require) {
       this.updateCanvasCss();
     },
     updateAvailableDimensions: function() {
-      // Only currently support 4:3
       var rawWidth = this.canvas.parent().width();
       var rawHeight = this.canvas.parent().height();
 
-      var heightWhenWidthIsDecidingFactor = rawWidth / (4.0/4.0);
-      var widthWhenHeightIsDecidingFactor = rawHeight * (4.0/3.0);     
+      // TODO: Maybe only support a range
+      this.availableWidth = rawWidth;
+      this.availableHeight = rawHeight;
 
-      if(heightWhenWidthIsDecidingFactor < rawHeight) {
-        this.availableWidth = rawWidth;
-        this.availableHeight = heightWhenWidthIsDecidingFactor;
-      } else {
-        this.availableHeight = rawHeight;
-        this.availableWidth = widthWhenHeightIsDecidingFactor;
-      }
+      // var heightWhenWidthIsDecidingFactor = rawWidth / (16.0/9.0);
+      // var widthWhenHeightIsDecidingFactor = rawHeight * (16.0/9.0);     
+
+      // if(heightWhenWidthIsDecidingFactor < rawHeight) {
+      //   this.availableWidth = rawWidth;
+      //   this.availableHeight = heightWhenWidthIsDecidingFactor;
+      // } else {
+      //   this.availableHeight = rawHeight;
+      //   this.availableWidth = widthWhenHeightIsDecidingFactor;
+      // }
     },
     updateAspectRatio: function() {
       this.aspectRatio = this.availableWidth / this.availableHeight;
@@ -76,6 +82,7 @@ define(function(require) {
       // }); */ // TODO: Google
     }
   };
+  _.extend(RenderingSettings.prototype, Eventable.prototype);
 
   return RenderingSettings;
 });

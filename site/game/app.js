@@ -3170,14 +3170,19 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
   var vec3 = require('glmatrix').vec3;
   var Coords = require('../shared/coords');
 
-  var Camera = function(aspectRatio, fieldOfView) {
+  var Camera = function(settings, aspectRatio, fieldOfView) {
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
     this.distance = 256.0;
-    
+    this.settings = settings;
     this.width = 0;
     this.height = 0;
+    
+    if(this.settings) {
+      this.settings.on('updated', this.updateFromSettings, this);
+      this.updateFromSettings()
+    }
   };
   
   Camera.prototype = {
@@ -3201,11 +3206,17 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
       var bottom = top + this.height;
             
       graph.updateViewport(left, right, top, bottom);
-    
+    },
+    setAspectRatio: function(aspectRatio) {
+      this.aspectRatio = aspectRatio;
+      this.calculateDimensions();
     },
     calculateDimensions: function() {
       this.width = this.distance * Math.tan(this.fieldOfView);
       this.height = this.width / this.aspectRatio;
+    },
+    updateFromSettings: function() {
+      this.setAspectRatio(this.settings.aspectRatio);
     }
   };
   
@@ -15211,10 +15222,13 @@ define('resources/package',['require','jquery','./texture','./jsondata','./anima
 
 });
 
-define('config/rendering',['require','jquery'],function(require) {
+define('config/rendering',['require','jquery','../shared/eventable'],function(require) {
   var $ = require('jquery');
+  var Eventable = require('../shared/eventable');
 
   var RenderingSettings = function(canvas) {
+    Eventable.call(this);
+
     this.canvas = canvas;
     this.aspectRatio = 0;
     this.availableWidth = 0;
@@ -15234,20 +15248,23 @@ define('config/rendering',['require','jquery'],function(require) {
       this.updateCanvasCss();
     },
     updateAvailableDimensions: function() {
-      // Only currently support 4:3
       var rawWidth = this.canvas.parent().width();
       var rawHeight = this.canvas.parent().height();
 
-      var heightWhenWidthIsDecidingFactor = rawWidth / (4.0/4.0);
-      var widthWhenHeightIsDecidingFactor = rawHeight * (4.0/3.0);     
+      // TODO: Maybe only support a range
+      this.availableWidth = rawWidth;
+      this.availableHeight = rawHeight;
 
-      if(heightWhenWidthIsDecidingFactor < rawHeight) {
-        this.availableWidth = rawWidth;
-        this.availableHeight = heightWhenWidthIsDecidingFactor;
-      } else {
-        this.availableHeight = rawHeight;
-        this.availableWidth = widthWhenHeightIsDecidingFactor;
-      }
+      // var heightWhenWidthIsDecidingFactor = rawWidth / (16.0/9.0);
+      // var widthWhenHeightIsDecidingFactor = rawHeight * (16.0/9.0);     
+
+      // if(heightWhenWidthIsDecidingFactor < rawHeight) {
+      //   this.availableWidth = rawWidth;
+      //   this.availableHeight = heightWhenWidthIsDecidingFactor;
+      // } else {
+      //   this.availableHeight = rawHeight;
+      //   this.availableWidth = widthWhenHeightIsDecidingFactor;
+      // }
     },
     updateAspectRatio: function() {
       this.aspectRatio = this.availableWidth / this.availableHeight;
@@ -15289,6 +15306,7 @@ define('config/rendering',['require','jquery'],function(require) {
       // }); */ // TODO: Google
     }
   };
+  _.extend(RenderingSettings.prototype, Eventable.prototype);
 
   return RenderingSettings;
 });
@@ -15379,7 +15397,7 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
     onResourcesLoaded: function() { 
       var self = this;
       this.renderer = new CanvasRender(this.context);
-      this.camera = new Camera(4.0 / 3.0, Math.PI / 4.0);  
+      this.camera = new Camera(this.renderSettings, 4.0 / 3.0, Math.PI / 4.0);  
       this.scene = new Scene(this.resources, this.camera, this.renderer);
       
       this.app.start(this);
