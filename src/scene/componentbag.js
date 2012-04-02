@@ -41,6 +41,8 @@ define(function(require) {
     tryRegisterHandler: function(component, key, handler) {
       if(key.indexOf('on') === 0)
         this.registerEventHandler(component, key, handler);
+      else if(key.indexOf('get') === 0)
+        this.registerQueryHandler(component, key, handler);
       else
         this.registerCommandHandler(component, key, handler);
     },
@@ -48,6 +50,13 @@ define(function(require) {
     registerEventHandler: function(component, key, handler) {
       this.on(key.substr(2), handler, component);
     },
+
+    registerQueryHandler: function(component, key, handler) {
+      this.queryHandlers[key.substr(3)] = {
+        component: component,
+        method: handler
+      };
+    }
     
     registerCommandHandler: function(component, key, handler) {      
       this.commandHandlers[key] = {
@@ -90,11 +99,15 @@ define(function(require) {
     },
     
     get: function(query, data, defaultValue) {
-      var handler = this.findCommandHandler(query);
+      var handler = this.findQueryHandler(query);
       if(!handler) {
          return defaultValue;
       }
       return handler.method.apply(handler.component, data); 
+    },
+
+    findQueryHandler: function(key) {
+      return this.queryHandlers[key];
     },
     
     findCommandHandler: function(key) {
