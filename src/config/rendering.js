@@ -30,17 +30,6 @@ define(function(require) {
       // TODO: Maybe only support a range
       this.availableWidth = rawWidth;
       this.availableHeight = rawHeight;
-
-      // var heightWhenWidthIsDecidingFactor = rawWidth / (16.0/9.0);
-      // var widthWhenHeightIsDecidingFactor = rawHeight * (16.0/9.0);     
-
-      // if(heightWhenWidthIsDecidingFactor < rawHeight) {
-      //   this.availableWidth = rawWidth;
-      //   this.availableHeight = heightWhenWidthIsDecidingFactor;
-      // } else {
-      //   this.availableHeight = rawHeight;
-      //   this.availableWidth = widthWhenHeightIsDecidingFactor;
-      // }
     },
     updateAspectRatio: function() {
       this.aspectRatio = this.availableWidth / this.availableHeight;
