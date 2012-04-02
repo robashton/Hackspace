@@ -18,6 +18,7 @@ define(function(require) {
   var Animatable = require('./components/animatable');
   var StandardAnimations = require('./components/standardanimations');
   var Quester = require('./components/quester');
+  var Equippable = require('./components/equippable');
   
   var Character = function(id, data) {
     Entity.call(this, id);
@@ -36,9 +37,21 @@ define(function(require) {
     this.attach(new Animatable('character'));
     this.attach(new StandardAnimations());
     this.attach(new Quester());
+    this.attach(this.createEquippable());
   };
   
-  Character.prototype = {};  
+  Character.prototype = {
+    createEquippable: function() {
+      var equippable = new Equippable();
+      equippable.defineSlot("boots");
+      equippable.defineSlot("trousers");
+      equippable.defineSlot("belt");
+      equippable.defineSlot("top");
+      equippable.defineSlot("weapon");
+      equippable.defineSlot("hat");
+      return equippable;
+    }    
+  };  
   _.extend(Character.prototype, Entity.prototype);
   
   return Character;

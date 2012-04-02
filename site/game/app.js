@@ -5258,7 +5258,78 @@ define('entities/components/quester',['require','underscore'],function(require) 
   return Quester;
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations','./components/quester'],function(require) {
+define('entities/components/equippable',['require','underscore','../../shared/eventable'],function(require) {
+  var _ = require('underscore');
+  var Eventable = require('../../shared/eventable');  
+
+  var EquipmentSlot = function(equipType) {
+    Eventable.call(this);
+    this.item = null;
+    this.equipType = equipType;
+  };
+  EquipmentSlot.prototype = {
+    setItem: function(item) {
+      if(item.equipType !== this.equipType)
+        return this.raiseEquipFailed(item);
+      if(this.item)
+        this.clear();
+      this.item = item;
+      this.raiseEquipped(item);
+    },
+    getItem: function() {
+      return this.item;
+    },
+    clear: function() {
+      var item = this.item;
+      this.item = null;
+      this.raiseUnequipped(item);
+    },
+    raiseEquipped: function(item) {
+      this.raise('Equipped', item);
+    },
+    raiseUnequipped: function(item) {
+      this.raise('Unequipped', item)
+    },
+    raiseEquipFailed: function(item) {
+      this.raise('EquipFailed', item);
+    }
+  };
+  _.extend(EquipmentSlot.prototype, Eventable.prototype);
+
+  var Equippable = function() {
+    this.slots = {};
+  };
+
+  Equippable.prototype = {
+    defineSlot: function(type) {
+      this.slots[type] = new EquipmentSlot(type);
+      this.slots[type].on('Equipped', this.onItemSlotEquipped, this);
+      this.slots[type].on('Unequipped', this.onItemSlotUnequipped, this);
+      this.slots[type].on('EquipFailed', this.onItemSlotEquipFailed, this);
+    },
+    equip: function(item) {
+      this.slots[item.equipType].setItem(item);
+    },
+    unequip: function(itemType) {
+      this.slots[item.equipType].clear();
+    },
+    itemInSlot: function(itemType) {
+      return this.slots[itemType].getItem();
+    },
+    onItemSlotEquipped: function(data, sender) {
+      this.parent.raise('ItemEquipped', item);
+    },
+    onItemSlotUnequipped: function(data, sender) {
+      this.parent.raise('ItemUnequipped', item);
+    },
+    onItemSlotEquipFailed: function(data, sender) {
+      this.parent.raise('ItemEquipFailed', item);
+    }
+  };
+
+  return Equippable;
+});
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations','./components/quester','./components/equippable'],function(require) {
 
   var _ = require('underscore');
   
@@ -5278,6 +5349,7 @@ define('entities/character',['require','underscore','./components/physical','./c
   var Animatable = require('./components/animatable');
   var StandardAnimations = require('./components/standardanimations');
   var Quester = require('./components/quester');
+  var Equippable = require('./components/equippable');
   
   var Character = function(id, data) {
     Entity.call(this, id);
@@ -5296,9 +5368,21 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Animatable('character'));
     this.attach(new StandardAnimations());
     this.attach(new Quester());
+    this.attach(this.createEquippable());
   };
   
-  Character.prototype = {};  
+  Character.prototype = {
+    createEquippable: function() {
+      var equippable = new Equippable();
+      equippable.defineSlot("boots");
+      equippable.defineSlot("trousers");
+      equippable.defineSlot("belt");
+      equippable.defineSlot("top");
+      equippable.defineSlot("weapon");
+      equippable.defineSlot("hat");
+      return equippable;
+    }    
+  };  
   _.extend(Character.prototype, Entity.prototype);
   
   return Character;

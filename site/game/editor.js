@@ -14329,69 +14329,6 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations','./components/quester'],function(require) {
-
-  var _ = require('underscore');
-  
-  var Physical = require('./components/physical');
-  var Renderable = require('./components/renderable');
-  var Tangible = require('./components/tangible');
-  var Directable = require('./components/directable');
-  var Trackable = require('./components/trackable');
-  var Actionable = require('./components/actionable');
-  var Entity = require('../scene/entity');
-  var Carrier = require('./components/carrier');
-  var Talker = require('./components/talker');
-  var Fighter = require('./components/fighter');
-  var Factionable = require('./components/factionable');
-  var Damageable = require('./components/damageable');
-  var HasHealth = require('./components/hashealth');
-  var Animatable = require('./components/animatable');
-  var StandardAnimations = require('./components/standardanimations');
-  var Quester = require('./components/quester');
-  
-  var Character = function(id, data) {
-    Entity.call(this, id);
-    
-    this.attach(new Physical());
-    this.attach(new Renderable('character', true));
-    this.attach(new Tangible(data.x, data.y, 12, 18));
-    this.attach(new Directable(3.0));
-    this.attach(new Actionable());
-    this.attach(new Carrier());
-    this.attach(new Talker());
-    this.attach(new Fighter());
-    this.attach(new Factionable('player'));
-    this.attach(new Damageable());
-    this.attach(new HasHealth(100));
-    this.attach(new Animatable('character'));
-    this.attach(new StandardAnimations());
-    this.attach(new Quester());
-  };
-  
-  Character.prototype = {};  
-  _.extend(Character.prototype, Entity.prototype);
-  
-  return Character;
-});
-
-define('entities/characterfactory',['require','underscore','./character'],function(require) {
-  var _ = require('underscore');
-  var Character = require('./character');
-
-  var CharacterFactory = function() {
-    
-  };
-  
-  CharacterFactory.prototype = {
-    create: function(id, data) {
-      return new Character(id, data);
-    }
-  };
-  
-  return CharacterFactory;
-});
-
 define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/standardanimations','./components/animatable'],function(require) {
   var _ = require('underscore');
   var Entity = require('../scene/entity');
@@ -14961,6 +14898,153 @@ define('static/map',['require','underscore','../render/material','../render/quad
   
   return Map;
 
+});
+
+define('entities/components/equippable',['require','underscore','../../shared/eventable'],function(require) {
+  var _ = require('underscore');
+  var Eventable = require('../../shared/eventable');  
+
+  var EquipmentSlot = function(equipType) {
+    Eventable.call(this);
+    this.item = null;
+    this.equipType = equipType;
+  };
+  EquipmentSlot.prototype = {
+    setItem: function(item) {
+      if(item.equipType !== this.equipType)
+        return this.raiseEquipFailed(item);
+      if(this.item)
+        this.clear();
+      this.item = item;
+      this.raiseEquipped(item);
+    },
+    getItem: function() {
+      return this.item;
+    },
+    clear: function() {
+      var item = this.item;
+      this.item = null;
+      this.raiseUnequipped(item);
+    },
+    raiseEquipped: function(item) {
+      this.raise('Equipped', item);
+    },
+    raiseUnequipped: function(item) {
+      this.raise('Unequipped', item)
+    },
+    raiseEquipFailed: function(item) {
+      this.raise('EquipFailed', item);
+    }
+  };
+  _.extend(EquipmentSlot.prototype, Eventable.prototype);
+
+  var Equippable = function() {
+    this.slots = {};
+  };
+
+  Equippable.prototype = {
+    defineSlot: function(type) {
+      this.slots[type] = new EquipmentSlot(type);
+      this.slots[type].on('Equipped', this.onItemSlotEquipped, this);
+      this.slots[type].on('Unequipped', this.onItemSlotUnequipped, this);
+      this.slots[type].on('EquipFailed', this.onItemSlotEquipFailed, this);
+    },
+    equip: function(item) {
+      this.slots[item.equipType].setItem(item);
+    },
+    unequip: function(itemType) {
+      this.slots[item.equipType].clear();
+    },
+    itemInSlot: function(itemType) {
+      return this.slots[itemType].getItem();
+    },
+    onItemSlotEquipped: function(data, sender) {
+      this.parent.raise('ItemEquipped', item);
+    },
+    onItemSlotUnequipped: function(data, sender) {
+      this.parent.raise('ItemUnequipped', item);
+    },
+    onItemSlotEquipFailed: function(data, sender) {
+      this.parent.raise('ItemEquipFailed', item);
+    }
+  };
+
+  return Equippable;
+});
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations','./components/quester','./components/equippable'],function(require) {
+
+  var _ = require('underscore');
+  
+  var Physical = require('./components/physical');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Directable = require('./components/directable');
+  var Trackable = require('./components/trackable');
+  var Actionable = require('./components/actionable');
+  var Entity = require('../scene/entity');
+  var Carrier = require('./components/carrier');
+  var Talker = require('./components/talker');
+  var Fighter = require('./components/fighter');
+  var Factionable = require('./components/factionable');
+  var Damageable = require('./components/damageable');
+  var HasHealth = require('./components/hashealth');
+  var Animatable = require('./components/animatable');
+  var StandardAnimations = require('./components/standardanimations');
+  var Quester = require('./components/quester');
+  var Equippable = require('./components/equippable');
+  
+  var Character = function(id, data) {
+    Entity.call(this, id);
+    
+    this.attach(new Physical());
+    this.attach(new Renderable('character', true));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
+    this.attach(new Directable(3.0));
+    this.attach(new Actionable());
+    this.attach(new Carrier());
+    this.attach(new Talker());
+    this.attach(new Fighter());
+    this.attach(new Factionable('player'));
+    this.attach(new Damageable());
+    this.attach(new HasHealth(100));
+    this.attach(new Animatable('character'));
+    this.attach(new StandardAnimations());
+    this.attach(new Quester());
+    this.attach(this.createEquippable());
+  };
+  
+  Character.prototype = {
+    createEquippable: function() {
+      var equippable = new Equippable();
+      equippable.defineSlot("boots");
+      equippable.defineSlot("trousers");
+      equippable.defineSlot("belt");
+      equippable.defineSlot("top");
+      equippable.defineSlot("weapon");
+      equippable.defineSlot("hat");
+      return equippable;
+    }    
+  };  
+  _.extend(Character.prototype, Entity.prototype);
+  
+  return Character;
+});
+
+define('entities/characterfactory',['require','underscore','./character'],function(require) {
+  var _ = require('underscore');
+  var Character = require('./character');
+
+  var CharacterFactory = function() {
+    
+  };
+  
+  CharacterFactory.prototype = {
+    create: function(id, data) {
+      return new Character(id, data);
+    }
+  };
+  
+  return CharacterFactory;
 });
 
 define('scripting/quest',['require','underscore','../shared/eventable'],function(require) {
