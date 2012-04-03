@@ -15305,7 +15305,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
       });
     },
     outputScaleFactor: function() {
-      return 0.9 / this.quality;
+      return 0.99 / this.quality;
     },
 
     backgroundScaleFactor: function() {

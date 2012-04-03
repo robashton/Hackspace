@@ -49,7 +49,7 @@ define(function(require) {
       });
     },
     outputScaleFactor: function() {
-      return 0.9 / this.quality;
+      return 0.99 / this.quality;
     },
 
     backgroundScaleFactor: function() {

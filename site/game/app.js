@@ -15382,7 +15382,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
       });
     },
     outputScaleFactor: function() {
-      return 0.9 / this.quality;
+      return 0.99 / this.quality;
     },
 
     backgroundScaleFactor: function() {
@@ -16187,7 +16187,6 @@ define('ui/inventory',['require','underscore','jquery'],function(require) {
     this.input.on('InventoryToggleRequest', this.onInventoryToggleRequest, this);
     this.visible = false;
     this.inventoryButton.click(_.bind(this.onInventoryToggleRequest, this));
-    this.inventoryButton.touchstart(_.bind(this.onInventoryToggleRequest, this));
   };
   
   Inventory.prototype = {

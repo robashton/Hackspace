@@ -1,6 +1,7 @@
 body {
   margin: 0;
   padding: 0;
+  background-color: #000;
 }
 
 #debug {
@@ -8,6 +9,10 @@ body {
   margin-left: 10px;
   width: 5px;
   overflow: show;
+}
+
+#container {
+  float: left;
 }
 
 #target {
