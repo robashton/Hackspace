@@ -117,3 +117,16 @@ body {
   color: #FF0000;
 }
 
+#toolbar {
+  float: right;
+  width: 9%;
+}
+
+#toolbar div {
+  width: 100%;
+  height: 90px;
+}
+
+#toolbar div img{
+  width: 100%;
+}

@@ -9,8 +9,10 @@ define(function(require) {
     this.scene.autoHook(this);
     this.inventoryElement = $('#inventory');
     this.inventoryContentElement = $('#inventory-content');
+    this.inventoryButton = $('#toolbar-inventory');
     this.input.on('InventoryToggleRequest', this.onInventoryToggleRequest, this);
     this.visible = false;
+    this.inventoryButton.click(_.bind(this.onInventoryToggleRequest, this));
   };
   
   Inventory.prototype = {
