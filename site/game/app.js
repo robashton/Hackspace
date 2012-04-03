@@ -5343,7 +5343,17 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
 
   return Equippable;
 });
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations','./components/quester','./components/equippable'],function(require) {
+define('scripting/equipmenttypes',['require'],function(require) {
+  return {
+      "boots": 0,
+      "trousers": 1,
+      "belt": 2,
+      "top": 3,
+      "weapon": 4,
+      "hat": 5
+  };
+});
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations','./components/quester','./components/equippable','../scripting/equipmenttypes'],function(require) {
 
   var _ = require('underscore');
   
@@ -5364,6 +5374,7 @@ define('entities/character',['require','underscore','./components/physical','./c
   var StandardAnimations = require('./components/standardanimations');
   var Quester = require('./components/quester');
   var Equippable = require('./components/equippable');
+  var EquipmentTypes = require('../scripting/equipmenttypes');
   
   var Character = function(id, data) {
     Entity.call(this, id);
@@ -5388,12 +5399,12 @@ define('entities/character',['require','underscore','./components/physical','./c
   Character.prototype = {
     createEquippable: function() {
       var equippable = new Equippable();
-      equippable.defineSlot("boots");
-      equippable.defineSlot("trousers");
-      equippable.defineSlot("belt");
-      equippable.defineSlot("top");
-      equippable.defineSlot("weapon");
-      equippable.defineSlot("hat");
+      equippable.defineSlot(EquipmentTypes.boots);
+      equippable.defineSlot(EquipmentTypes.trousers);
+      equippable.defineSlot(EquipmentTypes.belt);
+      equippable.defineSlot(EquipmentTypes.top);
+      equippable.defineSlot(EquipmentTypes.weapon);
+      equippable.defineSlot(EquipmentTypes.hat);
       return equippable;
     }    
   };  
@@ -15759,9 +15770,10 @@ define('entities/god',['require','underscore','../scene/entity','../scripting/it
   var Item = require('../scripting/item');
   var Pickup = require('./pickup');
 
-  var God = function(entityFactory) {
+  var God = function(entityFactory, itemGeneration) {
     Entity.call(this, "god");
     this.entityFactory = entityFactory;
+    this.itemGeneration = itemGeneration;
     this.scene = null;
     this.on('AddedToScene', this.onAddedToScene, this);
     
@@ -15789,7 +15801,18 @@ define('entities/god',['require','underscore','../scene/entity','../scripting/it
       this.scene.on('HealthZeroed', this.onEntityHealthZeroed, this);
     },
     onEntityHealthZeroed: function(data, sender) {
+      this.generateItemForDeathOf(sender.id);
       this.scene.dispatch('god', 'destroyEntity', [ sender.id ]);
+    },
+    generateItemForDeathOf: function(targetId) {
+      var self = this;
+      var target = this.scene.withEntity(targetId, function(target){
+        var targetPosition = target.get('Position');
+        var item = self.itemGeneration.createItem();
+        item.x = targetPosition[0];
+        item.y = targetPosition[1];
+        self.scene.dispatch('god', 'createPickup', [item]);
+      });
     }
   };
   _.extend(God.prototype, Entity.prototype);

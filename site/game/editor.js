@@ -13490,6 +13490,16 @@ define('entities/components/quester',['require','underscore'],function(require) 
   return Quester;
 });
 
+define('scripting/equipmenttypes',['require'],function(require) {
+  return {
+      "boots": 0,
+      "trousers": 1,
+      "belt": 2,
+      "top": 3,
+      "weapon": 4,
+      "hat": 5
+  };
+});
 define('entities/components/roamable',['require','glmatrix'],function(require) {
 
   var vec3 = require('glmatrix').vec3;
@@ -14985,7 +14995,7 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
 
   return Equippable;
 });
-define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations','./components/quester','./components/equippable'],function(require) {
+define('entities/character',['require','underscore','./components/physical','./components/renderable','./components/tangible','./components/directable','./components/trackable','./components/actionable','../scene/entity','./components/carrier','./components/talker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/animatable','./components/standardanimations','./components/quester','./components/equippable','../scripting/equipmenttypes'],function(require) {
 
   var _ = require('underscore');
   
@@ -15006,6 +15016,7 @@ define('entities/character',['require','underscore','./components/physical','./c
   var StandardAnimations = require('./components/standardanimations');
   var Quester = require('./components/quester');
   var Equippable = require('./components/equippable');
+  var EquipmentTypes = require('../scripting/equipmenttypes');
   
   var Character = function(id, data) {
     Entity.call(this, id);
@@ -15030,12 +15041,12 @@ define('entities/character',['require','underscore','./components/physical','./c
   Character.prototype = {
     createEquippable: function() {
       var equippable = new Equippable();
-      equippable.defineSlot("boots");
-      equippable.defineSlot("trousers");
-      equippable.defineSlot("belt");
-      equippable.defineSlot("top");
-      equippable.defineSlot("weapon");
-      equippable.defineSlot("hat");
+      equippable.defineSlot(EquipmentTypes.boots);
+      equippable.defineSlot(EquipmentTypes.trousers);
+      equippable.defineSlot(EquipmentTypes.belt);
+      equippable.defineSlot(EquipmentTypes.top);
+      equippable.defineSlot(EquipmentTypes.weapon);
+      equippable.defineSlot(EquipmentTypes.hat);
       return equippable;
     }    
   };  

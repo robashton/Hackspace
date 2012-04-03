@@ -13,13 +13,15 @@ define(function(require) {
   var Map = require('../static/map');
   var StaticTileSource = require('../static/statictilesource');
   var Paths = require('../shared/paths');
-  
+  var ItemGeneration = require('../generation/itemgeneration');
+
   var ShardEntry = function(map, persistence) {
     Eventable.call(this);
     this.mapPath = map;
     this.communication = null;
     this.context = null;
     this.persistence = persistence;
+    this.itemGeneration = new ItemGeneration();
     this.quests = null;
     this.inventories = null;
     
@@ -96,7 +98,7 @@ define(function(require) {
            
       var collider = new Collider();
       this.context.scene.add(collider);
-      var god = new God(this.context);
+      var god = new God(this.context, this.itemGeneration);
       this.context.scene.add(god);    
       
       this.quests = new QuestWatcher(this.context.scene, this.persistence, new QuestFactory());

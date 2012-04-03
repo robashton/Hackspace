@@ -2,6 +2,7 @@ define(function(require) {
   var setup = require('./setup');
   var HasHealth = require('../entities/components/hashealth');
   var God = require('../entities/god');
+  var ItemGeneration = require('../generation/itemgeneration');
   var when = require('when').when;
   var Character = require('../entities/character');
   
@@ -32,7 +33,7 @@ define(function(require) {
   
   when("an entity dies and God is watching", function(then) {
       sceneWithEntityThatHasHealth(5, function(scene, entity) {  
-        var god = new God(null);
+        var god = new God(null, new ItemGeneration());
         scene.add(god);  
         entity.dispatch('removeHealth', [ 6 ]);        
         var sceneEntity = scene.get(entity.id);
@@ -56,7 +57,7 @@ define(function(require) {
         }
       }]);
    
-      var god = new God(null);
+      var god = new God(null, new ItemGeneration());
       scene.add(god);  
       
       target.dispatch('applyDamage', [{

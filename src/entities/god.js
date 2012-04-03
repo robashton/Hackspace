@@ -4,9 +4,10 @@ define(function(require) {
   var Item = require('../scripting/item');
   var Pickup = require('./pickup');
 
-  var God = function(entityFactory) {
+  var God = function(entityFactory, itemGeneration) {
     Entity.call(this, "god");
     this.entityFactory = entityFactory;
+    this.itemGeneration = itemGeneration;
     this.scene = null;
     this.on('AddedToScene', this.onAddedToScene, this);
     
@@ -34,7 +35,18 @@ define(function(require) {
       this.scene.on('HealthZeroed', this.onEntityHealthZeroed, this);
     },
     onEntityHealthZeroed: function(data, sender) {
+      this.generateItemForDeathOf(sender.id);
       this.scene.dispatch('god', 'destroyEntity', [ sender.id ]);
+    },
+    generateItemForDeathOf: function(targetId) {
+      var self = this;
+      var target = this.scene.withEntity(targetId, function(target){
+        var targetPosition = target.get('Position');
+        var item = self.itemGeneration.createItem();
+        item.x = targetPosition[0];
+        item.y = targetPosition[1];
+        self.scene.dispatch('god', 'createPickup', [item]);
+      });
     }
   };
   _.extend(God.prototype, Entity.prototype);
