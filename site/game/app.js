@@ -1264,6 +1264,10 @@ define('resources/texture',['require'],function(require) {
       return this.img;
     },
     
+    str: function() {
+      return this.img.src;
+    },
+
     preload: function(callback) {
      var data = this.pkg.getData(this.path);
      this.img = new Image();
@@ -16217,7 +16221,10 @@ define('ui/inventory',['require','underscore','jquery'],function(require) {
     createHtmlForItem: function(item) {
       var html = $('<div/>');
       html.attr('id', item.id);
-      html.text(item.data.type);
+      html.append(
+        $('<img/>')
+          .attr('src', this.scene.resources.get('main/' + item.data.pickupTexture + '.png').str())
+        );
       html.addClass('inventory-item');
       return html;
     },

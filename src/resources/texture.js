@@ -11,6 +11,10 @@ define(function(require) {
       return this.img;
     },
     
+    str: function() {
+      return this.img.src;
+    },
+
     preload: function(callback) {
      var data = this.pkg.getData(this.path);
      this.img = new Image();

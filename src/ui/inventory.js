@@ -43,7 +43,10 @@ define(function(require) {
     createHtmlForItem: function(item) {
       var html = $('<div/>');
       html.attr('id', item.id);
-      html.text(item.data.type);
+      html.append(
+        $('<img/>')
+          .attr('src', this.scene.resources.get('main/' + item.data.pickupTexture + '.png').str())
+        );
       html.addClass('inventory-item');
       return html;
     },
