@@ -9,29 +9,37 @@
       <canvas id="target" width="640" height="480"></canvas>
      <!--  <canvas id="source" width="800" height="600" style="border: 2px solid #555"></canvas> -->
     </div>
-    <div id="identify-player">
-      <span id="identify-failed">Login failed, please try again</span>
-      <label for="player-name">Name: </label><input type="text" id="player-name" />
-      <span class="button" id="identify-submit">Play</span>
-    </div>      
-    <div id="quest-started" >
+    <div id="overlay">
+      <div id="inventory">
+        <h3>Inventory</h3>
+        <div id="inventory-content">
+        
+        </div>
+      </div>
+      <div id="quests">
+        <h3>Quests</h3>
+        <div id="quests-content">
+          
+        </div>
+      </div>
+      <div id="character">
+        <h3>Character</h3>
+        <div id="character-content">
+
+        </div>
+      </div>
+      <div id="identify-player">
+        <span id="identify-failed">Login failed, please try again</span>
+        <label for="player-name">Name: </label><input type="text" id="player-name" />
+        <span class="button" id="identify-submit">Play</span>
+      </div>
+      <div id="quest-started" >
       <p id="quest-started-text"></p>       
       <img alt="quest giver" />
       <div id="quest-started-buttons">
         <span class="button" id="quest-started-accept">Ok</a>
       </div>
     </div>
-    <div id="inventory">
-      <h3>Inventory</h3>
-      <div id="inventory-content">
-      
-      </div>
-    </div>
-    <div id="quests">
-      <h3>Quests</h3>
-      <div id="quests-content">
-        
-      </div>
     </div>
     <div id="toolbar">
       <div id="toolbar-quests">
@@ -39,6 +47,9 @@
       </div>
       <div id="toolbar-inventory">
         <img src="img/toolbar-inventory.png"></img>
+      </div>
+      <div id="toolbar-character">
+        <img src="img/toolbar-character.png"></img>
       </div>
     </div>   
   </body>

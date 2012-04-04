@@ -45,14 +45,27 @@ body {
   clear: both;
 }
 
-#inventory {
+#overlay {
+  background-color: transparent;
+  width: 90%;
+  height: 100%;
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  pointer-events: none;
+}
+
+#overlay div {
+  pointer-events: all;
+}
+
+#inventory, #quests, #character {
   border: 1px solid #000;
   display: none;
-  position: absolute;
-  width: 512px;
-  height: 768px;
-  top: 0px;
-  left: 512px;
+  float: left;
+  margin-left: 1px;
+  width: 45%;
+  height: 90%;
   background-color: #fff;
 }
 
@@ -66,7 +79,7 @@ body {
   margin-left: 10px;
 }
 
-#quests {
+/*#quests {
   border: 1px solid #000;
   display: none;
   position: absolute;
@@ -75,7 +88,7 @@ body {
   top: 0px;
   left: 0px;
   background-color: #fff;
-}
+}*/
 
 #quest-started {
   display: none;
@@ -134,4 +147,6 @@ body {
 
 #toolbar div img{
   width: 100%;
+  max-width: 95px;
+  max-height: 95px;
 }

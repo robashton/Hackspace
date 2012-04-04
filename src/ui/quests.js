@@ -11,6 +11,8 @@ define(function(require) {
     this.questElement = $('#quests');
     this.questContentElement = $('#quests-content');
     this.input.on('QuestsToggleRequest', this.onQuestsToggleRequest, this);
+    this.questsButton = $('#toolbar-quests');
+    this.questsButton.click(_.bind(this.onQuestsToggleRequest, this));
   };
   
   Quests.prototype = {

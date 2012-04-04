@@ -16,7 +16,8 @@ define(function(require) {
   var Inventory = require('../../ui/inventory');
   var Quests = require('../../ui/quests');
   var SceneryFader = require('../../entities/sceneryfader');
- 
+  var CharacterUi = require('../../ui/character');
+  
   var Demo = function(socket, element) {
     this.element = element;
     this.socket = socket;
@@ -42,6 +43,7 @@ define(function(require) {
         self.playerId = playerId;
         self.inventory = new Inventory(input, context.scene, playerId);
         self.quests = new Quests(input, context.scene, playerId);
+        self.character = new CharacterUi(input, context.scene, playerId);
         self.fader = new SceneryFader(context.scene, playerId);
       });
       this.connector.on('GameStarted', function(playerId) {

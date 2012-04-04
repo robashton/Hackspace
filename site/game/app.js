@@ -16247,6 +16247,8 @@ define('ui/quests',['require','underscore','jquery'],function(require) {
     this.questElement = $('#quests');
     this.questContentElement = $('#quests-content');
     this.input.on('QuestsToggleRequest', this.onQuestsToggleRequest, this);
+    this.questsButton = $('#toolbar-quests');
+    this.questsButton.click(_.bind(this.onQuestsToggleRequest, this));
   };
   
   Quests.prototype = {
@@ -16341,7 +16343,44 @@ define('entities/sceneryfader',['require','underscore'],function(require) {
   return SceneryFader;
 });
 
-define('apps/demo/app',['require','../../input/inputemitter','../../input/inputtranslator','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory','../../ui/quests','../../entities/sceneryfader'],function(require) {
+define('ui/character',['require','underscore','jquery'],function(require) {
+  var _ = require('underscore');
+  var $ = require('jquery');
+
+  var Character = function(input, scene, playerId) {
+    this.scene = scene;
+    this.playerId = playerId;
+    this.scene.autoHook(this);
+    this.visible = false;
+    this.input = input;
+    this.characterElement = $('#character');
+    this.characterContentElement = $('#character-content');
+    this.input.on('CharacterToggleRequest', this.onCharacterToggleRequest, this);
+    this.charactersButton = $('#toolbar-character');
+    this.charactersButton.click(_.bind(this.onCharacterToggleRequest, this));
+  };
+  
+  Character.prototype = {
+    onCharacterToggleRequest: function() {
+      if(this.visible)
+        this.hide();
+      else
+        this.show();
+    },
+    show: function() {
+      this.characterElement.show();
+      this.visible = true;
+    },
+    hide: function() {
+      this.characterElement.hide();
+      this.visible = false;
+    }
+  };
+  
+  return Character;
+});
+
+define('apps/demo/app',['require','../../input/inputemitter','../../input/inputtranslator','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory','../../ui/quests','../../entities/sceneryfader','../../ui/character'],function(require) {
 
 
   var InputEmitter = require('../../input/inputemitter');
@@ -16359,7 +16398,8 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
   var Inventory = require('../../ui/inventory');
   var Quests = require('../../ui/quests');
   var SceneryFader = require('../../entities/sceneryfader');
- 
+  var CharacterUi = require('../../ui/character');
+  
   var Demo = function(socket, element) {
     this.element = element;
     this.socket = socket;
@@ -16385,6 +16425,7 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
         self.playerId = playerId;
         self.inventory = new Inventory(input, context.scene, playerId);
         self.quests = new Quests(input, context.scene, playerId);
+        self.character = new CharacterUi(input, context.scene, playerId);
         self.fader = new SceneryFader(context.scene, playerId);
       });
       this.connector.on('GameStarted', function(playerId) {
