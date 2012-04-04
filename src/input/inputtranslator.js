@@ -42,6 +42,8 @@ define(function(require) {
             break;
           case 81:
             self.raiseToggleQuests();
+          case 67:
+          self.raiseToggleCharacter();
           default:
             return;
         }     
@@ -67,6 +69,9 @@ define(function(require) {
     },
     raiseToggleQuests: function() {
       this.raise('QuestsToggleRequest');
+    },
+    raiseToggleCharacter: function() {
+      this.raise('CharacterToggleRequest');
     }
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);

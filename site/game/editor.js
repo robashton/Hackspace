@@ -15271,7 +15271,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
     this.availableHeight = 0;
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
-    this.quality = 0.5;
+    this.quality = 1.0;
     this.update();
     this.hookEvents();
   };

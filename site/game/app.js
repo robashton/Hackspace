@@ -15215,6 +15215,8 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
             break;
           case 81:
             self.raiseToggleQuests();
+          case 67:
+          self.raiseToggleCharacter();
           default:
             return;
         }     
@@ -15240,6 +15242,9 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
     },
     raiseToggleQuests: function() {
       this.raise('QuestsToggleRequest');
+    },
+    raiseToggleCharacter: function() {
+      this.raise('CharacterToggleRequest');
     }
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);
@@ -15348,7 +15353,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
     this.availableHeight = 0;
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
-    this.quality = 0.5;
+    this.quality = 1.0;
     this.update();
     this.hookEvents();
   };

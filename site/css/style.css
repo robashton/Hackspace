@@ -141,13 +141,21 @@ body {
   max-height: 95px;
 }
 
+#character {
+  display: block;
+}
+
+#character-content {
+  position: relative;
+}
+
 #character-content div {
   position: absolute;
   border: 1px solid #000;
 }
 
 #character-hat {
-  top: 100px;
+  top: 0px;
   left: 155px;
   width: 90px;
   height: 90px;
@@ -156,7 +164,7 @@ body {
           
 #character-weapon {
   left: 20px;
-  top: 200px;
+  top: 100px;
   width: 100px;
   height: 100px;
 }
@@ -164,20 +172,20 @@ body {
 
 #character-body {
   left: 155px;
-  top: 200px;
+  top: 100px;
   width: 90px;
   height: 90px;
 }
 
 #character-belt {
-  top: 300px;
+  top: 200px;
   left: 155px;
   width: 90px;
   height: 20px;
 }
 
 #character-trousers {
-  top: 330px;
+  top: 230px;
   left: 155px;
   width: 90px;
   height: 90px;
@@ -185,7 +193,7 @@ body {
 
 
 #character-boots {
-  top: 430px;
+  top: 330px;
   left: 155px;
   width: 90px;
   height: 90px;
