@@ -18,7 +18,7 @@ define(function(require) {
       this.parent.dispatch('playAnimation', [ 'punching', 5 ]);
     },
     startWalking: function() {
-      this.parent.dispatch('startAnimation', [ 'walking', 3 ]);
+      this.parent.dispatch('startAnimation', [ 'walking', 5 ]);
       this.walking = true;
     },
     onDestinationReached: function() {
