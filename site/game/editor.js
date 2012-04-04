@@ -13495,7 +13495,7 @@ define('scripting/equipmenttypes',['require'],function(require) {
       "boots": 0,
       "trousers": 1,
       "belt": 2,
-      "top": 3,
+      "body": 3,
       "weapon": 4,
       "hat": 5
   };
