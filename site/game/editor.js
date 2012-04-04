@@ -12489,7 +12489,7 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 256.0;
+    this.distance = 150.0;
     this.settings = settings;
     this.width = 0;
     this.height = 0;
@@ -15028,7 +15028,7 @@ define('entities/character',['require','underscore','./components/physical','./c
     this.attach(new Physical());
     this.attach(new Renderable('character', true));
     this.attach(new Tangible(data.x, data.y, 12, 18));
-    this.attach(new Directable(3.0));
+    this.attach(new Directable(1.5));
     this.attach(new Actionable());
     this.attach(new Carrier());
     this.attach(new Talker());
@@ -15271,7 +15271,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
     this.availableHeight = 0;
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
-    this.quality = 1.0;
+    this.quality = 0.75;
     this.update();
     this.hookEvents();
   };

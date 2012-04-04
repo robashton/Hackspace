@@ -63,7 +63,8 @@ body {
   border: 1px solid #000;
   display: none;
   float: left;
-  margin-left: 1px;
+  margin-top: 10px;
+  margin-left: 10px;
   width: 400px;
   height: 550px;
   background-color: #fff;
@@ -142,7 +143,7 @@ body {
 }
 
 #character {
-  display: block;
+  /*display: block */
 }
 
 #character-content {
