@@ -42,8 +42,10 @@ define(function(require) {
             break;
           case 81:
             self.raiseToggleQuests();
+            break;
           case 67:
           self.raiseToggleCharacter();
+            break;
           default:
             return;
         }     
