@@ -85,6 +85,12 @@ define(function(require) {
     },
     onItemSlotEquipFailed: function(item, sender) {
       this.parent.dispatch('addInventoryItem', [item.id, item.data]);
+    },
+    _setEquipData: function(data) {
+      for(var i in data) {
+        this.slots[i].setItem(data[i]);
+      }
+      this.parent.raise('EquipmentDataUpdated', data);
     }
   };
 

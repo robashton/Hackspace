@@ -31,7 +31,12 @@ define(function(require) {
     saveQuestsForPlayer: function(id, quests, callback) {
       fs.writeFile(this.pathToQuestsForPlayer(id), JSON.stringify(quests), 'utf8', callback);
     },
-    
+
+    saveEquipmentForPlayer: function(id, data, callback) {
+      console.log(id, data);
+      fs.writeFile(this.pathToEquipmentForPlayer(id), JSON.stringify(data), 'utf8', callback);
+    },
+
     syncPlayersToDisk: function() {
       for(var i in this.loadedCharacters) {
         this.syncPlayer(i);
@@ -68,6 +73,15 @@ define(function(require) {
         if(err) { callback({}); return; }
         var inventoryData = JSON.parse(data);
         callback(inventoryData);
+      });
+    },
+
+    loadEquipmentForPlayer: function(id, callback) {
+      var path = this.pathToEquipmentForPlayer(id);
+      fs.readFile(path, 'utf8', function(err, data) {
+        if(err) { return callback({}); }
+        var equipData = JSON.parse(data);
+        callback(equipData);
       });
     },
     

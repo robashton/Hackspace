@@ -8,11 +8,11 @@ define(function(require) {
     this.scene.autoHook(this);
   };
   EquipWatcher.prototype = {
-    onEquipped: function(item, sender) {
+    onItemEquipped: function(item, sender) {
       this.equips[sender.id][item.equipType] = item;
       this.saveEquipmentForCharacter(sender.id);
     },
-    onUnequipped: function(item, sender) {
+    onItemUnequipped: function(item, sender) {
       delete this.equips[sender.id][item.equipType];
       this.saveEquipmentForCharacter(sender.id);
     },

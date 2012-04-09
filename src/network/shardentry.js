@@ -6,6 +6,7 @@ define(function(require) {
   var ServerContext = require('../harness/servercontext');
   var Collider = require('../entities/collider');
   var God = require('../entities/god');
+  var EquipWatcher = require('../entities/equipwatcher');
   var QuestWatcher = require('../entities/questwatcher');
   var QuestFactory = require('../scripting/questfactory');
   var InventoryWatcher = require('../entities/inventorywatcher');
@@ -24,6 +25,7 @@ define(function(require) {
     this.itemGeneration = new ItemGeneration();
     this.quests = null;
     this.inventories = null;
+    this.equips = null;
     
     this.setupScene();
   };
@@ -100,7 +102,8 @@ define(function(require) {
       this.context.scene.add(collider);
       var god = new God(this.context, this.itemGeneration);
       this.context.scene.add(god);    
-      
+
+      this.equips = new EquipWatcher(this.context.scene, this.persistence);      
       this.quests = new QuestWatcher(this.context.scene, this.persistence, new QuestFactory());
       this.inventories = new InventoryWatcher(this.context.scene, this.persistence);      
       this.persistence.startMonitoring(this.context.scene);
@@ -164,7 +167,9 @@ define(function(require) {
     sendFurtherStateToPlayer: function(id, callback) {
       var self = this;
       this.quests.loadQuestsForPlayer(id, function() {
-          self.inventories.loadItemsForPlayer(id, callback);
+          self.inventories.loadItemsForPlayer(id, function() {
+            self.equips.loadEquipmentForCharacter(id, callback);
+          });
       });
     },
     
