@@ -2,7 +2,7 @@ define(function(require) {
 
   var when = require('when').when;
   var setup = require('./setup');
-    
+  var EquipmentTypes = require('../scripting/equipmenttypes');  
 
   setup.withACharacterAndMonster(function(scene, character, monster) {   
     when("A character is actioned to go to a monster that is moving towards the character", function(then) {
@@ -85,18 +85,18 @@ define(function(require) {
 
   when("A character is given a hat", function(then) {
     setup.withACharacterAndMonster(function(scene, character, monster) {
-      character.dispatch('addInventoryItem', ['test', {equipType: 'hat'}]);
+      character.dispatch('addInventoryItem', ['test', {equipType: EquipmentTypes.hat}]);
       var hat = character.get('ItemWithId', ['test']);
       then("The character has the hat in its inventory", hat);
     }); 
   });
 
-  when("A character with a hat is told to equip that hat", function(then) {''
+  when("A character with a hat is told to equip that hat", function(then) {
     setup.withACharacterAndMonster(function(scene, character, monster) {
-      character.dispatch('addInventoryItem', ['test', { equipType: 'hat'}]);
+      character.dispatch('addInventoryItem', ['test', { equipType: EquipmentTypes.hat}]);
       character.dispatch('equip', ['test']);
       var inventoryHat = character.get('ItemWithId', ['test']);
-      var equippedHat = character.get('ItemInSlot', ['hat']);
+      var equippedHat = character.get('ItemInSlot', [EquipmentTypes.hat]);
       then("The character has the item removed from its inventory", !inventoryHat);
       then("The character has the item equipped in the 'hat' slot", equippedHat);
     });

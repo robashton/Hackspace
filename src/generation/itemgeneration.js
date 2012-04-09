@@ -5,7 +5,7 @@ define(function(require) {
   var ItemGeneration = function() {
     this.equipmentCollection = [];
     for(var i in EquipmentTypes)
-      this.equipmentCollection.push(i);
+      this.equipmentCollection.push(EquipmentTypes[i]);
   };
 
   ItemGeneration.prototype = {

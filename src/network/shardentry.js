@@ -114,6 +114,9 @@ define(function(require) {
         command: data.command,
         args: data.args
       });
+      if(data.command === 'equip'){
+        console.log(data.id, data.command, data.args);
+      }
     },
     
     onStartup: function(communication) {

@@ -48,13 +48,13 @@ define(function(require) {
       this.slots[type].on('EquipFailed', this.onItemSlotEquipFailed, this);
     },
     equip: function(itemId) {
-      // Get the item from our inventory
-      // Remove the item from our inventory
-      // Now equip it
       // Note: If any if you scallywags attempt to dupe using this stuff, I will hunt
-      // you down and tell your mother - that'll show you.
-      var item = this.parent.get('ItemById', [itemId]);
-      if(!item) return;
+      // you down and tell your mother - let that be a warning to you
+      var item = this.parent.get('ItemWithId', [itemId]);
+      if(!item) {
+        console.warn("Attempt to equip item the character does not own");
+        return;
+      }
 
       // Atomic plsthx lol
       this.parent.dispatch('removeItemWithId', [itemId]);

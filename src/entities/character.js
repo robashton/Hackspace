@@ -47,7 +47,7 @@ define(function(require) {
       equippable.defineSlot(EquipmentTypes.boots);
       equippable.defineSlot(EquipmentTypes.trousers);
       equippable.defineSlot(EquipmentTypes.belt);
-      equippable.defineSlot(EquipmentTypes.top);
+      equippable.defineSlot(EquipmentTypes.body);
       equippable.defineSlot(EquipmentTypes.weapon);
       equippable.defineSlot(EquipmentTypes.hat);
       return equippable;
