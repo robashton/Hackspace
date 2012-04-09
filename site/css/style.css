@@ -76,9 +76,14 @@ body {
   margin-top: 10px;
 }
 
+.inventory-item {
+  border: 1px solid #EEE;
+}
+
 #inventory-content, #quests-content {
   margin-top: 10px;
   margin-left: 10px;
+  position: relative;
 }
 
 #quest-started {
@@ -192,6 +197,9 @@ body {
   height: 90px;
 }
 
+#dialogs {
+  position: relative;
+}
 
 #character-boots {
   top: 330px;
@@ -200,4 +208,23 @@ body {
   height: 90px;
 } 
 
-          
+#context-menu {
+  position: absolute;
+  display: none;
+  border: #FFF;
+  background-color: white;
+  opacity: 0.9;
+  -moz-opacity: 0.9;
+  filter:alpha(opacity=9);
+}
+
+#context-menu .items {
+
+}
+
+#context-menu .items li {
+  cursor: pointer;
+  font-size: 20px;
+  color: #000;
+  z-index: 10;
+}

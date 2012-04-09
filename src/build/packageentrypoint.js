@@ -10,7 +10,8 @@ define(function(require) {
       paths: {
         'glmatrix': './libs/glmatrix',
         'underscore': '../node_modules/underscore/underscore',
-        'jquery': './libs/jquery'
+        'jquery': './libs/jquery',
+        "hammer": './libs/hammer'
       }
     };
     cb(config);

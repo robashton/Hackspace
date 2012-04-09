@@ -15,6 +15,14 @@ define(function(require) {
       }
       return count;
     },
+    getItemWithId: function(id) {
+      return this.items[id];
+    },
+    removeItemWithId: function(id) {
+      var item = this.items[id];
+      if(item)
+        this.removeInventoryItem(item);
+    },
     addInventoryItem: function(id, data) {
       this.items[id]  = new Item(id, data);
       this.parent.raise('ItemPickedUp', {

@@ -18,9 +18,6 @@ define(function(require) {
     hookSocketEvents: function() {
       var self = this;
       this.socket.on('CommandDispatch', function(data) {
-        if(data.command.indexOf('Destination') < 0) {
-          console.log(data.id, data.command, data.args);
-        }
         self.scene.dispatchDirect(data.id, data.command, data.args);
       });
     }

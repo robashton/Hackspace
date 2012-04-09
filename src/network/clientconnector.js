@@ -1,8 +1,5 @@
 define(function(require) {
   var _ = require('underscore');
-  var Controller = require('../entities/controller');
-  var ChaseCamera = require('../entities/chasecamera');
-  var Commander = require('./commander');
   var Map = require('../static/map');
   var Grid = require('../editor/grid');
   var Eventable = require('../shared/eventable');
@@ -42,16 +39,11 @@ define(function(require) {
       this.context.scene.add(entity);  
     },
     populateSceneFromMessage: function(data) {  
-
       this.playerId = data.playerid; 
       for(var id in data.entities) {
         var item = data.entities[id];
         this.addEntityFromData(id, item);
       }      
-      var commander = new Commander(this.socket, this.context.scene, data.playerid);
-      var controller = new Controller(this.context.element, commander);
-      var chase = new ChaseCamera(this.context.scene, data.playerid);
-      this.context.scene.add(controller);
       this.loadMap(data.map); 
     },
     loadMap: function(path) {

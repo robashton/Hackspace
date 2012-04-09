@@ -13134,6 +13134,14 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
       }
       return count;
     },
+    getItemWithId: function(id) {
+      return this.items[id];
+    },
+    removeItemWithId: function(id) {
+      var item = this.items[id];
+      if(item)
+        this.removeInventoryItem(item);
+    },
     addInventoryItem: function(id, data) {
       this.items[id]  = new Item(id, data);
       this.parent.raise('ItemPickedUp', {
@@ -14977,13 +14985,23 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
       this.slots[type].on('Unequipped', this.onItemSlotUnequipped, this);
       this.slots[type].on('EquipFailed', this.onItemSlotEquipFailed, this);
     },
-    equip: function(item) {
+    equip: function(itemId) {
+      // Get the item from our inventory
+      // Remove the item from our inventory
+      // Now equip it
+      // Note: If any if you scallywags attempt to dupe using this stuff, I will hunt
+      // you down and tell your mother - that'll show you.
+      var item = this.parent.get('ItemById', [itemId]);
+      if(!item) return;
+
+      // Atomic plsthx lol
+      this.parent.dispatch('removeItemWithId', [itemId]);
       this.slots[item.equipType].setItem(item);
     },
     unequip: function(itemType) {
       this.slots[item.equipType].clear();
     },
-    itemInSlot: function(itemType) {
+    getItemInSlot: function(itemType) {
       return this.slots[itemType].getItem();
     },
     onItemSlotEquipped: function(data, sender) {
@@ -14994,6 +15012,12 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
     },
     onItemSlotEquipFailed: function(data, sender) {
       this.parent.raise('ItemEquipFailed', item);
+    },
+    onItemUnequipped: function(item, sender) {
+      this.parent.dispatch('addInventoryItem', [item.id, item.data]);
+    },
+    onItemSlotEquipFailed: function(item, sender) {
+      this.parent.dispatch('addInventoryItem', [item.id, item.data]);
     }
   };
 

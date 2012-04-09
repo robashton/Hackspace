@@ -1,9 +1,12 @@
 define(function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
-  
-  var Inventory = function(input, scene, playerId) {
+  var UI = require('./common');
+  var Hammer = require('hammer');
+
+  var Inventory = function(input, commander, scene, playerId) {
     this.scene = scene;
+    this.commander = commander;
     this.input = input;
     this.playerId = playerId;
     this.scene.autoHook(this);
@@ -22,7 +25,7 @@ define(function(require) {
     },
     onItemRemoved: function(data, sender) {
       if(sender.id !== this.playerId) return;
-      this.inventoryContentElement.find('#' + data.id).remove();
+      this.removeItem(item);
     },
     onInventoryDataUpdated: function(data, sender) {
       if(sender.id !== this.playerId) return;
@@ -38,7 +41,33 @@ define(function(require) {
     },
     addItem: function(item) {
       var html = this.createHtmlForItem(item);
-      this.inventoryContentElement.append(html); 
+      this.inventoryContentElement.append(html);
+      this.hookTouchEventsForItem(item);      
+    },
+    hookTouchEventsForItem: function(item) {
+      var elem = this.findElementForItem(item);
+      var hammer = new Hammer(elem.get(0));
+      var self = this;
+      hammer.ontap = function(ev){
+        self.showItemDialog(elem, item);
+      };
+    },
+    showItemDialog: function(elem, item) {
+      var self = this;
+      UI.ShowContext({
+        Equip: function() {
+          self.commander.dispatch('equip', [item.id]);
+        }
+      },
+      elem.offset().left,
+      elem.offset().top);
+    },
+    removeItem: function(item) {
+      var elem = this.findElementForItem(item);
+      elem.remove();
+    },
+    findElementForItem: function(item) {
+      return this.inventoryContentElement.find('#' + item.id);
     },
     createHtmlForItem: function(item) {
       var html = $('<div/>');

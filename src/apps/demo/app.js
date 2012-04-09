@@ -17,7 +17,11 @@ define(function(require) {
   var Quests = require('../../ui/quests');
   var SceneryFader = require('../../entities/sceneryfader');
   var CharacterUi = require('../../ui/character');
-  
+
+  var Controller = require('../../entities/controller');
+  var ChaseCamera = require('../../entities/chasecamera');
+  var Commander = require('../../network/commander');
+
   var Demo = function(socket, element) {
     this.element = element;
     this.socket = socket;
@@ -41,10 +45,14 @@ define(function(require) {
       
       this.connector.on('PlayerCreated', function(playerId) {
         self.playerId = playerId;
-        self.inventory = new Inventory(input, context.scene, playerId);
         self.quests = new Quests(input, context.scene, playerId);
         self.character = new CharacterUi(input, context.scene, playerId);
-        self.fader = new SceneryFader(context.scene, playerId);
+        self.fader = new SceneryFader(context.scene, playerId);      
+        self.commander = new Commander(self.socket, context.scene, playerId);
+        self.controller = new Controller(context.element, self.commander);
+        self.chase = new ChaseCamera(context.scene, playerId);
+        self.inventory = new Inventory(input, self.commander, context.scene, playerId);
+        context.scene.add(self.controller);
       });
       this.connector.on('GameStarted', function(playerId) {
         self.questAsker = new QuestAsker(context.scene, self.playerId, $('#quest-started'));

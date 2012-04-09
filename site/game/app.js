@@ -4916,6 +4916,14 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
       }
       return count;
     },
+    getItemWithId: function(id) {
+      return this.items[id];
+    },
+    removeItemWithId: function(id) {
+      var item = this.items[id];
+      if(item)
+        this.removeInventoryItem(item);
+    },
     addInventoryItem: function(id, data) {
       this.items[id]  = new Item(id, data);
       this.parent.raise('ItemPickedUp', {
@@ -5325,13 +5333,23 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
       this.slots[type].on('Unequipped', this.onItemSlotUnequipped, this);
       this.slots[type].on('EquipFailed', this.onItemSlotEquipFailed, this);
     },
-    equip: function(item) {
+    equip: function(itemId) {
+      // Get the item from our inventory
+      // Remove the item from our inventory
+      // Now equip it
+      // Note: If any if you scallywags attempt to dupe using this stuff, I will hunt
+      // you down and tell your mother - that'll show you.
+      var item = this.parent.get('ItemById', [itemId]);
+      if(!item) return;
+
+      // Atomic plsthx lol
+      this.parent.dispatch('removeItemWithId', [itemId]);
       this.slots[item.equipType].setItem(item);
     },
     unequip: function(itemType) {
       this.slots[item.equipType].clear();
     },
-    itemInSlot: function(itemType) {
+    getItemInSlot: function(itemType) {
       return this.slots[itemType].getItem();
     },
     onItemSlotEquipped: function(data, sender) {
@@ -5342,6 +5360,12 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
     },
     onItemSlotEquipFailed: function(data, sender) {
       this.parent.raise('ItemEquipFailed', item);
+    },
+    onItemUnequipped: function(item, sender) {
+      this.parent.dispatch('addInventoryItem', [item.id, item.data]);
+    },
+    onItemSlotEquipFailed: function(item, sender) {
+      this.parent.dispatch('addInventoryItem', [item.id, item.data]);
     }
   };
 
@@ -15215,8 +15239,10 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
             break;
           case 81:
             self.raiseToggleQuests();
+            break;
           case 67:
           self.raiseToggleCharacter();
+            break;
           default:
             return;
         }     
@@ -15829,129 +15855,6 @@ define('entities/god',['require','underscore','../scene/entity','../scripting/it
   return God;
 });
 
-define('entities/controller',['require','underscore','../scene/entity','jquery','../shared/coords'],function(require) {
-
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-  var $ = require('jquery');
-  var Coords = require('../shared/coords');
-
-  var Controller = function(element, commander) {
-    Entity.call(this, "controller");   
-    this.scene = null;        
-    this.on('AddedToScene', this.hookSceneEvents);
-    this.x = 0;
-    this.y = 0;   
-    this.commander = commander;
-    this.element = $(element);
-    this.isHovering = false;
-  };  
-  
-  Controller.prototype = {
-    hookSceneEvents: function(scene) {
-      var self = this;
-      scene.on('PrimaryAction', this.determineWherePrimaryActionRequested, this);
-      scene.on('Hover', this.onHover, this);
-      setInterval(function() {
-        self.determineWhatMouseIsOver();
-      }, 200);
-    },
-  
-    determineWhatMouseIsOver: function() {
-      var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
-      if(selectedEntity && !this.isHovering) {
-        this.element.css('cursor', 'pointer');
-        this.isHovering = true;
-      } else if(!selectedEntity && this.isHovering) {
-        this.element.css('cursor', 'default');
-        this.isHovering = false;
-      }    
-    },
-    
-    onHover: function(data) {
-      this.x = data.x;
-      this.y = data.y;
-    },
-    
-    determineWherePrimaryActionRequested: function(data) {
-      var x = data.x,
-          y = data.y;
-      
-      var selectedEntity = this.scene.entityAtMouse(x, y);
-      if(selectedEntity)
-        this.determineWhatToDoWithSelectedEntity(selectedEntity, x, y);
-      else
-        this.issueMovementCommandToPlayer(x,y);
-      
-    },
-    
-    determineWhatToDoWithSelectedEntity: function(entity, x, y) {
-      this.commander.dispatch("primaryAction", [entity.id]);
-    },
-    
-    issueMovementCommandToPlayer: function(x,y) {
-      this.commander.dispatch('updateDestination', [x, y]);
-    }
-  };  
-  _.extend(Controller.prototype, Entity.prototype);
-  
-  return Controller;
-});
-
-define('entities/chasecamera',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var ChaseCamera = function(scene, targetId) {
-    this.scene = scene;
-    this.targetId = targetId;
-    this.scene.on('PreRender', this.onScenePreRender, this);
-  };
-  
-  ChaseCamera.prototype = {
-    onScenePreRender: function() {
-      var self = this;
-      this.scene.withEntity(this.targetId, function(target) {
-        var position = target.get('Position');
-        self.scene.camera.lookAt(position[0], position[1], position[2]);
-      });
-
-    }
-  };
-  
-  return ChaseCamera;
-});
-
-define('network/commander',['require','underscore'],function(require) {
-  var _ = require('underscore');
-
-  var Commander = function(socket, scene, playerId) {
-    this.playerId = playerId;
-    this.scene = scene;
-    this.socket = socket;
-    this.hookSocketEvents();
-  };
-  
-  Commander.prototype = {
-    dispatch: function(command, args) {
-      this.socket.emit('CommandDispatch', {
-        command: command,
-        args: args
-      });
-    },
-    hookSocketEvents: function() {
-      var self = this;
-      this.socket.on('CommandDispatch', function(data) {
-        if(data.command.indexOf('Destination') < 0) {
-          console.log(data.id, data.command, data.args);
-        }
-        self.scene.dispatchDirect(data.id, data.command, data.args);
-      });
-    }
-  };
-  
-  return Commander;
-});
-
 define('static/dynamictilesource',['require','underscore','jquery','./consts','../render/material','../render/quad','./tile','../shared/eventable'],function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
@@ -16060,11 +15963,8 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
 
   return DynamicTileSource;
 });
-define('network/clientconnector',['require','underscore','../entities/controller','../entities/chasecamera','./commander','../static/map','../editor/grid','../shared/eventable','../static/dynamictilesource'],function(require) {
+define('network/clientconnector',['require','underscore','../static/map','../editor/grid','../shared/eventable','../static/dynamictilesource'],function(require) {
   var _ = require('underscore');
-  var Controller = require('../entities/controller');
-  var ChaseCamera = require('../entities/chasecamera');
-  var Commander = require('./commander');
   var Map = require('../static/map');
   var Grid = require('../editor/grid');
   var Eventable = require('../shared/eventable');
@@ -16104,16 +16004,11 @@ define('network/clientconnector',['require','underscore','../entities/controller
       this.context.scene.add(entity);  
     },
     populateSceneFromMessage: function(data) {  
-
       this.playerId = data.playerid; 
       for(var id in data.entities) {
         var item = data.entities[id];
         this.addEntityFromData(id, item);
       }      
-      var commander = new Commander(this.socket, this.context.scene, data.playerid);
-      var controller = new Controller(this.context.element, commander);
-      var chase = new ChaseCamera(this.context.scene, data.playerid);
-      this.context.scene.add(controller);
       this.loadMap(data.map); 
     },
     loadMap: function(path) {
@@ -16181,12 +16076,590 @@ define('ui/identify',['require','underscore','../shared/eventable'],function(req
   return Identify;
 });
 
-define('ui/inventory',['require','underscore','jquery'],function(require) {
-  var _ = require('underscore');
+define('ui/common',['require','jquery'],function(require) {
   var $ = require('jquery');
   
-  var Inventory = function(input, scene, playerId) {
+  function createClickAction(cb) {
+    return function() {
+      var elem = $('#context-menu');
+      elem.hide();
+      if(cb) cb();
+    };
+  }
+
+  function addOptionToCollection(items, name, cb) {
+    items.append(
+      $('<li/>')
+      .text(name)
+      .on('click', createClickAction(cb))
+    );
+  };
+
+  function addOptionsToCollection(items, options) {
+    for(var name in options){
+      addOptionToCollection(items, name, options[name])
+    }
+  };
+
+  return {
+    ShowContext: function(options, x, y) {
+      var elem = $('#context-menu');
+      var items = elem.find('.items');
+      items.html('');
+      addOptionsToCollection(items, options);
+      addOptionToCollection(items, 'Cancel');      
+      elem.css({
+        left: x + 'px',
+        top: (y + 20) + 'px'
+      });
+      elem.show();
+    }
+  };
+});
+define('hammer',[],function() {
+/*
+ * Hammer.JS
+ * version 0.4
+ * author: Eight Media
+ * https://github.com/EightMedia/hammer.js
+ */
+return function Hammer(element, options, undefined)
+{
+    var self = this;
+
+    var defaults = {
+        // prevent the default event or not... might be buggy when false
+        prevent_default    : false,
+        css_hacks          : true,
+
+        drag               : true,
+        drag_vertical      : true,
+        drag_horizontal    : true,
+        // minimum distance before the drag event starts
+        drag_min_distance  : 20, // pixels
+
+        // pinch zoom and rotation
+        transform          : true,
+        scale_treshold     : 0.1,
+        rotation_treshold  : 15, // degrees
+
+        tap                : true,
+        tap_double         : true,
+        tap_max_interval   : 300,
+        tap_double_distance: 20,
+
+        hold               : true,
+        hold_timeout       : 500
+    };
+    options = mergeObject(defaults, options);
+
+    // some css hacks
+    (function() {
+        if(!options.css_hacks) {
+            return false;
+        }
+
+        var vendors = ['webkit','moz','ms','o',''];
+        var css_props = {
+            "userSelect": "none",
+            "touchCallout": "none",
+            "userDrag": "none",
+            "tapHighlightColor": "rgba(0,0,0,0)"
+        };
+
+        var prop = '';
+        for(var i = 0; i < vendors.length; i++) {
+            for(var p in css_props) {
+                prop = p;
+                if(vendors[i]) {
+                    prop = vendors[i] + prop.substring(0, 1).toUpperCase() + prop.substring(1);
+                }
+                element.style[ prop ] = css_props[p];
+            }
+        }
+    })();
+
+    // holds the distance that has been moved
+    var _distance = 0;
+
+    // holds the exact angle that has been moved
+    var _angle = 0;
+
+    // holds the diraction that has been moved
+    var _direction = 0;
+
+    // holds position movement for sliding
+    var _pos = { };
+
+    // how many fingers are on the screen
+    var _fingers = 0;
+
+    var _first = false;
+
+    var _gesture = null;
+    var _prev_gesture = null;
+
+    var _touch_start_time = null;
+    var _prev_tap_pos = {x: 0, y: 0};
+    var _prev_tap_end_time = null;
+
+    var _hold_timer = null;
+
+    var _offset = {};
+
+    // keep track of the mouse status
+    var _mousedown = false;
+
+
+    /**
+     * angle to direction define
+     * @param  float    angle
+     * @return string   direction
+     */
+    this.getDirectionFromAngle = function( angle )
+    {
+        var directions = {
+            down: angle >= 45 && angle < 135, //90
+            left: angle >= 135 || angle <= -135, //180
+            up: angle < -45 && angle > -135, //270
+            right: angle >= -45 && angle <= 45 //0
+        };
+
+        var direction, key;
+        for(key in directions){
+            if(directions[key]){
+                direction = key;
+                break;
+            }
+        }
+        return direction;
+    };
+
+
+    /**
+     * count the number of fingers in the event
+     * when no fingers are detected, one finger is returned (mouse pointer)
+     * @param  event
+     * @return int  fingers
+     */
+    function countFingers( event )
+    {
+        // there is a bug on android (until v4?) that touches is always 1,
+        // so no multitouch is supported, e.g. no, zoom and rotation...
+        return event.touches ? event.touches.length : 1;
+    }
+
+
+    /**
+     * get the x and y positions from the event object
+     * @param  event
+     * @return array  [{ x: int, y: int }]
+     */
+    function getXYfromEvent( event )
+    {
+        // no touches, use the event pageX and pageY
+        if(!event.touches) {
+            return [{ x: event.pageX, y: event.pageY }];
+        }
+        // multitouch, return array with positions
+        else {
+            var pos = [], src;
+            for(var t=0, len=event.touches.length; t<len; t++) {
+                src = event.touches[t];
+                pos.push({ x: src.pageX, y: src.pageY });
+            }
+            return pos;
+        }
+    }
+
+
+    /**
+     * calculate the angle between two points
+     * @param object pos1 { x: int, y: int }
+     * @param object pos2 { x: int, y: int }
+     */
+    function getAngle( pos1, pos2 )
+    {
+        return Math.atan2(pos2.y - pos1.y, pos2.x - pos1.x) * 180 / Math.PI;
+    }
+
+    /**
+     * trigger an event/callback by name with params
+     * @param string name
+     * @param array  params
+     */
+    function triggerEvent( eventName, params )
+    {
+        // return touches object
+        params.touches = getXYfromEvent(params.originalEvent);
+        params.type = eventName;
+
+        // trigger callback
+        if(isFunction(self["on"+ eventName])) {
+            self["on"+ eventName].call(self, params);
+        }
+    }
+
+
+    /**
+     * reset the internal vars to the start values
+     */
+    function reset()
+    {
+        _pos = {};
+        _first = false;
+        _fingers = 0;
+        _distance = 0;
+        _angle = 0;
+        _gesture = null;
+    }
+
+
+    var gestures = {
+        // hold gesture
+        // fired on touchstart
+        hold : function(event)
+        {
+            // only when one finger is on the screen
+            if(options.hold) {
+                _gesture = 'hold';
+                clearTimeout(_hold_timer);
+
+                _hold_timer = setTimeout(function() {
+                    if(_gesture == 'hold') {
+                        triggerEvent("hold", {
+                            originalEvent   : event,
+                            position        : _pos.start
+                        });
+                    }
+                }, options.hold_timeout);
+            }
+        },
+
+
+        // drag gesture
+        // fired on mousemove
+        drag : function(event)
+        {
+            // get the distance we moved
+            var _distance_x = _pos.move[0].x - _pos.start[0].x;
+            var _distance_y = _pos.move[0].y - _pos.start[0].y;
+            _distance = Math.sqrt(_distance_x * _distance_x + _distance_y * _distance_y);
+
+            // drag
+            // minimal movement required
+            if(options.drag && (_distance > options.drag_min_distance) || _gesture == 'drag') {
+                // calculate the angle
+                _angle = getAngle(_pos.start[0], _pos.move[0]);
+                _direction = self.getDirectionFromAngle(_angle);
+
+                // check the movement and stop if we go in the wrong direction
+                var is_vertical = (_direction == 'up' || _direction == 'down');
+                if(((is_vertical && !options.drag_vertical) || (!is_vertical && !options.drag_horizontal))
+                    && (_distance > options.drag_min_distance)) {
+                    return;
+                }
+
+                _gesture = 'drag';
+
+                var position = { x: _pos.move[0].x - _offset.left,
+                    y: _pos.move[0].y - _offset.top };
+
+                var event_obj = {
+                    originalEvent   : event,
+                    position        : position,
+                    direction       : _direction,
+                    distance        : _distance,
+                    distanceX       : _distance_x,
+                    distanceY       : _distance_y,
+                    angle           : _angle
+                };
+
+                // on the first time trigger the start event
+                if(_first) {
+                    triggerEvent("dragstart", event_obj);
+
+                    _first = false;
+                }
+
+                // normal slide event
+                triggerEvent("drag", event_obj);
+
+                event.preventDefault();
+            }
+        },
+
+
+        // transform gesture
+        // fired on touchmove
+        transform : function(event)
+        {
+            if(options.transform) {
+                var scale = event.scale || 1;
+                var rotation = event.rotation || 0;
+
+                if(_gesture != 'drag' &&
+                    (_gesture == 'transform' || Math.abs(1-scale) > options.scale_treshold
+                        || Math.abs(rotation) > options.rotation_treshold)) {
+                    _gesture = 'transform';
+
+                    _pos.center = {  x: ((_pos.move[0].x + _pos.move[1].x) / 2) - _offset.left,
+                        y: ((_pos.move[0].y + _pos.move[1].y) / 2) - _offset.top };
+
+                    var event_obj = {
+                        originalEvent   : event,
+                        position        : _pos.center,
+                        scale           : scale,
+                        rotation        : rotation
+                    };
+
+                    // on the first time trigger the start event
+                    if(_first) {
+                        triggerEvent("transformstart", event_obj);
+                        _first = false;
+                    }
+
+                    triggerEvent("transform", event_obj);
+
+                    event.preventDefault();
+
+                    return true;
+                }
+            }
+
+            return false;
+        },
+
+
+        // tap and double tap gesture
+        // fired on touchend
+        tap : function(event)
+        {
+            // compare the kind of gesture by time
+            var now = new Date().getTime();
+            var touch_time = now - _touch_start_time;
+
+            var is_double_tap = function () {
+                if (_prev_tap_pos && options.tap_double && _prev_gesture == 'tap' &&
+                    (_touch_start_time - _prev_tap_end_time) < options.tap_max_interval) {
+                    var x_distance = Math.abs(_prev_tap_pos[0].x - _pos.start[0].x);
+                    var y_distance = Math.abs(_prev_tap_pos[0].y - _pos.start[0].y);
+                    return (_prev_tap_pos && _pos.start &&
+                        Math.max(x_distance, y_distance) < options.tap_double_distance);
+                }
+                return false;
+            };
+
+            // dont fire when hold is fired
+            if(options.hold && !(options.hold && options.hold_timeout > touch_time)) {
+                return;
+            }
+
+            // when previous event was tap and the tap was max_interval ms ago
+
+            if(is_double_tap()) {
+                _gesture = 'double_tap';
+                _prev_tap_end_time = null;
+
+                triggerEvent("doubletap", {
+                    originalEvent   : event,
+                    position        : _pos.start
+                });
+                event.preventDefault();
+            }
+
+            // single tap is single touch
+            else {
+                _gesture = 'tap';
+                _prev_tap_end_time = now;
+                _prev_tap_pos = _pos.start;
+
+                if(options.tap) {
+                    triggerEvent("tap", {
+                        originalEvent   : event,
+                        position        : _pos.start
+                    });
+                    event.preventDefault();
+                }
+            }
+
+        }
+
+    };
+
+
+    function handleEvents(event)
+    {
+        switch(event.type)
+        {
+            case 'mousedown':
+            case 'touchstart':
+                _pos.start = getXYfromEvent(event);
+                _touch_start_time = new Date().getTime();
+                _fingers = countFingers(event);
+                _first = true;
+
+                // borrowed from jquery offset https://github.com/jquery/jquery/blob/master/src/offset.js
+                // needs to be tested yet
+                var box = element.getBoundingClientRect();
+                var clientTop  = element.clientTop  || document.body.clientTop  || 0;
+                var clientLeft = element.clientLeft || document.body.clientLeft || 0;
+                var scrollTop  = window.pageYOffset || element.scrollTop  || document.body.scrollTop;
+                var scrollLeft = window.pageXOffset || element.scrollLeft || document.body.scrollLeft;
+
+                _offset = {
+                    top: box.top + scrollTop - clientTop,
+                    left: box.left + scrollLeft - clientLeft
+                };
+
+                _mousedown = true;
+
+                // hold gesture
+                gestures.hold(event);
+
+                if(options.prevent_default) {
+                    event.preventDefault();
+                }
+                break;
+
+            case 'mousemove':
+            case 'touchmove':
+                if(!_mousedown) {
+                    return false;
+                }
+                _pos.move = getXYfromEvent(event);
+
+                if(!gestures.transform(event)) {
+                    gestures.drag(event);
+                }
+                break;
+
+            case 'mouseup':
+            case 'mouseout':
+            case 'touchcancel':
+            case 'touchend':
+                if(!_mousedown) {
+                    return false;
+                }
+
+                _mousedown = false;
+
+                // drag gesture
+                // dragstart is triggered, so dragend is possible
+                if(_gesture == 'drag') {
+                    triggerEvent("dragend", {
+                        originalEvent   : event,
+                        direction       : _direction,
+                        distance        : _distance,
+                        angle           : _angle
+                    });
+                }
+
+                // transform
+                // transformstart is triggered, so transformed is possible
+                else if(_gesture == 'transform') {
+                    triggerEvent("transformend", {
+                        originalEvent   : event,
+                        position        : _pos.center,
+                        scale           : event.scale,
+                        rotation        : event.rotation
+                    });
+                }
+                else {
+                    gestures.tap(event);
+                }
+
+                _prev_gesture = _gesture;
+
+                // reset vars
+                reset();
+                break;
+        }
+    }
+
+
+    // bind events for touch devices
+    // except for windows phone 7.5, it doenst support touch events..!
+    if('ontouchstart' in window) {
+        element.addEventListener("touchstart", handleEvents, false);
+        element.addEventListener("touchmove", handleEvents, false);
+        element.addEventListener("touchend", handleEvents, false);
+        element.addEventListener("touchcancel", handleEvents, false);
+    }
+    // for non-touch
+    else {
+        // Listen for mouseup on the document so we know it happens
+        // even if the mouse has left the element.
+        element.addEventListener("mouseout", function(event) {
+            if(!isInsideHammer(element, event.relatedTarget)) {
+                handleEvents(event);
+            }
+        }, false);
+        element.addEventListener("mouseup", handleEvents, false);
+        element.addEventListener("mousedown", handleEvents, false);
+        element.addEventListener("mousemove", handleEvents, false);
+    }
+
+
+    /**
+     * find if element is (inside) given parent element
+     * @param   object  element
+     * @param   object  parent
+     * @return  bool    inside
+     */
+    function isInsideHammer(parent, child) {
+        if(parent === child){
+            return true;
+        }
+        var node = child.parentNode;
+        while(node !== null){
+            if(node === parent){
+                return true;
+            };
+            node = node.parentNode;
+        }
+        return false;
+    }
+
+
+    /**
+     * merge 2 objects into a new object
+     * @param   object  obj1
+     * @param   object  obj2
+     * @return  object  merged object
+     */
+    function mergeObject(obj1, obj2) {
+        var output = {};
+
+        if(!obj2) {
+            return obj1;
+        }
+
+        for (var prop in obj1) {
+            if (prop in obj2) {
+                output[prop] = obj2[prop];
+            } else {
+                output[prop] = obj1[prop];
+            }
+        }
+        return output;
+    }
+
+    function isFunction( obj ){
+        return Object.prototype.toString.call( obj ) == "[object Function]";
+    }
+};
+});
+
+define('ui/inventory',['require','underscore','jquery','./common','hammer'],function(require) {
+  var _ = require('underscore');
+  var $ = require('jquery');
+  var UI = require('./common');
+  var Hammer = require('hammer');
+
+  var Inventory = function(input, commander, scene, playerId) {
     this.scene = scene;
+    this.commander = commander;
     this.input = input;
     this.playerId = playerId;
     this.scene.autoHook(this);
@@ -16205,7 +16678,7 @@ define('ui/inventory',['require','underscore','jquery'],function(require) {
     },
     onItemRemoved: function(data, sender) {
       if(sender.id !== this.playerId) return;
-      this.inventoryContentElement.find('#' + data.id).remove();
+      this.removeItem(item);
     },
     onInventoryDataUpdated: function(data, sender) {
       if(sender.id !== this.playerId) return;
@@ -16221,7 +16694,33 @@ define('ui/inventory',['require','underscore','jquery'],function(require) {
     },
     addItem: function(item) {
       var html = this.createHtmlForItem(item);
-      this.inventoryContentElement.append(html); 
+      this.inventoryContentElement.append(html);
+      this.hookTouchEventsForItem(item);      
+    },
+    hookTouchEventsForItem: function(item) {
+      var elem = this.findElementForItem(item);
+      var hammer = new Hammer(elem.get(0));
+      var self = this;
+      hammer.ontap = function(ev){
+        self.showItemDialog(elem, item);
+      };
+    },
+    showItemDialog: function(elem, item) {
+      var self = this;
+      UI.ShowContext({
+        Equip: function() {
+          self.commander.dispatch('equip', [item.id]);
+        }
+      },
+      elem.offset().left,
+      elem.offset().top);
+    },
+    removeItem: function(item) {
+      var elem = this.findElementForItem(item);
+      elem.remove();
+    },
+    findElementForItem: function(item) {
+      return this.inventoryContentElement.find('#' + item.id);
     },
     createHtmlForItem: function(item) {
       var html = $('<div/>');
@@ -16245,7 +16744,6 @@ define('ui/inventory',['require','underscore','jquery'],function(require) {
   
   return Inventory;
 });
-
 define('ui/quests',['require','underscore','jquery'],function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
@@ -16392,7 +16890,127 @@ define('ui/character',['require','underscore','jquery'],function(require) {
   return Character;
 });
 
-define('apps/demo/app',['require','../../input/inputemitter','../../input/inputtranslator','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory','../../ui/quests','../../entities/sceneryfader','../../ui/character'],function(require) {
+define('entities/controller',['require','underscore','../scene/entity','jquery','../shared/coords'],function(require) {
+
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  var $ = require('jquery');
+  var Coords = require('../shared/coords');
+
+  var Controller = function(element, commander) {
+    Entity.call(this, "controller");   
+    this.scene = null;        
+    this.on('AddedToScene', this.hookSceneEvents);
+    this.x = 0;
+    this.y = 0;   
+    this.commander = commander;
+    this.element = $(element);
+    this.isHovering = false;
+  };  
+  
+  Controller.prototype = {
+    hookSceneEvents: function(scene) {
+      var self = this;
+      scene.on('PrimaryAction', this.determineWherePrimaryActionRequested, this);
+      scene.on('Hover', this.onHover, this);
+      setInterval(function() {
+        self.determineWhatMouseIsOver();
+      }, 200);
+    },
+  
+    determineWhatMouseIsOver: function() {
+      var selectedEntity = this.scene.entityAtMouse(this.x, this.y);
+      if(selectedEntity && !this.isHovering) {
+        this.element.css('cursor', 'pointer');
+        this.isHovering = true;
+      } else if(!selectedEntity && this.isHovering) {
+        this.element.css('cursor', 'default');
+        this.isHovering = false;
+      }    
+    },
+    
+    onHover: function(data) {
+      this.x = data.x;
+      this.y = data.y;
+    },
+    
+    determineWherePrimaryActionRequested: function(data) {
+      var x = data.x,
+          y = data.y;
+      
+      var selectedEntity = this.scene.entityAtMouse(x, y);
+      if(selectedEntity)
+        this.determineWhatToDoWithSelectedEntity(selectedEntity, x, y);
+      else
+        this.issueMovementCommandToPlayer(x,y);
+      
+    },
+    
+    determineWhatToDoWithSelectedEntity: function(entity, x, y) {
+      this.commander.dispatch("primaryAction", [entity.id]);
+    },
+    
+    issueMovementCommandToPlayer: function(x,y) {
+      this.commander.dispatch('updateDestination', [x, y]);
+    }
+  };  
+  _.extend(Controller.prototype, Entity.prototype);
+  
+  return Controller;
+});
+
+define('entities/chasecamera',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var ChaseCamera = function(scene, targetId) {
+    this.scene = scene;
+    this.targetId = targetId;
+    this.scene.on('PreRender', this.onScenePreRender, this);
+  };
+  
+  ChaseCamera.prototype = {
+    onScenePreRender: function() {
+      var self = this;
+      this.scene.withEntity(this.targetId, function(target) {
+        var position = target.get('Position');
+        self.scene.camera.lookAt(position[0], position[1], position[2]);
+      });
+
+    }
+  };
+  
+  return ChaseCamera;
+});
+
+define('network/commander',['require','underscore'],function(require) {
+  var _ = require('underscore');
+
+  var Commander = function(socket, scene, playerId) {
+    this.playerId = playerId;
+    this.scene = scene;
+    this.socket = socket;
+    this.hookSocketEvents();
+  };
+  
+  Commander.prototype = {
+    dispatch: function(command, args) {
+      this.socket.emit('CommandDispatch', {
+        command: command,
+        args: args
+      });
+    },
+    hookSocketEvents: function() {
+      var self = this;
+      this.socket.on('CommandDispatch', function(data) {
+        self.scene.dispatchDirect(data.id, data.command, data.args);
+      });
+    }
+  };
+  
+  return Commander;
+});
+
+define('apps/demo/app',['require','../../input/inputemitter','../../input/inputtranslator','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory','../../ui/quests','../../entities/sceneryfader','../../ui/character','../../entities/controller','../../entities/chasecamera','../../network/commander'],function(require) {
 
 
   var InputEmitter = require('../../input/inputemitter');
@@ -16411,7 +17029,11 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
   var Quests = require('../../ui/quests');
   var SceneryFader = require('../../entities/sceneryfader');
   var CharacterUi = require('../../ui/character');
-  
+
+  var Controller = require('../../entities/controller');
+  var ChaseCamera = require('../../entities/chasecamera');
+  var Commander = require('../../network/commander');
+
   var Demo = function(socket, element) {
     this.element = element;
     this.socket = socket;
@@ -16435,10 +17057,14 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
       
       this.connector.on('PlayerCreated', function(playerId) {
         self.playerId = playerId;
-        self.inventory = new Inventory(input, context.scene, playerId);
         self.quests = new Quests(input, context.scene, playerId);
         self.character = new CharacterUi(input, context.scene, playerId);
-        self.fader = new SceneryFader(context.scene, playerId);
+        self.fader = new SceneryFader(context.scene, playerId);      
+        self.commander = new Commander(self.socket, context.scene, playerId);
+        self.controller = new Controller(context.element, self.commander);
+        self.chase = new ChaseCamera(context.scene, playerId);
+        self.inventory = new Inventory(input, self.commander, context.scene, playerId);
+        context.scene.add(self.controller);
       });
       this.connector.on('GameStarted', function(playerId) {
         self.questAsker = new QuestAsker(context.scene, self.playerId, $('#quest-started'));

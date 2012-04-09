@@ -70,7 +70,7 @@ define(function(require) {
       then("The character stops moving after reaching the new destination", !characterMoved);
     });
   });
-  
+
   /*
   when("An character moves into a monster", function(then) {
     setup.withACharacterAndMonster(function(scene, character, monster) {
@@ -81,6 +81,24 @@ define(function(require) {
     then("The entity that was still stays in one place", false);
     then("The entity that moved stops", false);
   }); */ 
- 
 
+
+  when("A character is given a hat", function(then) {
+    setup.withACharacterAndMonster(function(scene, character, monster) {
+      character.dispatch('addInventoryItem', ['test', {equipType: 'hat'}]);
+      var hat = character.get('ItemWithId', ['test']);
+      then("The character has the hat in its inventory", hat);
+    }); 
+  });
+
+  when("A character with a hat is told to equip that hat", function(then) {''
+    setup.withACharacterAndMonster(function(scene, character, monster) {
+      character.dispatch('addInventoryItem', ['test', { equipType: 'hat'}]);
+      character.dispatch('equip', ['test']);
+      var inventoryHat = character.get('ItemWithId', ['test']);
+      var equippedHat = character.get('ItemInSlot', ['hat']);
+      then("The character has the item removed from its inventory", !inventoryHat);
+      then("The character has the item equipped in the 'hat' slot", equippedHat);
+    });
+  });
 });
