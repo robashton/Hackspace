@@ -106,7 +106,11 @@ define(function(require) {
     
     pathToInventoryForPlayer: function(id) {
       return path.join(path.join(this.baseDir, 'inventories'), id + '.json');
-    }
+    },
+
+    pathToEquipmentForPlayer: function(id) {
+      return path.join(path.join(this.baseDir, 'equips'), id + '.json');
+    },
   }
   
   return InMemory;
