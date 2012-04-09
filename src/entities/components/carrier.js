@@ -1,6 +1,5 @@
 define(function(require) {
   var _ = require('underscore');
-  var Item = require('../../scripting/item');
 
   var Carrier = function() {
     this.items = {};
@@ -23,12 +22,9 @@ define(function(require) {
       if(item)
         this.removeInventoryItem(item);
     },
-    addInventoryItem: function(id, data) {
-      this.items[id]  = new Item(id, data);
-      this.parent.raise('ItemPickedUp', {
-        id: id,
-        data: data
-      });
+    addInventoryItem: function(item) {
+      this.items[item.id] = item;
+      this.parent.raise('ItemPickedUp', item);
     },
     removeInventoryItem: function(item) {
       delete this.items[item.id];
@@ -44,9 +40,7 @@ define(function(require) {
     },
     _setInventoryData: function(data) {
       for(var key in data) {
-        var itemData = data[key];
-        var item = new Item(key, itemData);
-        this.items[item.id] = item;
+        this.items[key] = data[key];
       }
       this.parent.raise('InventoryDataUpdated', data);
     }

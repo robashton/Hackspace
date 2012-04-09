@@ -6,11 +6,9 @@ define(function(require) {
   var Tangible = require('./components/tangible');
   var Physical = require('./components/physical');
   
-  var Pickup = function(x, y, itemId, itemData) {
-    Entity.call(this, 'pickup-' + itemId);
-    this.itemId = itemId;
-    this.itemData = itemData;
-    
+  var Pickup = function(x, y, item) {
+    Entity.call(this, 'pickup-' + item.id);
+    this.item = item;
     this.attach(new Renderable(itemData.pickupTexture));
     this.attach(new Tangible(x, y, itemData.pickupWidth, itemData.pickupHeight));
     this.attach(new Physical());
@@ -32,7 +30,7 @@ define(function(require) {
     putItemInEntity: function(entityId) {
       var self = this;
       this.scene.withEntity(entityId, function(entity) {
-        entity.dispatch('addInventoryItem', [self.itemId, self.itemData]); 
+        entity.dispatch('addInventoryItem', [self.item]); 
         self.scene.remove(self);
       })
     } 

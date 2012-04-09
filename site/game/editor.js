@@ -13101,25 +13101,8 @@ define('entities/components/actionable',['require'],function(require) {
   return Actionable;
 });
 
-define('scripting/item',['require','underscore'],function(require) {
+define('entities/components/carrier',['require','underscore'],function(require) {
   var _ = require('underscore');
-
-  var Item = function(id, template) {
-    _.extend(this, template);
-    this.data = template;
-    this.id = id;    
-  };
-  
-  Item.prototype = {
-    
-  };
-  
-  return Item;
-});
-
-define('entities/components/carrier',['require','underscore','../../scripting/item'],function(require) {
-  var _ = require('underscore');
-  var Item = require('../../scripting/item');
 
   var Carrier = function() {
     this.items = {};
@@ -13142,12 +13125,9 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
       if(item)
         this.removeInventoryItem(item);
     },
-    addInventoryItem: function(id, data) {
-      this.items[id]  = new Item(id, data);
-      this.parent.raise('ItemPickedUp', {
-        id: id,
-        data: data
-      });
+    addInventoryItem: function(item) {
+      this.items[item.id] = item;
+      this.parent.raise('ItemPickedUp', item);
     },
     removeInventoryItem: function(item) {
       delete this.items[item.id];
@@ -13163,9 +13143,7 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
     },
     _setInventoryData: function(data) {
       for(var key in data) {
-        var itemData = data[key];
-        var item = new Item(key, itemData);
-        this.items[item.id] = item;
+        this.items[key] = data[key];
       }
       this.parent.raise('InventoryDataUpdated', data);
     }
@@ -14994,6 +14972,11 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
         return;
       }
 
+      if(!this.slots[item.equipType]) {
+        console.warn('Attempt to equip item type this character cannot equip', item);
+        return;
+      }
+
       // Atomic plsthx lol
       this.parent.dispatch('removeItemWithId', [itemId]);
       this.slots[item.equipType].setItem(item);
@@ -15004,13 +14987,13 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
     getItemInSlot: function(itemType) {
       return this.slots[itemType].getItem();
     },
-    onItemSlotEquipped: function(data, sender) {
+    onItemSlotEquipped: function(item, sender) {
       this.parent.raise('ItemEquipped', item);
     },
-    onItemSlotUnequipped: function(data, sender) {
+    onItemSlotUnequipped: function(item, sender) {
       this.parent.raise('ItemUnequipped', item);
     },
-    onItemSlotEquipFailed: function(data, sender) {
+    onItemSlotEquipFailed: function(item, sender) {
       this.parent.raise('ItemEquipFailed', item);
     },
     onItemUnequipped: function(item, sender) {

@@ -4883,25 +4883,8 @@ define('entities/components/actionable',['require'],function(require) {
   return Actionable;
 });
 
-define('scripting/item',['require','underscore'],function(require) {
+define('entities/components/carrier',['require','underscore'],function(require) {
   var _ = require('underscore');
-
-  var Item = function(id, template) {
-    _.extend(this, template);
-    this.data = template;
-    this.id = id;    
-  };
-  
-  Item.prototype = {
-    
-  };
-  
-  return Item;
-});
-
-define('entities/components/carrier',['require','underscore','../../scripting/item'],function(require) {
-  var _ = require('underscore');
-  var Item = require('../../scripting/item');
 
   var Carrier = function() {
     this.items = {};
@@ -4924,12 +4907,9 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
       if(item)
         this.removeInventoryItem(item);
     },
-    addInventoryItem: function(id, data) {
-      this.items[id]  = new Item(id, data);
-      this.parent.raise('ItemPickedUp', {
-        id: id,
-        data: data
-      });
+    addInventoryItem: function(item) {
+      this.items[item.id] = item;
+      this.parent.raise('ItemPickedUp', item);
     },
     removeInventoryItem: function(item) {
       delete this.items[item.id];
@@ -4945,9 +4925,7 @@ define('entities/components/carrier',['require','underscore','../../scripting/it
     },
     _setInventoryData: function(data) {
       for(var key in data) {
-        var itemData = data[key];
-        var item = new Item(key, itemData);
-        this.items[item.id] = item;
+        this.items[key] = data[key];
       }
       this.parent.raise('InventoryDataUpdated', data);
     }
@@ -5342,6 +5320,11 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
         return;
       }
 
+      if(!this.slots[item.equipType]) {
+        console.warn('Attempt to equip item type this character cannot equip', item);
+        return;
+      }
+
       // Atomic plsthx lol
       this.parent.dispatch('removeItemWithId', [itemId]);
       this.slots[item.equipType].setItem(item);
@@ -5352,13 +5335,13 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
     getItemInSlot: function(itemType) {
       return this.slots[itemType].getItem();
     },
-    onItemSlotEquipped: function(data, sender) {
+    onItemSlotEquipped: function(item, sender) {
       this.parent.raise('ItemEquipped', item);
     },
-    onItemSlotUnequipped: function(data, sender) {
+    onItemSlotUnequipped: function(item, sender) {
       this.parent.raise('ItemUnequipped', item);
     },
-    onItemSlotEquipFailed: function(data, sender) {
+    onItemSlotEquipFailed: function(item, sender) {
       this.parent.raise('ItemEquipFailed', item);
     },
     onItemUnequipped: function(item, sender) {
@@ -15761,11 +15744,9 @@ define('entities/pickup',['require','underscore','../scene/entity','./components
   var Tangible = require('./components/tangible');
   var Physical = require('./components/physical');
   
-  var Pickup = function(x, y, itemId, itemData) {
-    Entity.call(this, 'pickup-' + itemId);
-    this.itemId = itemId;
-    this.itemData = itemData;
-    
+  var Pickup = function(x, y, item) {
+    Entity.call(this, 'pickup-' + item.id);
+    this.item = item;
     this.attach(new Renderable(itemData.pickupTexture));
     this.attach(new Tangible(x, y, itemData.pickupWidth, itemData.pickupHeight));
     this.attach(new Physical());
@@ -15787,7 +15768,7 @@ define('entities/pickup',['require','underscore','../scene/entity','./components
     putItemInEntity: function(entityId) {
       var self = this;
       this.scene.withEntity(entityId, function(entity) {
-        entity.dispatch('addInventoryItem', [self.itemId, self.itemData]); 
+        entity.dispatch('addInventoryItem', [self.item]); 
         self.scene.remove(self);
       })
     } 
@@ -15799,10 +15780,9 @@ define('entities/pickup',['require','underscore','../scene/entity','./components
   
 });
 
-define('entities/god',['require','underscore','../scene/entity','../scripting/item','./pickup'],function(require) {
+define('entities/god',['require','underscore','../scene/entity','./pickup'],function(require) {
   var _ = require('underscore');
   var Entity = require('../scene/entity');
-  var Item = require('../scripting/item');
   var Pickup = require('./pickup');
 
   var God = function(entityFactory, itemGeneration) {
@@ -15824,7 +15804,7 @@ define('entities/god',['require','underscore','../scene/entity','../scripting/it
           self.scene.remove(entity);
       },
       createPickup: function(data) {
-        var pickup = new Pickup(data.x, data.y, data.id, data.template);
+        var pickup = new Pickup(data.x, data.y, data.item);
         self.scene.add(pickup);
       }
     });
@@ -16727,7 +16707,7 @@ define('ui/inventory',['require','underscore','jquery','./common','hammer'],func
       html.attr('id', item.id);
       html.append(
         $('<img/>')
-          .attr('src', this.scene.resources.get('main/' + item.data.pickupTexture + '.png').str())
+          .attr('src', this.scene.resources.get('main/' + item.pickupTexture + '.png').str())
         );
       html.addClass('inventory-item');
       return html;

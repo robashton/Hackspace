@@ -29,9 +29,11 @@ define(function(require) {
         var targetPosition = target.get('Position');        
         
         // TODO: This needs to come via item generation  
-        self.scene.dispatch('god', 'createPickup', [ { 
-          template: DuckTemplate, 
-          id: 'duck-' + parseInt(Math.random() * 1000000), 
+        var item = {};
+        _.extend(item, DuckTemplate);
+        item.id = 'duck-' + parseInt(Math.random() * 1000000);
+        self.scene.dispatch('god', 'createPickup', [ {
+          item: item,
           x: targetPosition[0], 
           y: targetPosition[1] } ]);
       });

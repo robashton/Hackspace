@@ -85,7 +85,7 @@ define(function(require) {
 
   when("A character is given a hat", function(then) {
     setup.withACharacterAndMonster(function(scene, character, monster) {
-      character.dispatch('addInventoryItem', ['test', {equipType: EquipmentTypes.hat}]);
+      character.dispatch('addInventoryItem', [{ id: 'test', equipType: EquipmentTypes.hat}]);
       var hat = character.get('ItemWithId', ['test']);
       then("The character has the hat in its inventory", hat);
     }); 
@@ -93,7 +93,7 @@ define(function(require) {
 
   when("A character with a hat is told to equip that hat", function(then) {
     setup.withACharacterAndMonster(function(scene, character, monster) {
-      character.dispatch('addInventoryItem', ['test', { equipType: EquipmentTypes.hat}]);
+      character.dispatch('addInventoryItem', [ { id: 'test', equipType: EquipmentTypes.hat}]);
       character.dispatch('equip', ['test']);
       var inventoryHat = character.get('ItemWithId', ['test']);
       var equippedHat = character.get('ItemInSlot', [EquipmentTypes.hat]);

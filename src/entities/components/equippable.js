@@ -56,6 +56,11 @@ define(function(require) {
         return;
       }
 
+      if(!this.slots[item.equipType]) {
+        console.warn('Attempt to equip item type this character cannot equip', item);
+        return;
+      }
+
       // Atomic plsthx lol
       this.parent.dispatch('removeItemWithId', [itemId]);
       this.slots[item.equipType].setItem(item);
@@ -66,13 +71,13 @@ define(function(require) {
     getItemInSlot: function(itemType) {
       return this.slots[itemType].getItem();
     },
-    onItemSlotEquipped: function(data, sender) {
+    onItemSlotEquipped: function(item, sender) {
       this.parent.raise('ItemEquipped', item);
     },
-    onItemSlotUnequipped: function(data, sender) {
+    onItemSlotUnequipped: function(item, sender) {
       this.parent.raise('ItemUnequipped', item);
     },
-    onItemSlotEquipFailed: function(data, sender) {
+    onItemSlotEquipFailed: function(item, sender) {
       this.parent.raise('ItemEquipFailed', item);
     },
     onItemUnequipped: function(item, sender) {

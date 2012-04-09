@@ -11,18 +11,15 @@ define(function(require) {
   ItemGeneration.prototype = {
     createItem: function() {
       var equipType = this.equipmentCollection[Math.floor((Math.random() * this.equipmentCollection.length))];
-      var template = {
+      var item = {
+        id: 'item-' + Math.floor(Math.random() * 1000000),
         type: equipType,      // This would be sword, etc
         equipType: equipType, // This is just the equip type
         pickupWidth: 5,
         pickupHeight: 8,
         pickupTexture: equipType + '-icon'
       };
-      var id = 'item-' + Math.floor(Math.random() * 1000000);
-      return {
-        id: id,
-        template: template
-      };
+      return item;
     }
   };
 

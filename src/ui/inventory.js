@@ -74,7 +74,7 @@ define(function(require) {
       html.attr('id', item.id);
       html.append(
         $('<img/>')
-          .attr('src', this.scene.resources.get('main/' + item.data.pickupTexture + '.png').str())
+          .attr('src', this.scene.resources.get('main/' + item.pickupTexture + '.png').str())
         );
       html.addClass('inventory-item');
       return html;
