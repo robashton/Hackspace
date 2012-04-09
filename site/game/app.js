@@ -15747,8 +15747,8 @@ define('entities/pickup',['require','underscore','../scene/entity','./components
   var Pickup = function(x, y, item) {
     Entity.call(this, 'pickup-' + item.id);
     this.item = item;
-    this.attach(new Renderable(itemData.pickupTexture));
-    this.attach(new Tangible(x, y, itemData.pickupWidth, itemData.pickupHeight));
+    this.attach(new Renderable(item.pickupTexture));
+    this.attach(new Tangible(x, y, item.pickupWidth, item.pickupHeight));
     this.attach(new Physical());
     this.attachSelf();
   };
@@ -15824,9 +15824,11 @@ define('entities/god',['require','underscore','../scene/entity','./pickup'],func
       var target = this.scene.withEntity(targetId, function(target){
         var targetPosition = target.get('Position');
         var item = self.itemGeneration.createItem();
-        item.x = targetPosition[0];
-        item.y = targetPosition[1];
-        self.scene.dispatch('god', 'createPickup', [item]);
+        self.scene.dispatch('god', 'createPickup', [{
+          x: targetPosition[0],
+          y: targetPosition[1],
+          item: item
+        }]);
       });
     }
   };
@@ -16656,7 +16658,7 @@ define('ui/inventory',['require','underscore','jquery','./common','hammer'],func
       if(sender.id !== this.playerId) return;
       this.addItem(item);     
     },
-    onItemRemoved: function(data, sender) {
+    onItemRemoved: function(item, sender) {
       if(sender.id !== this.playerId) return;
       this.removeItem(item);
     },

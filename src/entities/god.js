@@ -42,9 +42,11 @@ define(function(require) {
       var target = this.scene.withEntity(targetId, function(target){
         var targetPosition = target.get('Position');
         var item = self.itemGeneration.createItem();
-        item.x = targetPosition[0];
-        item.y = targetPosition[1];
-        self.scene.dispatch('god', 'createPickup', [item]);
+        self.scene.dispatch('god', 'createPickup', [{
+          x: targetPosition[0],
+          y: targetPosition[1],
+          item: item
+        }]);
       });
     }
   };

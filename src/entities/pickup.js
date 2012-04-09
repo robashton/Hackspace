@@ -9,8 +9,8 @@ define(function(require) {
   var Pickup = function(x, y, item) {
     Entity.call(this, 'pickup-' + item.id);
     this.item = item;
-    this.attach(new Renderable(itemData.pickupTexture));
-    this.attach(new Tangible(x, y, itemData.pickupWidth, itemData.pickupHeight));
+    this.attach(new Renderable(item.pickupTexture));
+    this.attach(new Tangible(x, y, item.pickupWidth, item.pickupHeight));
     this.attach(new Physical());
     this.attachSelf();
   };

@@ -5,19 +5,22 @@ define(function(require) {
   var ItemGeneration = function() {
     this.equipmentCollection = [];
     for(var i in EquipmentTypes)
-      this.equipmentCollection.push(EquipmentTypes[i]);
+      this.equipmentCollection.push({
+        equipType: EquipmentTypes[i],
+        name: i
+      });
   };
 
   ItemGeneration.prototype = {
     createItem: function() {
-      var equipType = this.equipmentCollection[Math.floor((Math.random() * this.equipmentCollection.length))];
+      var chosen = this.equipmentCollection[Math.floor((Math.random() * this.equipmentCollection.length))];
       var item = {
         id: 'item-' + Math.floor(Math.random() * 1000000),
-        type: equipType,      // This would be sword, etc
-        equipType: equipType, // This is just the equip type
+        type: chosen.equipType,      // This would be sword, etc
+        equipType: chosen.equipType, // This is just the equip type
         pickupWidth: 5,
         pickupHeight: 8,
-        pickupTexture: equipType + '-icon'
+        pickupTexture: chosen.name + '-icon'
       };
       return item;
     }

@@ -23,7 +23,7 @@ define(function(require) {
       if(sender.id !== this.playerId) return;
       this.addItem(item);     
     },
-    onItemRemoved: function(data, sender) {
+    onItemRemoved: function(item, sender) {
       if(sender.id !== this.playerId) return;
       this.removeItem(item);
     },

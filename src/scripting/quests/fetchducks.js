@@ -31,6 +31,7 @@ define(function(require) {
         // TODO: This needs to come via item generation  
         var item = {};
         _.extend(item, DuckTemplate);
+        
         item.id = 'duck-' + parseInt(Math.random() * 1000000);
         self.scene.dispatch('god', 'createPickup', [ {
           item: item,
