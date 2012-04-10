@@ -3,6 +3,7 @@ define(function(require) {
   var Eventable = require('../shared/eventable');
   var $ = require('jquery');
   var _ = require('underscore');
+  var Hammer = require('hammer');
 
   var InputTranslator = function(element) {
      Eventable.call(this);
@@ -11,28 +12,25 @@ define(function(require) {
      this.element = $(element);
 
      this.element.on({
-      click: function(e) {
-        var offset = self.element.offset();     
-        self.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
-      },
+      // click: function(e) {
+      //   var offset = self.element.offset();     
+      //   self.raisePrimaryAction(e.pageX - offset.left, e.pageY - offset.top);
+      // },
       mousemove: function(e) {
         var offset = self.element.offset();     
         self.raiseHover(e.pageX - offset.left, e.pageY - offset.top);
       }
     });
-    
-    element.addEventListener('touchstart', function(e) {
-      if(!e) var e = event;
-      e.preventDefault();
-      var offset = self.element.offset();
-      var touch = e.touches[0];
-      self.raisePrimaryAction(touch.pageX - offset.left, touch.pageY - offset.top);
-    }, true);
 
-     element.addEventListener('touchend', function(e) {
-      if(!e) var e = event;
-      e.preventDefault();
-     }, true);
+    var hammer = new Hammer(element, {
+      prevent_default: true
+    });    
+
+    hammer.ontap = function(e) {
+      var offset = self.element.offset();
+      console.log(e);
+      self.raisePrimaryAction(e.position[0].x, e.position[1].y);
+    };
 
     $(document).on({
       keydown: function(e) {
