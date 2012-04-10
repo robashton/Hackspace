@@ -14982,10 +14982,6 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
       this.slots[item.equipType].setItem(item);
     },
     unequip: function(equipType) {
-      var item = this.slots[equipType].getItem();
-      if(!item) return;
-
-      this.parent.dispatch('addInventoryItem', [item]);
       this.slots[equipType].clear();
     },
     getItemInSlot: function(itemType) {
@@ -15001,10 +14997,10 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
       this.parent.raise('ItemEquipFailed', item);
     },
     onItemUnequipped: function(item, sender) {
-      this.parent.dispatch('addInventoryItem', [item.id, item.data]);
+      this.parent.dispatch('addInventoryItem', [item]);
     },
     onItemSlotEquipFailed: function(item, sender) {
-      this.parent.dispatch('addInventoryItem', [item.id, item.data]);
+      this.parent.dispatch('addInventoryItem', [item]);
     },
     _setEquipData: function(data) {
       for(var i in data) {
