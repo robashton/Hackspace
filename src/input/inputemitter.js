@@ -8,13 +8,7 @@ define(function(require) {
     this.scene = context.scene;
     this.context = context;
     this.translator = translator;
-    
-    this.translator.on('PrimaryAction', function(data) {
-      self.onPrimaryAction(data);
-    });
-    this.translator.on('Hover', function(data) {
-      self.onHover(data);
-    });
+    this.translator.autoHook(this);
   };
   
   InputEmitter.prototype = {
@@ -32,6 +26,11 @@ define(function(require) {
         x: transformed.x,
         y: transformed.y
       });    
+    },
+
+    onZoom: function(zoom) {
+      // this.scene.camera.distance = 150.0 + (50.0 * zoom); 
+      // Not unless I do re-sizing of the terrain without re-drawing it
     }
   };
   

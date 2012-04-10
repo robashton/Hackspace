@@ -27,11 +27,26 @@ define(function(require) {
     });    
 
     hammer.ontap = function(e) {
-      var offset = self.element.offset();
-      console.log(e);
-      self.raisePrimaryAction(e.position[0].x, e.position[1].y);
+      self.raisePrimaryAction(e.position[0].x, e.position[0].y);
     };
 
+    var startScale = 1.0;
+    var currentScale = 1.0;
+    
+    // on start transform
+    hammer.ontransformstart = function(ev) {
+      startScale = currentScale;
+    }
+
+    // on transform
+    hammer.ontransform = function(ev) {
+      if(ev.scale){
+        currentScale = startScale * ev.scale;
+        currentScale = currentScale < 1 ? 1 : (currentScale > 2 ? 2 : currentScale);
+      }
+      self.raiseZoom(currentScale);
+    }
+    
     $(document).on({
       keydown: function(e) {
         switch(e.keyCode) {
@@ -72,6 +87,9 @@ define(function(require) {
     },
     raiseToggleCharacter: function() {
       this.raise('CharacterToggleRequest');
+    },
+    raiseZoom: function(zoom) {
+      this.raise('Zoom', zoom);
     }
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);

@@ -15748,11 +15748,26 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
     });    
 
     hammer.ontap = function(e) {
-      var offset = self.element.offset();
-      console.log(e);
-      self.raisePrimaryAction(e.position[0].x, e.position[1].y);
+      self.raisePrimaryAction(e.position[0].x, e.position[0].y);
     };
 
+    var startScale = 1.0;
+    var currentScale = 1.0;
+    
+    // on start transform
+    hammer.ontransformstart = function(ev) {
+      startScale = currentScale;
+    }
+
+    // on transform
+    hammer.ontransform = function(ev) {
+      if(ev.scale){
+        currentScale = startScale * ev.scale;
+        currentScale = currentScale < 1 ? 1 : (currentScale > 2 ? 2 : currentScale);
+      }
+      self.raiseZoom(currentScale);
+    }
+    
     $(document).on({
       keydown: function(e) {
         switch(e.keyCode) {
@@ -15793,6 +15808,9 @@ define('input/inputtranslator',['require','../shared/eventable','jquery','unders
     },
     raiseToggleCharacter: function() {
       this.raise('CharacterToggleRequest');
+    },
+    raiseZoom: function(zoom) {
+      this.raise('Zoom', zoom);
     }
   };
   _.extend(InputTranslator.prototype, Eventable.prototype);
@@ -15810,13 +15828,7 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
     this.scene = context.scene;
     this.context = context;
     this.translator = translator;
-    
-    this.translator.on('PrimaryAction', function(data) {
-      self.onPrimaryAction(data);
-    });
-    this.translator.on('Hover', function(data) {
-      self.onHover(data);
-    });
+    this.translator.autoHook(this);
   };
   
   InputEmitter.prototype = {
@@ -15834,6 +15846,11 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
         x: transformed.x,
         y: transformed.y
       });    
+    },
+
+    onZoom: function(zoom) {
+      // this.scene.camera.distance = 150.0 + (50.0 * zoom); 
+      // Not unless I do re-sizing of the terrain without re-drawing it
     }
   };
   
