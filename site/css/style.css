@@ -160,6 +160,11 @@ body {
   border: 1px solid #000;
 }
 
+#character-content div img {
+  max-height: 100%;
+  max-width: 100%;
+}
+
 #character-hat {
   top: 0px;
   left: 155px;

@@ -16841,9 +16841,10 @@ define('entities/sceneryfader',['require','underscore'],function(require) {
   return SceneryFader;
 });
 
-define('ui/character',['require','underscore','jquery'],function(require) {
+define('ui/character',['require','underscore','jquery','../scripting/equipmenttypes'],function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
+  var EquipmentTypes = require('../scripting/equipmenttypes');
 
   var Character = function(input, scene, playerId) {
     this.scene = scene;
@@ -16864,6 +16865,32 @@ define('ui/character',['require','underscore','jquery'],function(require) {
         this.hide();
       else
         this.show();
+    },
+    onItemEquipped: function(item, sender) {
+      if(sender.id !== this.playerId) return;
+      this.equipItem(item);    
+    },
+    onItemUnequipped: function(item, sender) {
+      if(sender.id !== this.playerId) return;
+      this.unequipItem(item);
+    },
+    equipItem: function(item) {
+      var target = this.targetForItem(item);
+      target.append(
+        $('<img/>')
+          .attr('src', this.scene.resources.get('main/' + item.pickupTexture + '.png').str())
+        );
+    },
+    unequipItem: function(item) {
+      var target = this.targetForItem(item);
+      target.html('');
+    },
+    targetForItem: function(item) {
+      for(var key in EquipmentTypes) {
+        var value = EquipmentTypes[key];
+        if(value === item.equipType)
+          return $('#character-' + key);
+      }
     },
     show: function() {
       this.characterElement.show();
