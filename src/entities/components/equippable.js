@@ -66,6 +66,10 @@ define(function(require) {
       this.slots[item.equipType].setItem(item);
     },
     unequip: function(equipType) {
+      var item = this.slots[equipType].getItem();
+      if(!item) return;
+
+      this.parent.dispatch('addInventoryItem', [item]);
       this.slots[equipType].clear();
     },
     getItemInSlot: function(itemType) {
