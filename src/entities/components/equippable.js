@@ -65,8 +65,8 @@ define(function(require) {
       this.parent.dispatch('removeItemWithId', [itemId]);
       this.slots[item.equipType].setItem(item);
     },
-    unequip: function(itemType) {
-      this.slots[item.equipType].clear();
+    unequip: function(equipType) {
+      this.slots[equipType].clear();
     },
     getItemInSlot: function(itemType) {
       return this.slots[itemType].getItem();

@@ -5329,8 +5329,8 @@ define('entities/components/equippable',['require','underscore','../../shared/ev
       this.parent.dispatch('removeItemWithId', [itemId]);
       this.slots[item.equipType].setItem(item);
     },
-    unequip: function(itemType) {
-      this.slots[item.equipType].clear();
+    unequip: function(equipType) {
+      this.slots[equipType].clear();
     },
     getItemInSlot: function(itemType) {
       return this.slots[itemType].getItem();
@@ -16841,15 +16841,18 @@ define('entities/sceneryfader',['require','underscore'],function(require) {
   return SceneryFader;
 });
 
-define('ui/character',['require','underscore','jquery','../scripting/equipmenttypes'],function(require) {
+define('ui/character',['require','underscore','jquery','../scripting/equipmenttypes','hammer','./common'],function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
   var EquipmentTypes = require('../scripting/equipmenttypes');
+  var Hammer = require('hammer');
+  var UI = require('./common');
 
-  var Character = function(input, scene, playerId) {
+  var Character = function(input, commander, scene, playerId) {
     this.scene = scene;
     this.playerId = playerId;
     this.scene.autoHook(this);
+    this.commander = commander;
     this.visible = false;
     this.input = input;
     this.characterElement = $('#character');
@@ -16879,7 +16882,28 @@ define('ui/character',['require','underscore','jquery','../scripting/equipmentty
       target.append(
         $('<img/>')
           .attr('src', this.scene.resources.get('main/' + item.pickupTexture + '.png').str())
+          .addClass('equipped-item')
         );
+      this.hookEventsForEquippedItem(target, item);
+    },
+    hookEventsForEquippedItem: function(container, item) {
+      var img = container.find('img').get(0);
+      var hammer = new Hammer(img);
+      var self = this;
+      hammer.ontap = function() {
+        self.showItemDialog(container, item);
+      };
+    },
+    showItemDialog: function(elem, item) {
+      var self = this;
+      UI.ShowContext({
+          Unequip: function() {
+            self.commander.dispatch('unequip', [item.equipType]);
+          }
+        },
+        elem.offset().left,
+        elem.offset().top
+      );
     },
     unequipItem: function(item) {
       var target = this.targetForItem(item);
@@ -17073,11 +17097,11 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
       this.connector.on('PlayerCreated', function(playerId) {
         self.playerId = playerId;
         self.quests = new Quests(input, context.scene, playerId);
-        self.character = new CharacterUi(input, context.scene, playerId);
         self.fader = new SceneryFader(context.scene, playerId);      
         self.commander = new Commander(self.socket, context.scene, playerId);
         self.controller = new Controller(context.element, self.commander);
         self.chase = new ChaseCamera(context.scene, playerId);
+        self.character = new CharacterUi(input, self.commander, context.scene, playerId);
         self.inventory = new Inventory(input, self.commander, context.scene, playerId);
         context.scene.add(self.controller);
       });

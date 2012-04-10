@@ -46,11 +46,11 @@ define(function(require) {
       this.connector.on('PlayerCreated', function(playerId) {
         self.playerId = playerId;
         self.quests = new Quests(input, context.scene, playerId);
-        self.character = new CharacterUi(input, context.scene, playerId);
         self.fader = new SceneryFader(context.scene, playerId);      
         self.commander = new Commander(self.socket, context.scene, playerId);
         self.controller = new Controller(context.element, self.commander);
         self.chase = new ChaseCamera(context.scene, playerId);
+        self.character = new CharacterUi(input, self.commander, context.scene, playerId);
         self.inventory = new Inventory(input, self.commander, context.scene, playerId);
         context.scene.add(self.controller);
       });

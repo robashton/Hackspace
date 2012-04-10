@@ -101,4 +101,17 @@ define(function(require) {
       then("The character has the item equipped in the 'hat' slot", equippedHat);
     });
   });
+
+  when("A character with a hat unequips a hat", function(then) {
+     setup.withACharacterAndMonster(function(scene, character, monster) {
+      character.dispatch('addInventoryItem', [ { id: 'test', equipType: EquipmentTypes.hat}]);
+      character.dispatch('equip', ['test']);
+      character.dispatch('unequip', [EquipmentTypes.hat]);
+
+      var inventoryHat = character.get('ItemWithId', ['test']);
+      var equippedHat = character.get('ItemInSlot', [EquipmentTypes.hat]);
+      then("The character has the item added to its inventory", inventoryHat);
+      then("The character has the item un-equipped from the 'hat' slot", !equippedHat);
+    });
+  });
 });

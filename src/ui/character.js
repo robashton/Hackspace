@@ -2,11 +2,14 @@ define(function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
   var EquipmentTypes = require('../scripting/equipmenttypes');
+  var Hammer = require('hammer');
+  var UI = require('./common');
 
-  var Character = function(input, scene, playerId) {
+  var Character = function(input, commander, scene, playerId) {
     this.scene = scene;
     this.playerId = playerId;
     this.scene.autoHook(this);
+    this.commander = commander;
     this.visible = false;
     this.input = input;
     this.characterElement = $('#character');
@@ -36,7 +39,28 @@ define(function(require) {
       target.append(
         $('<img/>')
           .attr('src', this.scene.resources.get('main/' + item.pickupTexture + '.png').str())
+          .addClass('equipped-item')
         );
+      this.hookEventsForEquippedItem(target, item);
+    },
+    hookEventsForEquippedItem: function(container, item) {
+      var img = container.find('img').get(0);
+      var hammer = new Hammer(img);
+      var self = this;
+      hammer.ontap = function() {
+        self.showItemDialog(container, item);
+      };
+    },
+    showItemDialog: function(elem, item) {
+      var self = this;
+      UI.ShowContext({
+          Unequip: function() {
+            self.commander.dispatch('unequip', [item.equipType]);
+          }
+        },
+        elem.offset().left,
+        elem.offset().top
+      );
     },
     unequipItem: function(item) {
       var target = this.targetForItem(item);
