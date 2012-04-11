@@ -1,0 +1,10 @@
+{
+	"type": "static",
+	"template": {
+		"id": "patch1",
+		"size": [ 40, 40, 40 ],
+		"collision": [12, 12],    
+		"texture": "main/patch1.png",
+		"solid": false
+	}
+}

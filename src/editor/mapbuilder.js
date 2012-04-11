@@ -8,8 +8,8 @@ define(function(require) {
   var EditorTileSource = require('./editortilesource');
   var CONST = require('../static/consts');
 
-  var MapBuilder = function(data, tileSource) {
-    Map.call(this, tileSource);
+  var MapBuilder = function(data, tileSource, renderSettings) {
+    Map.call(this, tileSource, renderSettings);
   };
   
   MapBuilder.prototype = {

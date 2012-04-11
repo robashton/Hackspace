@@ -12489,7 +12489,7 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 150.0;
+    this.distance = 250.0;
     this.settings = settings;
     this.width = 0;
     this.height = 0;
@@ -15284,7 +15284,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
     this.availableHeight = 0;
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
-    this.quality = 0.75;
+    this.quality = 0.99;
     this.update();
     this.hookEvents();
   };
@@ -16214,7 +16214,7 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
       }
       this.createModelForTemplate({
         id: 'testtile',
-        texture: 'main/testtile.png'
+        texture: 'main/testtile3.png'
       });
     },
     createModelForTemplate: function(template) {
@@ -16341,8 +16341,8 @@ define('editor/mapbuilder',['require','underscore','../static/map','../render/in
   var EditorTileSource = require('./editortilesource');
   var CONST = require('../static/consts');
 
-  var MapBuilder = function(data, tileSource) {
-    Map.call(this, tileSource);
+  var MapBuilder = function(data, tileSource, renderSettings) {
+    Map.call(this, tileSource, renderSettings);
   };
   
   MapBuilder.prototype = {
@@ -16426,7 +16426,7 @@ define('apps/demo/editor',['require','jquery','underscore','../../harness/contex
 
       var mapResource = this.context.resources.get('main/world.json'); 
       var editorTileSource = new EditorTileSource(this.context.resources, this.context.scene, this.library);
-      this.map = new MapBuilder(mapResource.get(), editorTileSource);
+      this.map = new MapBuilder(mapResource.get(), editorTileSource, this.context.renderSettings);
       this.context.scene.add(this.map);
 
       this.grid = new Grid(this.map);

@@ -32,7 +32,7 @@ define(function(require) {
       }
       this.createModelForTemplate({
         id: 'testtile',
-        texture: 'main/testtile.png'
+        texture: 'main/testtile3.png'
       });
     },
     createModelForTemplate: function(template) {

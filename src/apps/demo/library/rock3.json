@@ -1,0 +1,10 @@
+{
+	"type": "static",
+	"template": {
+		"id": "rock3",
+		"size": [ 10, 10, 20 ],
+		"collision": [12, 12],    
+		"texture": "main/rock3.png",
+		"solid": true
+	}
+}
