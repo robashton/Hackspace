@@ -59,7 +59,7 @@ define(function(require) {
     },
     forEachInstance: function(callback, context) {
       for(var i = 0; i < this.instances.length; i++) {
-        callback.call(context, this.instances[i]);
+        callback.call(context, this.instances[i], this.map.templates[this.items[i].template]);
       }
     },
     solidAt: function(x, y) {

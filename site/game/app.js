@@ -4521,7 +4521,7 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
     },
     forEachInstance: function(callback, context) {
       for(var i = 0; i < this.instances.length; i++) {
-        callback.call(context, this.instances[i]);
+        callback.call(context, this.instances[i], this.map.templates[this.items[i].template]);
       }
     },
     solidAt: function(x, y) {
@@ -15930,7 +15930,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
     this.availableHeight = 0;
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
-    this.quality = 0.75;
+    this.quality = 0.6;
     this.update();
     this.hookEvents();
   };
@@ -16849,7 +16849,8 @@ define('entities/sceneryfader',['require','underscore'],function(require) {
     determineIfEntityIntersectingWithAnything: function(map, entity) {
       var self = this;
       map.forEachVisibleTile(function(tile) {
-        tile.forEachInstance(function(instance) {
+        tile.forEachInstance(function(instance, template) {
+          if(template.floor) return;
           self.determineIfEntityIntersectingWithInstance(entity, instance);
         });      
       });    

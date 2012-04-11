@@ -22,7 +22,8 @@ define(function(require) {
     determineIfEntityIntersectingWithAnything: function(map, entity) {
       var self = this;
       map.forEachVisibleTile(function(tile) {
-        tile.forEachInstance(function(instance) {
+        tile.forEachInstance(function(instance, template) {
+          if(template.floor) return;
           self.determineIfEntityIntersectingWithInstance(entity, instance);
         });      
       });    
