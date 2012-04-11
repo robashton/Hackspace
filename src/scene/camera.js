@@ -6,7 +6,7 @@ define(function(require) {
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 250.0;
+    this.distance = 125.0;
     this.settings = settings;
     this.width = 0;
     this.height = 0;

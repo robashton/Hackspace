@@ -12489,7 +12489,7 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
     this.aspectRatio = aspectRatio;
     this.fieldOfView = fieldOfView;
     this.centre = vec3.create([0,0,0]);
-    this.distance = 250.0;
+    this.distance = 125.0;
     this.settings = settings;
     this.width = 0;
     this.height = 0;
@@ -12665,7 +12665,6 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         this.position[1] + data.y,
         this.position[2]
       ]); 
-      console.log(this.position[0], this.position[1]);
     },
     
     getCollisionFriction: function() {
@@ -12732,7 +12731,6 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         this.collideWithLeft(map, result);   
       
       if(result.collided) {
-        console.log(this.parent.id, result.x, result.y);
         this.parent.raise('ClippedTerrain', result);   
       }    
     },
@@ -13979,7 +13977,6 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
     this.rotation = 0;
     this.opacity = 1.0;
     this.forcedDepth = null;
-    this.drawFloor = false;
   };
   
   Instance.prototype = {
@@ -14017,11 +14014,12 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
     },
     getQuad: function() {
       var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
+      var bottomRight = Coords.worldToIsometric(this.position[0] + this.size[0], this.position[1] + this.size[1]);    
       var width = this.size[0] + this.size[1];
       var height = this.size[2];
       return {
         x: bottomLeft.x,
-        y: bottomLeft.y - height,
+        y: bottomLeft.y - (height), // - (bottomRight.y - bottomLeft.y)/2.0),
         width: width,
         height: height
       }
@@ -14663,6 +14661,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     this.tilebottom = -1;
     this.tileright = -1;
     this.needsRedrawing = false;
+    this.framesElapsedSinceNeededRedrawing = 0;
     
     this.on('AddedToScene', this.onAddedToScene);
     this.tiles.on('TileLoaded', this.onTileLoaded, this);
@@ -14743,7 +14742,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
 
       context.drawImage(this.canvas, sx, sy, sw, sh, dx, dy , dw, dh);
       context.restore();
-
 //      this.renderSourceGrid(context, sx, sy, sw, sh);
     },
 
@@ -14787,7 +14785,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     },
     
     initializeContext: function() {
-      this.canvas =  document.createElement('canvas') // document.getElementById('source');;
+      this.canvas =  document.createElement('canvas') // document.getElementById('source'); //
       this.context = this.canvas.getContext('2d');
       this.graph = new RenderGraph();
       this.renderer = new CanvasRender(this.context);  
@@ -14805,7 +14803,17 @@ define('static/map',['require','underscore','../render/material','../render/quad
       var tiletop = parseInt(  Math.min(topright.y, topleft.y) / CONST.TILEHEIGHT);
       var tileright = parseInt( Math.max(bottomright.x, topright.x) / CONST.TILEWIDTH) ;
       var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / CONST.TILEHEIGHT) ;
-           
+
+      var tileswidth = tileright - tileleft;
+      var tilesheight = tilebottom - tiletop;
+              
+      // Force square                  
+      if(tileswidth < tilesheight)
+        tileright += (tilesheight - tileswidth);
+      else if(tilesheight < tileswidth)
+        tilebottom += (tileswidth - tilesheight);
+
+
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 
          tileright !== this.tileright ||
@@ -14819,7 +14827,11 @@ define('static/map',['require','underscore','../render/material','../render/quad
       }
       
       if(this.needsRedrawing) {
+        if(this.framesElapsedSinceNeededRedrawing++ < 5)
+          return;
+        this.framesElapsedSinceNeededRedrawing = 0;
         this.needsRedrawing = false;
+        console.log(this.tileleft, this.tileright, this.tiletop, this.tilebottom);
         this.redrawBackground(mainContext);
       }
     },
@@ -15284,7 +15296,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
     this.availableHeight = 0;
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
-    this.quality = 0.99;
+    this.quality = 0.75;
     this.update();
     this.hookEvents();
   };
@@ -15312,21 +15324,21 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
       this.resolutionHeight = this.resolutionWidth / this.aspectRatio;
     },
     updateCanvasCss: function() {
+      this.canvas.attr('width', this.resolutionWidth + 'px');
+      this.canvas.attr('height', this.resolutionHeight + 'px');
       this.canvas.css({
-        'width': this.resolutionWidth + 'px',
-        'height': this.resolutionHeight + 'px',
-        // TODO: Other browsers
+         // TODO: Other browsers
         '-webkit-transform-origin-x': '0px',
         '-webkit-transform-origin-y': '0px',
         '-webkit-transform': 'scale(' + this.outputScaleFactor() + ',' + this.outputScaleFactor() + ')'
       });
     },
     outputScaleFactor: function() {
-      return 0.99 / this.quality;
+      return 1.0 / this.quality;
     },
 
     backgroundScaleFactor: function() {
-      return this.quality * 0.75;
+      return this.quality * 1.0;
     },
     scaledCanvasWidth: function() {
       return this.resolutionWidth * this.outputScaleFactor();

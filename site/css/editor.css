@@ -12,6 +12,10 @@
   float: left;
 }
 
+#editor-container {
+  float: left;
+}
+
 
 #target {
   position: relative;

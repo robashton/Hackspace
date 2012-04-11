@@ -3,7 +3,7 @@
 	"template": {
 		"id": "tree",
 		"size": [ 25, 25, 50 ],
-		"collision": [12, 12],    
+		"collision": [25, 25],    
 		"texture": "main/tree.png",
 		"solid": true
 	}

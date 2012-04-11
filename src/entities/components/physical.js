@@ -33,7 +33,6 @@ define(function(require) {
         this.position[1] + data.y,
         this.position[2]
       ]); 
-      console.log(this.position[0], this.position[1]);
     },
     
     getCollisionFriction: function() {
@@ -100,7 +99,6 @@ define(function(require) {
         this.collideWithLeft(map, result);   
       
       if(result.collided) {
-        console.log(this.parent.id, result.x, result.y);
         this.parent.raise('ClippedTerrain', result);   
       }    
     },

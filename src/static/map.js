@@ -31,6 +31,7 @@ define(function(require) {
     this.tilebottom = -1;
     this.tileright = -1;
     this.needsRedrawing = false;
+    this.framesElapsedSinceNeededRedrawing = 0;
     
     this.on('AddedToScene', this.onAddedToScene);
     this.tiles.on('TileLoaded', this.onTileLoaded, this);
@@ -111,7 +112,6 @@ define(function(require) {
 
       context.drawImage(this.canvas, sx, sy, sw, sh, dx, dy , dw, dh);
       context.restore();
-
 //      this.renderSourceGrid(context, sx, sy, sw, sh);
     },
 
@@ -155,7 +155,7 @@ define(function(require) {
     },
     
     initializeContext: function() {
-      this.canvas =  document.createElement('canvas') // document.getElementById('source');;
+      this.canvas =  document.createElement('canvas') // document.getElementById('source'); //
       this.context = this.canvas.getContext('2d');
       this.graph = new RenderGraph();
       this.renderer = new CanvasRender(this.context);  
@@ -173,7 +173,17 @@ define(function(require) {
       var tiletop = parseInt(  Math.min(topright.y, topleft.y) / CONST.TILEHEIGHT);
       var tileright = parseInt( Math.max(bottomright.x, topright.x) / CONST.TILEWIDTH) ;
       var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / CONST.TILEHEIGHT) ;
-           
+
+      var tileswidth = tileright - tileleft;
+      var tilesheight = tilebottom - tiletop;
+              
+      // Force square                  
+      if(tileswidth < tilesheight)
+        tileright += (tilesheight - tileswidth);
+      else if(tilesheight < tileswidth)
+        tilebottom += (tileswidth - tilesheight);
+
+
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 
          tileright !== this.tileright ||
@@ -187,7 +197,11 @@ define(function(require) {
       }
       
       if(this.needsRedrawing) {
+        if(this.framesElapsedSinceNeededRedrawing++ < 5)
+          return;
+        this.framesElapsedSinceNeededRedrawing = 0;
         this.needsRedrawing = false;
+        console.log(this.tileleft, this.tileright, this.tiletop, this.tilebottom);
         this.redrawBackground(mainContext);
       }
     },

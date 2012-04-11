@@ -13,7 +13,6 @@ define(function(require) {
     this.rotation = 0;
     this.opacity = 1.0;
     this.forcedDepth = null;
-    this.drawFloor = false;
   };
   
   Instance.prototype = {
@@ -51,11 +50,12 @@ define(function(require) {
     },
     getQuad: function() {
       var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
+      var bottomRight = Coords.worldToIsometric(this.position[0] + this.size[0], this.position[1] + this.size[1]);    
       var width = this.size[0] + this.size[1];
       var height = this.size[2];
       return {
         x: bottomLeft.x,
-        y: bottomLeft.y - height,
+        y: bottomLeft.y - (height), // - (bottomRight.y - bottomLeft.y)/2.0),
         width: width,
         height: height
       }
