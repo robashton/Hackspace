@@ -22,6 +22,8 @@ define(function(require) {
     this.instanceTiles = null;
     this.canvas = null; 
     this.context = null; 
+    this.offscreencanvas = null;
+    this.offscreencontext = null;
     this.graph = null; 
     this.renderer = null; 
     this.tiles = tiles;
@@ -59,7 +61,7 @@ define(function(require) {
     
     render: function(context) {      
       this.evaluateStatus(context);
-      
+
       var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
        
       var offsetInMapCanvas = {
@@ -83,7 +85,14 @@ define(function(require) {
       var sx = -offset.x, sy = -offset.y;
       sx = sx * sourceScale.x;
       sy = sy * sourceScale.y;
-      $(this.canvas).css('-webkit-transform', 'translate3d(' + sx + 'px,' + sy + 'px, 0px)');    
+    var elementScale = (1.0 / this.settings.backgroundScaleFactor()) * this.settings.outputScaleFactor();
+
+      $(this.canvas).css({
+        '-webkit-transform-origin-x': -sx + 'px',
+        '-webkit-transform-origin-y': -sy + 'px'
+      });
+      $(this.canvas).css('-webkit-transform', 'translate3d(' + sx + 'px,' + sy + 'px, 0px)' +  
+                                            ' scale(' + elementScale + ',' + elementScale + ')');  
     },
 
     forEachVisibleTile: function(callback) {
@@ -109,9 +118,11 @@ define(function(require) {
     
     initializeContext: function() {
       this.canvas =  document.getElementById('background');
+      this.offscreencanvas = document.createElement('canvas');
+      this.offscreencontext = this.offscreencanvas.getContext('2d');
       this.context = this.canvas.getContext('2d');
       this.graph = new RenderGraph();
-      this.renderer = new CanvasRender(this.context);  
+      this.renderer = new CanvasRender(this.offscreencontext);  
     },
     
     evaluateStatus: function(mainContext) {
@@ -153,7 +164,6 @@ define(function(require) {
           return;
         this.framesElapsedSinceNeededRedrawing = 0;
         this.needsRedrawing = false;
-        console.log(this.tileleft, this.tileright, this.tiletop, this.tilebottom);
         this.redrawBackground(mainContext);
       }
     },
@@ -178,42 +188,20 @@ define(function(require) {
            
       // This is very well and good, but our personal canvas needs to be sized appropriately for this so sizes match up
       var mainScaleFactor = this.scene.graph.getScaleForDimensions(mainContext.canvas.width, mainContext.canvas.height);
-      this.canvas.width = (this.graph.width() * (mainScaleFactor.x * this.settings.backgroundScaleFactor()));
-      this.canvas.height = (this.graph.height() * (mainScaleFactor.y * this.settings.backgroundScaleFactor()));
+      this.offscreencanvas.width = (this.graph.width() * (mainScaleFactor.x * this.settings.backgroundScaleFactor()));
+      this.offscreencanvas.height = (this.graph.height() * (mainScaleFactor.y * this.settings.backgroundScaleFactor()));
         
       // And with that all set, we can render all the visible tiles
       this.populateGraph();      
       this.renderer.clear();
-      this.renderer.draw(this.graph);      
-    //  this.renderDebugGrid(this.context);
+      this.renderer.draw(this.graph);
+
+      // Now blit across
+      this.canvas.width = this.offscreencanvas.width;
+      this.canvas.height = this.offscreencanvas.height;
+      this.context.drawImage(this.offscreencanvas, 0, 0, this.canvas.width, this.canvas.height);
     },
     
-    renderDebugGrid: function(context) {
-      context.save(); 
-      this.graph.uploadTransforms(context);
-      
-      context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
-      context.lineWidth = 1.25;
-          
-      context.beginPath();
-      this.forEachVisibleQuad(function(left, top, right, bottom) {
-      
-        var topleft = Coords.worldToIsometric(left, top);
-        var topright = Coords.worldToIsometric(right, top);        
-        var bottomright = Coords.worldToIsometric(right, bottom);
-        var bottomleft = Coords.worldToIsometric(left, bottom);
-         
-        context.moveTo(topleft.x, topleft.y);
-        context.lineTo(topright.x, topright.y);
-        context.lineTo(bottomright.x, bottomright.y);
-        context.lineTo(bottomleft.x, bottomleft.y);
-        context.lineTo(topleft.x, topleft.y);
-      });
-      context.stroke();
-      context.restore();
-    
-    },
-  
     populateGraph: function() {             
       this.graph.clear();
       this.graph.beginUpdate();
