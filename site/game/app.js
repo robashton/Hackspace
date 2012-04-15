@@ -4597,7 +4597,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       this.evaluateStatus(context);
       
       var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
-      
+       
       var offsetInMapCanvas = {
         x: topLeft.x - this.graph.viewport.left,
         y: topLeft.y - this.graph.viewport.top
@@ -4608,7 +4608,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
         y: topLeft.y - this.scene.graph.viewport.top
       };     
 
-      
       var offset = {
         x: offsetInMapCanvas.x - offsetInWorldCanvas.x,
         y: offsetInMapCanvas.y - offsetInWorldCanvas.y
@@ -4617,58 +4616,12 @@ define('static/map',['require','underscore','../render/material','../render/quad
       var destinationScale = this.scene.graph.getScaleForDimensions(context.canvas.width, context.canvas.height);
       var sourceScale = this.graph.getScaleForDimensions(this.canvas.width, this.canvas.height);
 
-      var sx = offset.x, sy = offset.y;
-      var sw = context.canvas.width, sh = context.canvas.height;
-      var dx = 0, dy = 0;
-      var dw = context.canvas.width, dh = context.canvas.height;
-      
-      if(offset.x < 0) {
-        sx = 0; 
-        dx = offset.x;
-        sw += offset.x;
-        dw += offset.x;
-      }
-      if(offset.y < 0) {
-        sy = 0; 
-        dy = -offset.y;
-        sh += offset.y;
-        dh += offset.y;
-      }
-      
-      context.save();
-      context.setTransform(1,0,0,1,0,0);
-
+      var sx = -offset.x, sy = -offset.y;
       sx = sx * sourceScale.x;
       sy = sy * sourceScale.y;
-      sw = sw * this.settings.backgroundScaleFactor();
-      sh = sh * this.settings.backgroundScaleFactor();
-
-      dx = dx * destinationScale.x;
-      dy = dy * destinationScale.y;
-
-      context.drawImage(this.canvas, sx, sy, sw, sh, dx, dy , dw, dh);
-      context.restore();
-//      this.renderSourceGrid(context, sx, sy, sw, sh);
+      $(this.canvas).css('-webkit-transform', 'translate3d(' + sx + 'px,' + sy + 'px, 0px)');    
     },
 
-    renderSourceGrid: function(mainContext, sx, sy, sw, sh) {
-      this.redrawBackground(mainContext);
-      this.context.save(); 
-      
-      this.context.strokeStyle = 'rgba(255, 100, 100, 1.0)';
-      this.context.lineWidth = 1.25;
-          
-      this.context.beginPath();
-      this.context.moveTo(sx, sy);
-      this.context.lineTo(sx + sw, sy);
-      this.context.lineTo(sx + sw, sy + sh);
-      this.context.lineTo(sx, sy + sh);
-      this.context.lineTo(sx, sy);
-      
-      this.context.stroke();
-      this.context.restore();
-    },
-    
     forEachVisibleTile: function(callback) {
       if(this.tileleft < 0) return;
       for(var i = this.tileleft ; i <= this.tileright; i++) {
@@ -4691,7 +4644,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
     },
     
     initializeContext: function() {
-      this.canvas =  document.createElement('canvas') // document.getElementById('source'); //
+      this.canvas =  document.getElementById('background');
       this.context = this.canvas.getContext('2d');
       this.graph = new RenderGraph();
       this.renderer = new CanvasRender(this.context);  
@@ -4713,12 +4666,11 @@ define('static/map',['require','underscore','../render/material','../render/quad
       var tileswidth = tileright - tileleft;
       var tilesheight = tilebottom - tiletop;
               
-      // Force square                  
+      // Force a square - this will reduce the number of required re-draws                  
       if(tileswidth < tilesheight)
         tileright += (tilesheight - tileswidth);
       else if(tilesheight < tileswidth)
         tilebottom += (tileswidth - tilesheight);
-
 
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 
@@ -15930,7 +15882,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
     this.availableHeight = 0;
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
-    this.quality = 0.6;
+    this.quality = 1.0;
     this.update();
     this.hookEvents();
   };

@@ -11,7 +11,7 @@ define(function(require) {
     this.availableHeight = 0;
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
-    this.quality = 0.6;
+    this.quality = 1.0;
     this.update();
     this.hookEvents();
   };
