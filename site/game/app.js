@@ -6442,6 +6442,10 @@ define('render/canvasrender',['require','./shader'],function(require) {
     draw: function(graph) {
       var self = this;
 
+      this.context.blendFunc(this.context.SRC_ALPHA, this.context.ONE_MINUS_SRC_ALPHA);
+      this.context.enable(this.context.BLEND);
+      this.context.depthMask(false);
+
       // Upload the view/projection things
       this.defaultShader.activate();
       graph.uploadTransforms(this.defaultShader);
