@@ -7,6 +7,6 @@
 	    "paperboy": "",
       "requirejs": "",
       "when": "",
-      "swallow": "git+ssh://git@github.com:robashton/swallow.git"
+      "swallow": "git+https://github.com/robashton/swallow.git"
     }
 }

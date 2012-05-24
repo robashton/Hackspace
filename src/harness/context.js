@@ -25,7 +25,7 @@ define(function(require) {
     this.resources = new PackagedResources(function() { return new Package(); });
     this.element = element;
     this.wrappedElement = $(this.element); 
-    this.context = element.getContext('2d');
+    this.context = element.getContext('experimental-webgl');
     this.app = app;
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
