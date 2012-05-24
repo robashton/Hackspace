@@ -41,7 +41,8 @@ define(function(require) {
     rotate: function(x) {
       this.rotation = x;
     },
-    upload: function(shader) {
+
+    render: function(shader, context) {
       mat4.identity(this.worldTransform);
       var quad = this.getQuad();
 
@@ -50,6 +51,7 @@ define(function(require) {
       mat4.scale(this.worldTransform, [quad.width, quad.height, 1.0]);
       shader.uploadWorldTransform(this.worldTransform);
       shader.uploadTextureOne(this.model.image('diffuseTexture'));
+      context.drawArrays(context.TRIANGLE_STRIP, 0, 4);
     },
     depth: function() {
       return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;

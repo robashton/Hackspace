@@ -4235,7 +4235,8 @@ define('render/instance',['require','underscore','glmatrix','glmatrix','../share
     rotate: function(x) {
       this.rotation = x;
     },
-    upload: function(shader) {
+
+    render: function(shader, context) {
       mat4.identity(this.worldTransform);
       var quad = this.getQuad();
 
@@ -4244,6 +4245,7 @@ define('render/instance',['require','underscore','glmatrix','glmatrix','../share
       mat4.scale(this.worldTransform, [quad.width, quad.height, 1.0]);
       shader.uploadWorldTransform(this.worldTransform);
       shader.uploadTextureOne(this.model.image('diffuseTexture'));
+      context.drawArrays(context.TRIANGLE_STRIP, 0, 4);
     },
     depth: function() {
       return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;
@@ -4434,7 +4436,7 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
   
   Tile.prototype = {
     addInstancesToGraph: function(graph) {
-      graph.add(this.floorInstance);
+//      graph.add(this.floorInstance);
       for(var i in this.instances) {
         var instance = this.instances[i];
         if(instance.opacity < 1.0) continue;
@@ -4513,7 +4515,6 @@ define('static/map',['require','underscore','../scene/entity','../render/renderg
     this.tileright = -1;
     
     this.on('AddedToScene', this.onAddedToScene);
-    this.tiles.on('TileLoaded', this.onTileLoaded, this);
   };
   
   Map.prototype = {
@@ -4531,15 +4532,15 @@ define('static/map',['require','underscore','../scene/entity','../render/renderg
       return true; 
     },
 
-    upload: function(shader) {
-      
+    render: function(shader, context) {
+      var viewport = this.scene.graph.viewport;
+      this.graph.updateViewport(viewport.left, viewport.right, viewport.top, viewport.bottom);
+      this.evaluateStatus();
+      this.graph.pass(function(item) {
+        item.render(shader, context);
+      });  
     },
     
-    render: function(context) {      
-      this.evaluateStatus(context);
-
-    },
-
     forEachVisibleTile: function(callback) {
       if(this.tileleft < 0) return;
       for(var i = this.tileleft ; i <= this.tileright; i++) {
@@ -4561,7 +4562,7 @@ define('static/map',['require','underscore','../scene/entity','../render/renderg
       }
     },
     
-    evaluateStatus: function(mainContext) {
+    evaluateStatus: function() {
       var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
       var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
       var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
@@ -6450,8 +6451,7 @@ define('render/canvasrender',['require','./shader'],function(require) {
       this.defaultShader.uploadTextureCoords(this.defaultTextureBuffer);
 
       graph.pass(function(item) {
-        item.upload(self.defaultShader);
-        self.context.drawArrays(self.context.TRIANGLE_STRIP, 0, 4);
+        item.render(self.defaultShader, self.context);
       });
     },
     createDefaultBuffers: function() {

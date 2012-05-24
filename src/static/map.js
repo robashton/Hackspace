@@ -25,7 +25,6 @@ define(function(require) {
     this.tileright = -1;
     
     this.on('AddedToScene', this.onAddedToScene);
-    this.tiles.on('TileLoaded', this.onTileLoaded, this);
   };
   
   Map.prototype = {
@@ -43,15 +42,15 @@ define(function(require) {
       return true; 
     },
 
-    upload: function(shader) {
-      
+    render: function(shader, context) {
+      var viewport = this.scene.graph.viewport;
+      this.graph.updateViewport(viewport.left, viewport.right, viewport.top, viewport.bottom);
+      this.evaluateStatus();
+      this.graph.pass(function(item) {
+        item.render(shader, context);
+      });  
     },
     
-    render: function(context) {      
-      this.evaluateStatus(context);
-
-    },
-
     forEachVisibleTile: function(callback) {
       if(this.tileleft < 0) return;
       for(var i = this.tileleft ; i <= this.tileright; i++) {
@@ -73,7 +72,7 @@ define(function(require) {
       }
     },
     
-    evaluateStatus: function(mainContext) {
+    evaluateStatus: function() {
       var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
       var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
       var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);

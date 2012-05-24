@@ -24,8 +24,7 @@ define(function(require) {
       this.defaultShader.uploadTextureCoords(this.defaultTextureBuffer);
 
       graph.pass(function(item) {
-        item.upload(self.defaultShader);
-        self.context.drawArrays(self.context.TRIANGLE_STRIP, 0, 4);
+        item.render(self.defaultShader, self.context);
       });
     },
     createDefaultBuffers: function() {

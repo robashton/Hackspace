@@ -20,7 +20,7 @@ define(function(require) {
   
   Tile.prototype = {
     addInstancesToGraph: function(graph) {
-      graph.add(this.floorInstance);
+//      graph.add(this.floorInstance);
       for(var i in this.instances) {
         var instance = this.instances[i];
         if(instance.opacity < 1.0) continue;
