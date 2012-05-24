@@ -29,6 +29,7 @@ define(function(require) {
 
   Demo.prototype = {
     start: function(context) {        
+      console.log('START');
       var self = this;  
       this.context = context;      
       var collider = new Collider();

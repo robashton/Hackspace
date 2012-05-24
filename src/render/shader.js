@@ -59,7 +59,7 @@ define(function() {
     uploadTextureCoords: function(textureCoords) {
       this.context.bindBuffer(this.context.ARRAY_BUFFER, textureCoords);
       this.context.vertexAttribPointer(this.aTextureCoords, 2, this.context.FLOAT, false, 0, 0);
-      this.context.enableVertexAttribArray(this.this.aTextureCoords);
+      this.context.enableVertexAttribArray(this.aTextureCoords);
     }
   };
 

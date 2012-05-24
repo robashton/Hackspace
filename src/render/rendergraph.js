@@ -47,11 +47,8 @@ define(function(require) {
         bottom: bottom
       };
 
-      var middlex = (this.viewport.right + this.viewport.left) / 2.0;
-      var middley = (this.viewport.top + this.viewport.bottom) / 2.0;
-
-      mat4.ortho(0, this.viewport.right - this.viewport.left, this.viewport.top - this.viewport.bottom, 0, -1, 1, this.projTransform);
-      mat4.lookAt([middlex, middley, 0], [middlex, middley, -1], [0, 1, 0], this.viewTransform);
+      mat4.ortho(this.viewport.left, this.viewport.right, this.viewport.bottom, this.viewport.top, -1, 1, this.projTransform);
+      mat4.lookAt([0, 0, 0], [0, 0, -1], [0, 1, 0], this.viewTransform);
     },
     
     add: function(item) {

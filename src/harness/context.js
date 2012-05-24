@@ -23,10 +23,12 @@ define(function(require) {
   };  
 
   var Context = function(element, app) {
-    this.resources = new PackagedResources(function() { return new Package(); });
     this.element = element;
     this.wrappedElement = $(this.element); 
     this.context = element.getContext('experimental-webgl');
+    this.context.width = this.element.width;
+    this.context.height = this.element.height;
+    this.resources = new PackagedResources(this.context, function() { return new Package(); });
     this.app = app;
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
@@ -39,28 +41,29 @@ define(function(require) {
     pageCoordsToWorldCoords: function(x, y) {
       var viewport = this.scene.graph.viewport;
       var scale = this.getScaleComponent();
-     
+
       x /= scale.x;
-      y /= scale.y;    
-      
+      y /= scale.y;
+
       x += (viewport.left);
-      y += (viewport.top); 
-            
-      return  Coords.isometricToWorld(x,y);   
+      y += (viewport.top);
+
+      return  Coords.isometricToWorld(x,y);
     },
+
     worldCoordsToPageCoords: function(x, y) {
       var viewport = this.scene.graph.viewport;
       var scale = this.getScaleComponent();
-      
+
       var screen = Coords.worldToIsometric(x, y);
-      
+
       screen.x -= (viewport.left);
       screen.y -= (viewport.top);
-      
+
       screen.x *= scale.x;
       screen.y *= scale.y;
-      
-      return screen;    
+
+      return screen;
     },
     worldScaleToPage: function(width, height) {
       var scale = this.getScaleComponent();
@@ -71,18 +74,19 @@ define(function(require) {
     },
     getScaleComponent: function() {
       var viewport = this.scene.graph.viewport;
-      
+
       var canvasWidth = this.renderSettings.scaledCanvasWidth();
-      var canvasHeight = this.renderSettings.scaledCanvasHeight(); 
-           
+      var canvasHeight = this.renderSettings.scaledCanvasHeight();
+
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
-      
+
       return {
         x: scalex,
         y: scaley
       };
     },
+
     onResourcesLoaded: function() { 
       var self = this;
 
@@ -100,7 +104,7 @@ define(function(require) {
         self.scene.tick();
       }, 1000 / 30);
       
-      setInterval(function() {    
+      setInterval(function() {
         self.scene.render();
       }, 1000 / 30);
            

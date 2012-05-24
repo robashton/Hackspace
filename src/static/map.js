@@ -58,6 +58,10 @@ define(function(require) {
     visible: function() { 
       return true; 
     },
+
+    upload: function(shader) {
+      
+    },
     
     render: function(context) {      
       this.evaluateStatus(context);
@@ -85,7 +89,7 @@ define(function(require) {
       var sx = -offset.x, sy = -offset.y;
       sx = sx * sourceScale.x;
       sy = sy * sourceScale.y;
-    var elementScale = (1.0 / this.settings.backgroundScaleFactor()) * this.settings.outputScaleFactor();
+      var elementScale = (1.0 / this.settings.backgroundScaleFactor()) * this.settings.outputScaleFactor();
 
       $(this.canvas).css({
         '-webkit-transform-origin-x': -sx + 'px',

@@ -7,9 +7,7 @@ define(function(require) {
   };
   
   Quad.prototype = {
-    upload: function(context) {
-    //  this.material.upload(context);
-    },
+    
     render: function(canvas, instance) {         
     
       if(this.material.diffuseTexture) {

@@ -2,13 +2,14 @@ define(function(require) {
   var Eventable = require('../shared/eventable');
   var _ = require('underscore');
 
-  var PackagedResources = function(packageFactory) {  
+  var PackagedResources = function(context, packageFactory) {  
     Eventable.call(this);
     this.loadedResources = {};
     this.loadedPackages = [];
     this.pendingPackageCount = 0;  
     this.pendingResourceCount = 0;
     this.packageFactory = packageFactory;
+    this.context = context;
   };
   
   PackagedResources.prototype = {
@@ -36,7 +37,7 @@ define(function(require) {
       this.loadedResources[k] = resource;
       resource.preload(function() {
         self.notifyResourceLoaded();
-      });
+      }, this.context);
     },
     notifyResourceLoading: function() {
       this.pendingResourceCount++;

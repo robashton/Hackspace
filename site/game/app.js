@@ -1748,13 +1748,14 @@ define('resources/packagedresources',['require','../shared/eventable','underscor
   var Eventable = require('../shared/eventable');
   var _ = require('underscore');
 
-  var PackagedResources = function(packageFactory) {  
+  var PackagedResources = function(context, packageFactory) {  
     Eventable.call(this);
     this.loadedResources = {};
     this.loadedPackages = [];
     this.pendingPackageCount = 0;  
     this.pendingResourceCount = 0;
     this.packageFactory = packageFactory;
+    this.context = context;
   };
   
   PackagedResources.prototype = {
@@ -1782,7 +1783,7 @@ define('resources/packagedresources',['require','../shared/eventable','underscor
       this.loadedResources[k] = resource;
       resource.preload(function() {
         self.notifyResourceLoaded();
-      });
+      }, this.context);
     },
     notifyResourceLoading: function() {
       this.pendingResourceCount++;
@@ -1823,6 +1824,7 @@ define('resources/packagedresources',['require','../shared/eventable','underscor
 define('resources/texture',['require'],function(require) {
   var Texture = function(pkg, path) {
     this.img = null;
+    this.texture = null;
     this.path = path;
     this.pkg = pkg;
     this.loaded = false;
@@ -1830,17 +1832,27 @@ define('resources/texture',['require'],function(require) {
   
   Texture.prototype = {
     get: function() {
-      return this.img;
+      return this.texture;
     },
     
     str: function() {
       return this.img.src;
     },
 
-    preload: function(callback) {
+    preload: function(callback, context) {
      var data = this.pkg.getData(this.path);
      this.img = new Image();
-     this.img.onload = callback;
+     var self = this;
+     this.img.onload = function() {
+       self.texture = context.createTexture();
+       context.bindTexture(context.TEXTURE_2D, self.texture);
+       context.pixelStorei(context.UNPACK_FLIP_Y_WEBGL, false);
+       context.texImage2D(context.TEXTURE_2D, 0, context.RGBA, context.RGBA, context.UNSIGNED_BYTE, self.img);
+       context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MIN_FILTER, context.LINEAR);
+       context.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_S, context.CLAMP_TO_EDGE);
+       context.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_T, context.CLAMP_TO_EDGE);
+       callback();
+     };
      this.img.src = "data:image/png;base64," + data;
      this.loaded = true;
     },
@@ -3866,11 +3878,8 @@ define('render/rendergraph',['require','underscore','glmatrix'],function(require
         bottom: bottom
       };
 
-      var middlex = (this.viewport.right + this.viewport.left) / 2.0;
-      var middley = (this.viewport.top + this.viewport.bottom) / 2.0;
-
-      mat4.ortho(0, this.viewport.right - this.viewport.left, this.viewport.top - this.viewport.bottom, 0, -1, 1, this.projTransform);
-      mat4.lookAt([middlex, middley, 0], [middlex, middley, -1], [0, 1, 0], this.viewTransform);
+      mat4.ortho(this.viewport.left, this.viewport.right, this.viewport.bottom, this.viewport.top, -1, 1, this.projTransform);
+      mat4.lookAt([0, 0, 0], [0, 0, -1], [0, 1, 0], this.viewTransform);
     },
     
     add: function(item) {
@@ -4061,9 +4070,7 @@ define('render/quad',['require','../shared/coords'],function(require) {
   };
   
   Quad.prototype = {
-    upload: function(context) {
-    //  this.material.upload(context);
-    },
+    
     render: function(canvas, instance) {         
     
       if(this.material.diffuseTexture) {
@@ -4128,21 +4135,24 @@ define('render/quad',['require','../shared/coords'],function(require) {
   return Quad;
 });
 
-define('render/instance',['require','underscore','glmatrix','../shared/coords','../shared/eventable'],function(require) {
+define('render/instance',['require','underscore','glmatrix','glmatrix','../shared/coords','../shared/eventable','glmatrix'],function(require) {
 
   var _ = require('underscore');
   var vec3 = require('glmatrix').vec3;
+  var mat4 = require('glmatrix').mat4;
   var Coords = require('../shared/coords');
   var Eventable = require('../shared/eventable');
+  var mat4 = require('glmatrix').mat4;
 
   var Instance = function(model) {
     Eventable.call(this);
     this.model = model;
     this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([0,0,0]);
+    this.size = vec3.create([1,1,1]);
     this.rotation = 0;
     this.opacity = 1.0;
     this.forcedDepth = null;
+    this.worldTransform = mat4.create();
   };
   
   Instance.prototype = {
@@ -4150,9 +4160,9 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
       return true;
     },
     scale: function(x, y, z) {
-      this.size[0] = x || 0;
-      this.size[1] = y || 0;
-      this.size[2] = z || 0;
+      this.size[0] = x || 1.0;
+      this.size[1] = y || 1.0;
+      this.size[2] = z || 1.0;
     },
     setOpacity: function(value) {
       if(this.opacity != value) {
@@ -4168,9 +4178,15 @@ define('render/instance',['require','underscore','glmatrix','../shared/coords','
     rotate: function(x) {
       this.rotation = x;
     },
-    render: function(context) {     
-      this.model.upload(context);
-      this.model.render(context, this);
+    upload: function(shader) {
+      mat4.identity(this.worldTransform);
+      var quad = this.getQuad();
+
+      // TODO: This will be a bottleneck, sort it out mister.
+      mat4.translate(this.worldTransform, [quad.x, quad.y, 0]);
+      mat4.scale(this.worldTransform, [quad.width, quad.height, 1.0]);
+      shader.uploadWorldTransform(this.worldTransform);
+      shader.uploadTextureOne(this.model.image('diffuseTexture'));
     },
     depth: function() {
       return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;
@@ -6269,7 +6285,7 @@ define('render/shader',[],function() {
     uploadTextureCoords: function(textureCoords) {
       this.context.bindBuffer(this.context.ARRAY_BUFFER, textureCoords);
       this.context.vertexAttribPointer(this.aTextureCoords, 2, this.context.FLOAT, false, 0, 0);
-      this.context.enableVertexAttribArray(this.this.aTextureCoords);
+      this.context.enableVertexAttribArray(this.aTextureCoords);
     }
   };
 
@@ -6280,8 +6296,9 @@ define('render/canvasrender',['require','./shader'],function(require) {
 
   var CanvasRender = function(context, defaultShader) {
     this.context = context;
-    this.context.clearColor(0.0, 0.0, 0.0, 1.0);
+    this.context.clearColor(0.0, 1.0, 0.0, 1.0);
     this.defaultShader = defaultShader;
+    this.createDefaultBuffers();
   };
   CanvasRender.prototype = {
     clear: function() {
@@ -6291,17 +6308,47 @@ define('render/canvasrender',['require','./shader'],function(require) {
     draw: function(graph) {
       var self = this;
 
+      // Upload the view/projection things
       this.defaultShader.activate();
       graph.uploadTransforms(this.defaultShader);
-      
-/*
+
+      // Upload the standard buffers
+      this.defaultShader.uploadVertices(this.defaultVertexBuffer);
+      this.defaultShader.uploadTextureCoords(this.defaultTextureBuffer);
+
       graph.pass(function(item) {
-        item.render(self.context);
+        item.upload(self.defaultShader);
+        self.context.drawArrays(self.context.TRIANGLE_STRIP, 0, 4);
       });
-  */   
-    }  
+    },
+    createDefaultBuffers: function() {
+      var vertexBuffer = this.context.createBuffer();
+      this.context.bindBuffer(this.context.ARRAY_BUFFER, vertexBuffer);
+      this.context.bufferData(this.context.ARRAY_BUFFER, new Float32Array(vertices), this.context.STATIC_DRAW);  
+      
+      var textureBuffer = this.context.createBuffer();
+      this.context.bindBuffer(this.context.ARRAY_BUFFER, textureBuffer);
+      this.context.bufferData(this.context.ARRAY_BUFFER, new Float32Array(texcoords), this.context.STATIC_DRAW);
+
+      this.defaultVertexBuffer = vertexBuffer;
+      this.defaultTextureBuffer = textureBuffer;
+    }
   };
-  
+
+  var vertices = [
+     0.0, 0.0, 0.0,
+     1.0, 0.0, 0.0,
+     0.0, 1.0, 0.0,
+     1.0, 1.0, 0.0
+  ];
+
+  var texcoords = [
+     0.0, 0.0,
+     1.0, 0.0,
+     0.0, 1.0,
+     1.0, 1.0
+  ];        
+        
   return CanvasRender;
 });
 
@@ -6365,6 +6412,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
     visible: function() { 
       return true; 
     },
+
+    upload: function(shader) {
+      
+    },
     
     render: function(context) {      
       this.evaluateStatus(context);
@@ -6392,7 +6443,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       var sx = -offset.x, sy = -offset.y;
       sx = sx * sourceScale.x;
       sy = sy * sourceScale.y;
-    var elementScale = (1.0 / this.settings.backgroundScaleFactor()) * this.settings.outputScaleFactor();
+      var elementScale = (1.0 / this.settings.backgroundScaleFactor()) * this.settings.outputScaleFactor();
 
       $(this.canvas).css({
         '-webkit-transform-origin-x': -sx + 'px',
@@ -16014,7 +16065,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
     this.availableHeight = 0;
     this.resolutionWidth = 0;
     this.resolutionHeight = 0;
-    this.quality = 0.5;
+    this.quality = 1.0;
     this.update();
     this.hookEvents();
   };
@@ -16031,8 +16082,8 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
       var rawHeight = this.canvas.parent().height();
 
       // TODO: Maybe only support a range
-      this.availableWidth = rawWidth;
-      this.availableHeight = rawHeight;
+      this.availableWidth = this.canvas.width(); //rawWidth;
+      this.availableHeight = this.canvas.height(); //rawHeight;
     },
     updateAspectRatio: function() {
       this.aspectRatio = this.availableWidth / this.availableHeight;
@@ -16042,14 +16093,14 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
       this.resolutionHeight = this.resolutionWidth / this.aspectRatio;
     },
     updateCanvasCss: function() {
-      this.canvas.attr('width', this.resolutionWidth + 'px');
+ /*     this.canvas.attr('width', this.resolutionWidth + 'px');
       this.canvas.attr('height', this.resolutionHeight + 'px');
       this.canvas.css({
          // TODO: Other browsers
         '-webkit-transform-origin-x': '0px',
         '-webkit-transform-origin-y': '0px',
         '-webkit-transform': 'scale(' + this.outputScaleFactor() + ',' + this.outputScaleFactor() + ')'
-      });
+      }); */
     },
     outputScaleFactor: function() {
       return 1.0 / this.quality;
@@ -16107,10 +16158,12 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   };  
 
   var Context = function(element, app) {
-    this.resources = new PackagedResources(function() { return new Package(); });
     this.element = element;
     this.wrappedElement = $(this.element); 
     this.context = element.getContext('experimental-webgl');
+    this.context.width = this.element.width;
+    this.context.height = this.element.height;
+    this.resources = new PackagedResources(this.context, function() { return new Package(); });
     this.app = app;
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('game/assets.json');
@@ -16123,28 +16176,29 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
     pageCoordsToWorldCoords: function(x, y) {
       var viewport = this.scene.graph.viewport;
       var scale = this.getScaleComponent();
-     
+
       x /= scale.x;
-      y /= scale.y;    
-      
+      y /= scale.y;
+
       x += (viewport.left);
-      y += (viewport.top); 
-            
-      return  Coords.isometricToWorld(x,y);   
+      y += (viewport.top);
+
+      return  Coords.isometricToWorld(x,y);
     },
+
     worldCoordsToPageCoords: function(x, y) {
       var viewport = this.scene.graph.viewport;
       var scale = this.getScaleComponent();
-      
+
       var screen = Coords.worldToIsometric(x, y);
-      
+
       screen.x -= (viewport.left);
       screen.y -= (viewport.top);
-      
+
       screen.x *= scale.x;
       screen.y *= scale.y;
-      
-      return screen;    
+
+      return screen;
     },
     worldScaleToPage: function(width, height) {
       var scale = this.getScaleComponent();
@@ -16155,18 +16209,19 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
     },
     getScaleComponent: function() {
       var viewport = this.scene.graph.viewport;
-      
+
       var canvasWidth = this.renderSettings.scaledCanvasWidth();
-      var canvasHeight = this.renderSettings.scaledCanvasHeight(); 
-           
+      var canvasHeight = this.renderSettings.scaledCanvasHeight();
+
       var scalex = canvasWidth / (viewport.right - viewport.left);
       var scaley = canvasHeight / (viewport.bottom - viewport.top);
-      
+
       return {
         x: scalex,
         y: scaley
       };
     },
+
     onResourcesLoaded: function() { 
       var self = this;
 
@@ -16184,7 +16239,7 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
         self.scene.tick();
       }, 1000 / 30);
       
-      setInterval(function() {    
+      setInterval(function() {
         self.scene.render();
       }, 1000 / 30);
            
@@ -17198,6 +17253,7 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
 
   Demo.prototype = {
     start: function(context) {        
+      console.log('START');
       var self = this;  
       this.context = context;      
       var collider = new Collider();

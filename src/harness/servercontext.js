@@ -9,7 +9,7 @@ define(function(require) {
   var EntityFactory = require('../entities/entityfactory');
 
   var ServerContext = function(app) {
-    this.resources = new PackagedResources(function() { return new ServerPackage(); });
+    this.resources = new PackagedResources(null, function() { return new ServerPackage(); });
     this.app = app;
     this.resources.on('loaded', this.onResourcesLoaded, this); 
     this.resources.loadPackage('site/game/assets.json');

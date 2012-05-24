@@ -2,17 +2,20 @@ define(function(require) {
 
   var _ = require('underscore');
   var vec3 = require('glmatrix').vec3;
+  var mat4 = require('glmatrix').mat4;
   var Coords = require('../shared/coords');
   var Eventable = require('../shared/eventable');
+  var mat4 = require('glmatrix').mat4;
 
   var Instance = function(model) {
     Eventable.call(this);
     this.model = model;
     this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([0,0,0]);
+    this.size = vec3.create([1,1,1]);
     this.rotation = 0;
     this.opacity = 1.0;
     this.forcedDepth = null;
+    this.worldTransform = mat4.create();
   };
   
   Instance.prototype = {
@@ -20,9 +23,9 @@ define(function(require) {
       return true;
     },
     scale: function(x, y, z) {
-      this.size[0] = x || 0;
-      this.size[1] = y || 0;
-      this.size[2] = z || 0;
+      this.size[0] = x || 1.0;
+      this.size[1] = y || 1.0;
+      this.size[2] = z || 1.0;
     },
     setOpacity: function(value) {
       if(this.opacity != value) {
@@ -38,9 +41,15 @@ define(function(require) {
     rotate: function(x) {
       this.rotation = x;
     },
-    render: function(context) {     
-      this.model.upload(context);
-      this.model.render(context, this);
+    upload: function(shader) {
+      mat4.identity(this.worldTransform);
+      var quad = this.getQuad();
+
+      // TODO: This will be a bottleneck, sort it out mister.
+      mat4.translate(this.worldTransform, [quad.x, quad.y, 0]);
+      mat4.scale(this.worldTransform, [quad.width, quad.height, 1.0]);
+      shader.uploadWorldTransform(this.worldTransform);
+      shader.uploadTextureOne(this.model.image('diffuseTexture'));
     },
     depth: function() {
       return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;
