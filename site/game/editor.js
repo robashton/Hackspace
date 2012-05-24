@@ -12419,38 +12419,6 @@ define('render/rendergraph',['require','underscore','glmatrix'],function(require
   return RenderGraph;
 });
 
-define('render/color',['require'],function(require) {
-  var Color = function(a, r, g, b) {
-    this.a = a;
-    this.r = r;
-    this.g = g;
-    this.b = b;
-  };
-
-  Color.prototype = {
-    str: function() {
-      
-    }
-  };
-  return Color;
-});
-
-
-define('render/material',['require','./color'],function(require) {
-  var Color = require('./color');
-
-  var Material = function() {
-   
-  };
-  
-  Material.prototype = {
-    diffuse: new Color(255,255,255, 255),  
-    diffuseTexture: null
-  };
-  return Material;
-  
-});
-
 define('shared/bitfield',['require'],function(require) {
 
   var BitField = function(size) {
@@ -12592,80 +12560,6 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
   };
   
   return Camera; 
-});
-
-define('render/quad',['require','../shared/coords'],function(require) {
-
-  var Coords = require('../shared/coords');
-
-  var Quad = function(material) {
-    this.material = material;
-  };
-  
-  Quad.prototype = {
-    
-    render: function(canvas, instance) {         
-    
-      if(this.material.diffuseTexture) {
-        this.withAlpha(canvas, instance, this.drawTexturedQuad);
-      }
-      else {
-        this.withAlpha(canvas, instance, this.drawPlainQuad);
-      }
-    },
-    withAlpha: function(canvas, instance, callback) {
-      if(instance.opacity !== undefined && instance.opacity < 1.0) {
-        canvas.globalAlpha = instance.opacity;
-        callback.call(this, canvas, instance);
-        canvas.globalAlpha = 1.0;
-      } else {
-        callback.call(this, canvas, instance);
-      }
-    },
-    drawTexturedQuad: function(canvas, instance) {  
-      var dim = instance.getQuad();      
-      
-      if(instance.drawFloor)
-         this.drawFloor(canvas, instance);
-         
-      canvas.drawImage(
-        this.image('diffuseTexture'),
-        dim.x,
-        dim.y,
-        dim.width,
-        dim.height);       
-    },
-    drawPlainQuad: function(canvas, instance) {
-      var dim = instance.getQuad();          
-      canvas.fillRect(
-        dim.x,
-        dim.y,
-        dim.width,
-        dim.height);
-    },
-    image: function(name) {
-       return this.material[name].get()
-    },
-    drawFloor: function(canvas, instance) {
-      var topLeft = Coords.worldToIsometric(instance.position[0], instance.position[1]);
-      var topRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1]);
-      var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
-      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
-      
-      
-      canvas.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-      canvas.lineWidth = 1.5;
-      canvas.beginPath();
-      canvas.moveTo(topLeft.x, topLeft.y);
-      canvas.lineTo(topRight.x, topRight.y);
-      canvas.lineTo(bottomRight.x, bottomRight.y);
-      canvas.lineTo(bottomLeft.x, bottomLeft.y);
-      canvas.lineTo(topLeft.x, topLeft.y);
-      canvas.stroke();
-    }
-  }; 
-  
-  return Quad;
 });
 
 define('static/consts',['require','../shared/coords'],function(require) {
@@ -12836,6 +12730,112 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
   
   return Physical;
   
+});
+
+define('render/color',['require'],function(require) {
+  var Color = function(a, r, g, b) {
+    this.a = a;
+    this.r = r;
+    this.g = g;
+    this.b = b;
+  };
+
+  Color.prototype = {
+    str: function() {
+      
+    }
+  };
+  return Color;
+});
+
+
+define('render/material',['require','./color'],function(require) {
+  var Color = require('./color');
+
+  var Material = function() {
+   
+  };
+  
+  Material.prototype = {
+    diffuse: new Color(255,255,255, 255),  
+    diffuseTexture: null
+  };
+  return Material;
+  
+});
+
+define('render/quad',['require','../shared/coords'],function(require) {
+
+  var Coords = require('../shared/coords');
+
+  var Quad = function(material) {
+    this.material = material;
+  };
+  
+  Quad.prototype = {
+    
+    render: function(canvas, instance) {         
+    
+      if(this.material.diffuseTexture) {
+        this.withAlpha(canvas, instance, this.drawTexturedQuad);
+      }
+      else {
+        this.withAlpha(canvas, instance, this.drawPlainQuad);
+      }
+    },
+    withAlpha: function(canvas, instance, callback) {
+      if(instance.opacity !== undefined && instance.opacity < 1.0) {
+        canvas.globalAlpha = instance.opacity;
+        callback.call(this, canvas, instance);
+        canvas.globalAlpha = 1.0;
+      } else {
+        callback.call(this, canvas, instance);
+      }
+    },
+    drawTexturedQuad: function(canvas, instance) {  
+      var dim = instance.getQuad();      
+      
+      if(instance.drawFloor)
+         this.drawFloor(canvas, instance);
+         
+      canvas.drawImage(
+        this.image('diffuseTexture'),
+        dim.x,
+        dim.y,
+        dim.width,
+        dim.height);       
+    },
+    drawPlainQuad: function(canvas, instance) {
+      var dim = instance.getQuad();          
+      canvas.fillRect(
+        dim.x,
+        dim.y,
+        dim.width,
+        dim.height);
+    },
+    image: function(name) {
+       return this.material[name].get()
+    },
+    drawFloor: function(canvas, instance) {
+      var topLeft = Coords.worldToIsometric(instance.position[0], instance.position[1]);
+      var topRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1]);
+      var bottomRight = Coords.worldToIsometric(instance.position[0] + instance.size[0], instance.position[1] + instance.size[1]);
+      var bottomLeft = Coords.worldToIsometric(instance.position[0], instance.position[1] + instance.size[1]);
+      
+      
+      canvas.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      canvas.lineWidth = 1.5;
+      canvas.beginPath();
+      canvas.moveTo(topLeft.x, topLeft.y);
+      canvas.lineTo(topRight.x, topRight.y);
+      canvas.lineTo(bottomRight.x, bottomRight.y);
+      canvas.lineTo(bottomLeft.x, bottomLeft.y);
+      canvas.lineTo(topLeft.x, topLeft.y);
+      canvas.stroke();
+    }
+  }; 
+  
+  return Quad;
 });
 
 define('shared/extramath',['require'],function(require) {
@@ -14145,230 +14145,6 @@ define('scene/scene',['require','underscore','../render/rendergraph','../shared/
   return Scene;  
 });
 
-define('render/instance',['require','underscore','glmatrix','glmatrix','../shared/coords','../shared/eventable','glmatrix'],function(require) {
-
-  var _ = require('underscore');
-  var vec3 = require('glmatrix').vec3;
-  var mat4 = require('glmatrix').mat4;
-  var Coords = require('../shared/coords');
-  var Eventable = require('../shared/eventable');
-  var mat4 = require('glmatrix').mat4;
-
-  var Instance = function(model) {
-    Eventable.call(this);
-    this.model = model;
-    this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([1,1,1]);
-    this.rotation = 0;
-    this.opacity = 1.0;
-    this.forcedDepth = null;
-    this.worldTransform = mat4.create();
-  };
-  
-  Instance.prototype = {
-    visible: function(viewport) {
-      return true;
-    },
-    scale: function(x, y, z) {
-      this.size[0] = x || 1.0;
-      this.size[1] = y || 1.0;
-      this.size[2] = z || 1.0;
-    },
-    setOpacity: function(value) {
-      if(this.opacity != value) {
-        this.opacity = value;
-        this.raise('OpacityChanged');
-      }
-    },
-    translate: function(x, y, z) {
-      this.position[0] = x || 0;
-      this.position[1] = y || 0;
-      this.position[2] = z || 0;
-    },
-    rotate: function(x) {
-      this.rotation = x;
-    },
-    upload: function(shader) {
-      mat4.identity(this.worldTransform);
-      var quad = this.getQuad();
-
-      // TODO: This will be a bottleneck, sort it out mister.
-      mat4.translate(this.worldTransform, [quad.x, quad.y, 0]);
-      mat4.scale(this.worldTransform, [quad.width, quad.height, 1.0]);
-      shader.uploadWorldTransform(this.worldTransform);
-      shader.uploadTextureOne(this.model.image('diffuseTexture'));
-    },
-    depth: function() {
-      return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;
-    },
-    forceDepth: function(value) {
-      this.forcedDepth = value;
-    },
-    getQuad: function() {
-      var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
-      var bottomRight = Coords.worldToIsometric(this.position[0] + this.size[0], this.position[1] + this.size[1]);    
-      var width = this.size[0] + this.size[1];
-      var height = this.size[2];
-      return {
-        x: bottomLeft.x,
-        y: bottomLeft.y - (height), // - (bottomRight.y - bottomLeft.y)/2.0),
-        width: width,
-        height: height
-      }
-    },
-    intersectWithWorldCoords: function(x, y) {
-      var screen = Coords.worldToIsometric(x, y);  
-      var model = this.getQuad();     
-              
-      if(screen.x < model.x) return false;
-      if(screen.x > model.x + model.width) return false;
-      if(screen.y < model.y) return false;
-      if(screen.y > model.y + model.height) return false;
-      
-      return true;
-    },
-    coversQuad: function(quad) {
-      var selfQuad = this.getQuad();
-      if(selfQuad.x > quad.x + quad.width) return false;
-      if(selfQuad.y > quad.y + quad.height) return false;
-      if(selfQuad.x + selfQuad.width < quad.x) return false;
-      if(selfQuad.y + selfQuad.height < quad.y) return false;
-      return true;
-    },
-  };
-  _.extend(Instance.prototype, Eventable.prototype);
-  
-  return Instance;
-});
-define('entities/components/renderable',['require','../../render/instance','../../render/material','../../render/quad','../../shared/extramath','glmatrix','../../shared/coords'],function(require) {
-
-  var Instance = require('../../render/instance');
-  var Material = require('../../render/material');
-  var Quad = require('../../render/quad');
-  var ExtraMath = require('../../shared/extramath');
-  var vec3 = require('glmatrix').vec3;
-  var Coords = require('../../shared/coords');
-  
-  var Renderable = function(textureName, canRotate) {
-    this.scene = null;
-    this.instance = null;
-    this.textureName = textureName;
-    this.material = null;
-    this.model = null;
-    this.canRotate = canRotate;
-    this.size = vec3.create([0,0,0]);
-    this.position = vec3.create([0,0,0]);
-    this.animationName = 'static';
-    this.animationFrame = -1;
-    this.rotation = 0;
-  };
-  
-  Renderable.prototype = {    
-    onSizeChanged: function(data) {
-      this.size[0] = data.x;
-      this.size[1] = data.y;
-      this.size[2] = data.z;
-      this.updateModel();
-    },    
-    
-    onPositionChanged: function(data) {
-      this.position[0] = data.x;
-      this.position[1] = data.y;
-      this.position[2] = data.z;
-      this.updateModel();
-    },
-    onAnimationFrameChanged: function(frame) {
-      this.animationFrame = frame;
-      this.determineTextureFromRotation();
-    },
-    onAnimationChanged: function(data) {
-      this.animationName = data.animation;
-    },
-    
-    onRemovedFromScene: function() {
-      this.scene.graph.remove(this.instance);
-    },
-    updateModel: function() {
-      this.instance.scale(this.size[0], this.size[1], this.size[2]);
-      this.instance.translate(this.position[0] - (this.size[0] / 2.0), 
-                              this.position[1] - (this.size[1] / 2.0), 
-                              this.position[2]);
-    },
-    onRotationChanged: function(data) {
-      this.rotation = data.x;
-      if(this.canRotate)
-        this.determineTextureFromRotation();
-    },
-       
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-      this.createModel();
-    }, 
-    
-    getIntersectWithMouse: function(x, y) {
-      return this.instance.intersectWithWorldCoords(x, y);
-    }, 
-    
-    createModel: function() {
-      this.material = new Material();     
-      this.model = new Quad(this.material);
-      this.instance = new Instance(this.model);
-      this.scene.graph.add(this.instance);
-      if(this.canRotate)
-        this.determineTextureFromRotation(Math.PI);
-      else
-        this.determineFixedTexture();
-    },
-    
-    getCoversQuad: function(quad) {
-      return this.instance.coversQuad(quad);
-    },
-    
-    getIsBehind: function(depth) {
-      return this.instance.depth() <= depth;
-    },
-    
-    determineFixedTexture: function() {
-      this.material.diffuseTexture = this.scene.resources.get('main/' + this.textureName + '.png');
-    },
-    
-    determineTextureFromRotation: function(rotation) {
-      var path = 'main/' + this.textureName + '/' + this.animationName + '-';
-    
-      var textureSuffix = 'up';
-      var rotation = ExtraMath.clampRotation(this.rotation);
-      
-      // Account for the isometric PoV
-      rotation += Math.PI / 4.0;
-      
-      if(rotation < Math.PI * 0.12)
-        textureSuffix = 'up';
-      else if(rotation < Math.PI * 0.37)
-        textureSuffix = 'up-right';
-      else if(rotation < Math.PI * 0.62)
-        textureSuffix = 'right';
-      else if(rotation < Math.PI * 0.87)
-        textureSuffix = 'down-right';
-      else if(rotation < Math.PI * 1.12)
-        textureSuffix = 'down';
-      else if(rotation < Math.PI * 1.37)
-        textureSuffix = 'down-left';
-      else if(rotation < Math.PI * 1.62)
-        textureSuffix = 'left';
-      else if(rotation < Math.PI * 1.87)
-        textureSuffix = 'up-left'; 
-        
-      if(this.animationFrame < 0)
-        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '.png');
-      else
-        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '-' + this.animationFrame + '.png'); 
-    }
-  };  
-  
-  return Renderable;
-  
-});
-
 define('scene/componentbag',['require','underscore','../shared/eventable'],function(require) {
   var _ = require('underscore');
   var Eventable = require('../shared/eventable');
@@ -14532,93 +14308,6 @@ define('scene/entity',['require','./componentbag','underscore'],function(require
   
 });
 
-define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/standardanimations','./components/animatable'],function(require) {
-  var _ = require('underscore');
-  var Entity = require('../scene/entity');
-  
-  var Physical = require('./components/physical');
-  var Renderable = require('./components/renderable');
-  var Tangible = require('./components/tangible');
-  var Roamable = require('./components/roamable');
-  var Directable = require('./components/directable');
-  var Seeker = require('./components/seeker');
-  var Fighter = require('./components/fighter');
-  var Factionable = require('./components/factionable');
-  var Damageable = require('./components/damageable');
-  var HasHealth = require('./components/hashealth');
-  var StandardAnimations = require('./components/standardanimations');
-  var Animatable = require('./components/animatable');
-  
-  var Monster = function(id, data) {
-    Entity.call(this, id);
-    
-    this.attach(new Physical());
-    this.attach(new Renderable(data.texture, true));
-    this.attach(new Tangible(data.x, data.y, 12, 18));
-    this.attach(new Directable(1.5));
-    this.attach(new Roamable(data.x, data.y, -100, -100, 100, 100));
-    this.attach(new Seeker('player'));
-    this.attach(new Fighter());
-    this.attach(new Factionable('monster'));
-    this.attach(new Damageable());
-    this.attach(new HasHealth(2));
-    this.attach(new Animatable(data.texture));
-    this.attach(new StandardAnimations());
-       
-    this.on('AddedToScene', this.onMonsterAddedToScene);
-    this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
-    this.on('DestinationReached', this.onMonsterDestinationReached);
-    this.on('StateChanged', this.onMonsterStateChanged);
-    this.on('Tick', this.onMonsterTick);
-    this.state = '';
-  };
-  
-  Monster.prototype = {
-    onMonsterAddedToScene: function() {
-      this.raise('StateChanged', 'Wandering');
-    },
-    onCancelledAttackingTarget: function() {
-      this.raise('StateChanged', 'Wandering');
-      this.dispatch('resetSeekState');
-    },
-    onMonsterDestinationTargetChanged: function(targetId) {
-      this.targetId = targetId;
-      this.raise('StateChanged', 'Seeking');
-    },
-    onMonsterDestinationReached: function() {
-      if(this.state === 'Seeking')
-        this.raise('StateChanged', 'Fighting');
-    },
-    onMonsterStateChanged: function(state) {
-      this.state = state;
-    },
-    onMonsterTick: function() {
-     if(this.state === 'Fighting')
-        this.dispatch('attack', [ this.targetId ]);
-    }
-  };
-  _.extend(Monster.prototype, Entity.prototype);
-  
-  return Monster;
-});
-
-define('entities/monsterfactory',['require','underscore','./monster'],function(require) {
-  var _ = require('underscore');
-  var Monster = require('./monster');
-  
-  var MonsterFactory = function() {
-  
-  };
-  
-  MonsterFactory.prototype = {
-    create: function(id, data) {
-      return new Monster(id, data);
-    }
-  };
-  
-  return MonsterFactory;
-});
-
 define('entities/entityspawner',['require','underscore','glmatrix','../scene/entity'],function(require) {
   var _ = require('underscore');
   var vec3 = require('glmatrix').vec3;
@@ -14745,6 +14434,101 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
 
 });
 
+define('render/instance',['require','underscore','glmatrix','glmatrix','../shared/coords','../shared/eventable','glmatrix'],function(require) {
+
+  var _ = require('underscore');
+  var vec3 = require('glmatrix').vec3;
+  var mat4 = require('glmatrix').mat4;
+  var Coords = require('../shared/coords');
+  var Eventable = require('../shared/eventable');
+  var mat4 = require('glmatrix').mat4;
+
+  var Instance = function(model) {
+    Eventable.call(this);
+    this.model = model;
+    this.position = vec3.create([0,0,0]);
+    this.size = vec3.create([1,1,1]);
+    this.rotation = 0;
+    this.opacity = 1.0;
+    this.forcedDepth = null;
+    this.worldTransform = mat4.create();
+  };
+  
+  Instance.prototype = {
+    visible: function(viewport) {
+      return true;
+    },
+    scale: function(x, y, z) {
+      this.size[0] = x || 1.0;
+      this.size[1] = y || 1.0;
+      this.size[2] = z || 1.0;
+    },
+    setOpacity: function(value) {
+      if(this.opacity != value) {
+        this.opacity = value;
+        this.raise('OpacityChanged');
+      }
+    },
+    translate: function(x, y, z) {
+      this.position[0] = x || 0;
+      this.position[1] = y || 0;
+      this.position[2] = z || 0;
+    },
+    rotate: function(x) {
+      this.rotation = x;
+    },
+    upload: function(shader) {
+      mat4.identity(this.worldTransform);
+      var quad = this.getQuad();
+
+      // TODO: This will be a bottleneck, sort it out mister.
+      mat4.translate(this.worldTransform, [quad.x, quad.y, 0]);
+      mat4.scale(this.worldTransform, [quad.width, quad.height, 1.0]);
+      shader.uploadWorldTransform(this.worldTransform);
+      shader.uploadTextureOne(this.model.image('diffuseTexture'));
+    },
+    depth: function() {
+      return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;
+    },
+    forceDepth: function(value) {
+      this.forcedDepth = value;
+    },
+    getQuad: function() {
+      var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
+      var bottomRight = Coords.worldToIsometric(this.position[0] + this.size[0], this.position[1] + this.size[1]);    
+      var width = this.size[0] + this.size[1];
+      var height = this.size[2];
+      return {
+        x: bottomLeft.x,
+        y: bottomLeft.y - (height), // - (bottomRight.y - bottomLeft.y)/2.0),
+        width: width,
+        height: height
+      }
+    },
+    intersectWithWorldCoords: function(x, y) {
+      var screen = Coords.worldToIsometric(x, y);  
+      var model = this.getQuad();     
+              
+      if(screen.x < model.x) return false;
+      if(screen.x > model.x + model.width) return false;
+      if(screen.y < model.y) return false;
+      if(screen.y > model.y + model.height) return false;
+      
+      return true;
+    },
+    coversQuad: function(quad) {
+      var selfQuad = this.getQuad();
+      if(selfQuad.x > quad.x + quad.width) return false;
+      if(selfQuad.y > quad.y + quad.height) return false;
+      if(selfQuad.x + selfQuad.width < quad.x) return false;
+      if(selfQuad.y + selfQuad.height < quad.y) return false;
+      return true;
+    },
+  };
+  _.extend(Instance.prototype, Eventable.prototype);
+  
+  return Instance;
+});
 define('static/tile',['require','underscore','../render/instance','../shared/eventable','../shared/coords','./consts','./collisionmap'],function(require) {
 
   var _ = require('underscore');
@@ -14819,15 +14603,11 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
   return Tile;  
 });
 
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./consts'],function(require) {
+define('static/map',['require','underscore','../scene/entity','../render/rendergraph','./tile','./collisionmap','../shared/coords','../editor/grid','./consts'],function(require) {
 
   var _ = require('underscore');
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  var Instance = require('../render/instance');
   var Entity = require('../scene/entity');
   var RenderGraph = require('../render/rendergraph');
-  var CanvasRender = require('../render/canvasrender');
   var Tile = require('./tile');
   var CollisionMap = require('./collisionmap');
   var Coords = require('../shared/coords');
@@ -14837,28 +14617,20 @@ define('static/map',['require','underscore','../render/material','../render/quad
   var Map = function(tiles, settings) {
     Entity.call(this, "map");    
         
-
     this.settings = settings;
     this.scene = null;
     this.instanceTiles = null;
-    this.canvas = null; 
-    this.context = null; 
-    this.offscreencanvas = null;
-    this.offscreencontext = null;
     this.graph = null; 
-    this.renderer = null; 
     this.tiles = tiles;
+    this.graph = new RenderGraph();
     
     this.tileleft = -1;
     this.tiletop = -1;
     this.tilebottom = -1;
     this.tileright = -1;
-    this.needsRedrawing = false;
-    this.framesElapsedSinceNeededRedrawing = 0;
     
     this.on('AddedToScene', this.onAddedToScene);
     this.tiles.on('TileLoaded', this.onTileLoaded, this);
-    this.tiles.on('InstanceOpacityChanged', this.onTileInstanceOpacityChanged, this);
   };
   
   Map.prototype = {
@@ -14866,10 +14638,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
     onAddedToScene: function(scene) {
       this.scene = scene;
       this.scene.graph.add(this);   
-    },
-
-    onTileLoaded: function(tile) {
-      this.needsRedrawing = true;
     },
     
     depth: function() {
@@ -14887,37 +14655,6 @@ define('static/map',['require','underscore','../render/material','../render/quad
     render: function(context) {      
       this.evaluateStatus(context);
 
-      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
-       
-      var offsetInMapCanvas = {
-        x: topLeft.x - this.graph.viewport.left,
-        y: topLeft.y - this.graph.viewport.top
-      };
-      
-      var offsetInWorldCanvas = {
-        x: topLeft.x - this.scene.graph.viewport.left,
-        y: topLeft.y - this.scene.graph.viewport.top
-      };     
-
-      var offset = {
-        x: offsetInMapCanvas.x - offsetInWorldCanvas.x,
-        y: offsetInMapCanvas.y - offsetInWorldCanvas.y
-      };
-      
-      var destinationScale = this.scene.graph.getScaleForDimensions(context.canvas.width, context.canvas.height);
-      var sourceScale = this.graph.getScaleForDimensions(this.canvas.width, this.canvas.height);
-
-      var sx = -offset.x, sy = -offset.y;
-      sx = sx * sourceScale.x;
-      sy = sy * sourceScale.y;
-      var elementScale = (1.0 / this.settings.backgroundScaleFactor()) * this.settings.outputScaleFactor();
-
-      $(this.canvas).css({
-        '-webkit-transform-origin-x': -sx + 'px',
-        '-webkit-transform-origin-y': -sy + 'px'
-      });
-      $(this.canvas).css('-webkit-transform', 'translate3d(' + sx + 'px,' + sy + 'px, 0px)' +  
-                                            ' scale(' + elementScale + ',' + elementScale + ')');  
     },
 
     forEachVisibleTile: function(callback) {
@@ -14941,18 +14678,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       }
     },
     
-    initializeContext: function() {
-      this.canvas =  document.getElementById('background');
-      this.offscreencanvas = document.createElement('canvas');
-      this.offscreencontext = this.offscreencanvas.getContext('2d');
-      this.context = this.canvas.getContext('2d');
-      this.graph = new RenderGraph();
-      this.renderer = new CanvasRender(this.offscreencontext);  
-    },
-    
     evaluateStatus: function(mainContext) {
-      if(!this.canvas) this.initializeContext();
-    
       var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
       var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
       var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
@@ -14981,52 +14707,10 @@ define('static/map',['require','underscore','../render/material','../render/quad
         this.tileright = tileright;
         this.tiletop = tiletop;
         this.tilebottom = tilebottom;
-        this.needsRedrawing = true;
-      }
-      
-      if(this.needsRedrawing) {
-        if(this.framesElapsedSinceNeededRedrawing++ < 5)
-          return;
-        this.framesElapsedSinceNeededRedrawing = 0;
-        this.needsRedrawing = false;
-        this.redrawBackground(mainContext);
+        this.populateGraph();
       }
     },
-    
-    redrawBackground: function(mainContext) {
-      
-      // So we know how many units we'll need in order to render all the  current partially visible tiles
-      var worldWidth = ((this.tileright + 1) - this.tileleft) * CONST.RENDERTILEWIDTH;
-      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * CONST.RENDERTILEHEIGHT;
-      
-      // Then of course we need to know where the viewport starts
-      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
-      var bottomLeft = Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, (this.tilebottom + 1) * CONST.TILEHEIGHT);
-      
-      // That gives us the ability to set up the viewport
-      this.graph.updateViewport(
-         bottomLeft.x,
-         bottomLeft.x + worldWidth,
-         topLeft.y,
-         topLeft.y + worldHeight
-      );
-           
-      // This is very well and good, but our personal canvas needs to be sized appropriately for this so sizes match up
-      var mainScaleFactor = this.scene.graph.getScaleForDimensions(mainContext.canvas.width, mainContext.canvas.height);
-      this.offscreencanvas.width = (this.graph.width() * (mainScaleFactor.x * this.settings.backgroundScaleFactor()));
-      this.offscreencanvas.height = (this.graph.height() * (mainScaleFactor.y * this.settings.backgroundScaleFactor()));
-        
-      // And with that all set, we can render all the visible tiles
-      this.populateGraph();      
-      this.renderer.clear();
-      this.renderer.draw(this.graph);
-
-      // Now blit across
-      this.canvas.width = this.offscreencanvas.width;
-      this.canvas.height = this.offscreencanvas.height;
-      this.context.drawImage(this.offscreencanvas, 0, 0, this.canvas.width, this.canvas.height);
-    },
-    
+     
     populateGraph: function() {             
       this.graph.clear();
       this.graph.beginUpdate();
@@ -15040,16 +14724,7 @@ define('static/map',['require','underscore','../render/material','../render/quad
       }
       this.graph.endUpdate();      
     },
- 
-    onTileInstanceOpacityChanged: function(instance) {
-      if(instance.opacity < 1.0) {
-        this.scene.graph.add(instance);
-      } else {
-        this.scene.graph.remove(instance);
-      }    
-      this.needsRedrawing = true;
-    },
-    
+   
     solidAt: function(x, y) {
       return this.tiles.solidAt(x, y);
     }
@@ -15059,6 +14734,222 @@ define('static/map',['require','underscore','../render/material','../render/quad
   
   return Map;
 
+});
+
+define('entities/components/renderable',['require','../../render/instance','../../render/material','../../render/quad','../../shared/extramath','glmatrix','../../shared/coords'],function(require) {
+
+  var Instance = require('../../render/instance');
+  var Material = require('../../render/material');
+  var Quad = require('../../render/quad');
+  var ExtraMath = require('../../shared/extramath');
+  var vec3 = require('glmatrix').vec3;
+  var Coords = require('../../shared/coords');
+  
+  var Renderable = function(textureName, canRotate) {
+    this.scene = null;
+    this.instance = null;
+    this.textureName = textureName;
+    this.material = null;
+    this.model = null;
+    this.canRotate = canRotate;
+    this.size = vec3.create([0,0,0]);
+    this.position = vec3.create([0,0,0]);
+    this.animationName = 'static';
+    this.animationFrame = -1;
+    this.rotation = 0;
+  };
+  
+  Renderable.prototype = {    
+    onSizeChanged: function(data) {
+      this.size[0] = data.x;
+      this.size[1] = data.y;
+      this.size[2] = data.z;
+      this.updateModel();
+    },    
+    
+    onPositionChanged: function(data) {
+      this.position[0] = data.x;
+      this.position[1] = data.y;
+      this.position[2] = data.z;
+      this.updateModel();
+    },
+    onAnimationFrameChanged: function(frame) {
+      this.animationFrame = frame;
+      this.determineTextureFromRotation();
+    },
+    onAnimationChanged: function(data) {
+      this.animationName = data.animation;
+    },
+    
+    onRemovedFromScene: function() {
+      this.scene.graph.remove(this.instance);
+    },
+    updateModel: function() {
+      this.instance.scale(this.size[0], this.size[1], this.size[2]);
+      this.instance.translate(this.position[0] - (this.size[0] / 2.0), 
+                              this.position[1] - (this.size[1] / 2.0), 
+                              this.position[2]);
+    },
+    onRotationChanged: function(data) {
+      this.rotation = data.x;
+      if(this.canRotate)
+        this.determineTextureFromRotation();
+    },
+       
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+      this.createModel();
+    }, 
+    
+    getIntersectWithMouse: function(x, y) {
+      return this.instance.intersectWithWorldCoords(x, y);
+    }, 
+    
+    createModel: function() {
+      this.material = new Material();     
+      this.model = new Quad(this.material);
+      this.instance = new Instance(this.model);
+      this.scene.graph.add(this.instance);
+      if(this.canRotate)
+        this.determineTextureFromRotation(Math.PI);
+      else
+        this.determineFixedTexture();
+    },
+    
+    getCoversQuad: function(quad) {
+      return this.instance.coversQuad(quad);
+    },
+    
+    getIsBehind: function(depth) {
+      return this.instance.depth() <= depth;
+    },
+    
+    determineFixedTexture: function() {
+      this.material.diffuseTexture = this.scene.resources.get('main/' + this.textureName + '.png');
+    },
+    
+    determineTextureFromRotation: function(rotation) {
+      var path = 'main/' + this.textureName + '/' + this.animationName + '-';
+    
+      var textureSuffix = 'up';
+      var rotation = ExtraMath.clampRotation(this.rotation);
+      
+      // Account for the isometric PoV
+      rotation += Math.PI / 4.0;
+      
+      if(rotation < Math.PI * 0.12)
+        textureSuffix = 'up';
+      else if(rotation < Math.PI * 0.37)
+        textureSuffix = 'up-right';
+      else if(rotation < Math.PI * 0.62)
+        textureSuffix = 'right';
+      else if(rotation < Math.PI * 0.87)
+        textureSuffix = 'down-right';
+      else if(rotation < Math.PI * 1.12)
+        textureSuffix = 'down';
+      else if(rotation < Math.PI * 1.37)
+        textureSuffix = 'down-left';
+      else if(rotation < Math.PI * 1.62)
+        textureSuffix = 'left';
+      else if(rotation < Math.PI * 1.87)
+        textureSuffix = 'up-left'; 
+        
+      if(this.animationFrame < 0)
+        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '.png');
+      else
+        this.material.diffuseTexture = this.scene.resources.get(path + textureSuffix + '-' + this.animationFrame + '.png'); 
+    }
+  };  
+  
+  return Renderable;
+  
+});
+
+define('entities/monster',['require','underscore','../scene/entity','./components/physical','./components/renderable','./components/tangible','./components/roamable','./components/directable','./components/seeker','./components/fighter','./components/factionable','./components/damageable','./components/hashealth','./components/standardanimations','./components/animatable'],function(require) {
+  var _ = require('underscore');
+  var Entity = require('../scene/entity');
+  
+  var Physical = require('./components/physical');
+  var Renderable = require('./components/renderable');
+  var Tangible = require('./components/tangible');
+  var Roamable = require('./components/roamable');
+  var Directable = require('./components/directable');
+  var Seeker = require('./components/seeker');
+  var Fighter = require('./components/fighter');
+  var Factionable = require('./components/factionable');
+  var Damageable = require('./components/damageable');
+  var HasHealth = require('./components/hashealth');
+  var StandardAnimations = require('./components/standardanimations');
+  var Animatable = require('./components/animatable');
+  
+  var Monster = function(id, data) {
+    Entity.call(this, id);
+    
+    this.attach(new Physical());
+    this.attach(new Renderable(data.texture, true));
+    this.attach(new Tangible(data.x, data.y, 12, 18));
+    this.attach(new Directable(1.5));
+    this.attach(new Roamable(data.x, data.y, -100, -100, 100, 100));
+    this.attach(new Seeker('player'));
+    this.attach(new Fighter());
+    this.attach(new Factionable('monster'));
+    this.attach(new Damageable());
+    this.attach(new HasHealth(2));
+    this.attach(new Animatable(data.texture));
+    this.attach(new StandardAnimations());
+       
+    this.on('AddedToScene', this.onMonsterAddedToScene);
+    this.on('DestinationTargetChanged', this.onMonsterDestinationTargetChanged);
+    this.on('DestinationReached', this.onMonsterDestinationReached);
+    this.on('StateChanged', this.onMonsterStateChanged);
+    this.on('Tick', this.onMonsterTick);
+    this.state = '';
+  };
+  
+  Monster.prototype = {
+    onMonsterAddedToScene: function() {
+      this.raise('StateChanged', 'Wandering');
+    },
+    onCancelledAttackingTarget: function() {
+      this.raise('StateChanged', 'Wandering');
+      this.dispatch('resetSeekState');
+    },
+    onMonsterDestinationTargetChanged: function(targetId) {
+      this.targetId = targetId;
+      this.raise('StateChanged', 'Seeking');
+    },
+    onMonsterDestinationReached: function() {
+      if(this.state === 'Seeking')
+        this.raise('StateChanged', 'Fighting');
+    },
+    onMonsterStateChanged: function(state) {
+      this.state = state;
+    },
+    onMonsterTick: function() {
+     if(this.state === 'Fighting')
+        this.dispatch('attack', [ this.targetId ]);
+    }
+  };
+  _.extend(Monster.prototype, Entity.prototype);
+  
+  return Monster;
+});
+
+define('entities/monsterfactory',['require','underscore','./monster'],function(require) {
+  var _ = require('underscore');
+  var Monster = require('./monster');
+  
+  var MonsterFactory = function() {
+  
+  };
+  
+  MonsterFactory.prototype = {
+    create: function(id, data) {
+      return new Monster(id, data);
+    }
+  };
+  
+  return MonsterFactory;
 });
 
 define('entities/components/equippable',['require','underscore','../../shared/eventable'],function(require) {
