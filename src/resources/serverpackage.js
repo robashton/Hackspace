@@ -30,10 +30,13 @@ define(function(require) {
     createResource: function(path) {
       if(path.indexOf('meta.json') > 0) {
         return new Animation(this, path);
-      }
-      else if(path.indexOf('.json') > 0) {
+      } else if(path.indexOf('.json') > 0) {
         return new JsonData(this, path);
       } else if(path.indexOf('.png') > 0) {
+        return new IgnoredResource(this, path);
+      } else if(path.indexOf('.shader') > 0){
+        return new IgnoredResource(this, path);
+      } else if(path.indexOf('.fragment') > 0) {
         return new IgnoredResource(this, path);
       }
     }

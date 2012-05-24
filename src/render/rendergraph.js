@@ -1,5 +1,6 @@
 define(function(require) {
   var _ = require('underscore');
+  var mat4 = require('glmatrix').mat4;
 
   var RenderGraph = function() {
     this.viewport = {
@@ -10,6 +11,8 @@ define(function(require) {
     };
     this.items = [];
     this.updating = false;
+    this.viewTransform = mat4.create();
+    this.projTransform = mat4.create();
   };
   
   RenderGraph.prototype = {       
@@ -43,6 +46,12 @@ define(function(require) {
         top: top,
         bottom: bottom
       };
+
+      var middlex = (this.viewport.right + this.viewport.left) / 2.0;
+      var middley = (this.viewport.top + this.viewport.bottom) / 2.0;
+
+      mat4.ortho(0, this.viewport.right - this.viewport.left, this.viewport.top - this.viewport.bottom, 0, -1, 1, this.projTransform);
+      mat4.lookAt([middlex, middley, 0], [middlex, middley, -1], [0, 1, 0], this.viewTransform);
     },
     
     add: function(item) {
@@ -59,30 +68,9 @@ define(function(require) {
       this.items = [];
     },
         
-    uploadTransforms: function(context) {
-      this.applyScale(context);
-      this.applyTranslate(context);
-    },
-    
-    applyTranslate: function(context) {
-      context.translate(-this.viewport.left, - this.viewport.top);
-    },
-    
-    applyScale: function(context) {
-      var canvas = context.canvas;
-      var canvasWidth = canvas.width;
-      var canvasHeight = canvas.height;
-      
-      var scale = this.getScaleForDimensions(canvasWidth, canvasHeight);
-      
-      context.scale(scale.x, scale.y);
-    },
-    
-    getScaleForDimensions: function(width, height) {
-      return {
-        x: width / (this.viewport.right - this.viewport.left),
-        y: height / (this.viewport.bottom - this.viewport.top)
-      };
+    uploadTransforms: function(shader) {
+      shader.uploadProjectionTransform(this.projTransform);
+      shader.uploadViewTransform(this.viewTransform);
     },
     
     pass: function(callback) {

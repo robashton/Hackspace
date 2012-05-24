@@ -1744,35 +1744,6 @@ return function Hammer(element, options, undefined)
 };
 });
 
-define('render/canvasrender',['require'],function(require) {
-
-  var CanvasRender = function(context) {
-    this.context = context;
-    this.context.clearColor(0.0, 0.0, 0.0, 1.0);
-  };
-  CanvasRender.prototype = {
-    clear: function() {
-      this.context.viewport(0, 0, this.context.width, this.context.height);
-      this.context.clear(this.context.COLOR_BUFFER_BIT | this.context.DEPTH_BUFFER_BIT);
-    },
-    draw: function(graph) {
-      var self = this;
-      
-      graph.uploadTransforms(this.context);
-      
-      // Upload the buffers cap'n
-
-/*
-      graph.pass(function(item) {
-        item.render(self.context);
-      });
-  */   
-    }  
-  };
-  
-  return CanvasRender;
-});
-
 define('resources/packagedresources',['require','../shared/eventable','underscore'],function(require) {
   var Eventable = require('../shared/eventable');
   var _ = require('underscore');
@@ -1898,6 +1869,27 @@ define('resources/jsondata',['require'],function(require) {
   };
   
   return JsonData;
+});
+
+define('resources/textdata',['require'],function(require) {
+  var TextData = function(pkg, path) {
+    this.path = path;
+    this.pkg = pkg;
+    this.data = null;
+  };
+  
+  TextData.prototype = {
+    get: function() {
+      return this.data;
+    },
+    
+    preload: function(callback) {
+     this.data = this.pkg.getData(this.path);
+     callback();
+    },
+  };
+  
+  return TextData;
 });
 
 define('resources/animation',['require'],function(require) {
@@ -3825,8 +3817,9 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
   return Camera; 
 });
 
-define('render/rendergraph',['require','underscore'],function(require) {
+define('render/rendergraph',['require','underscore','glmatrix'],function(require) {
   var _ = require('underscore');
+  var mat4 = require('glmatrix').mat4;
 
   var RenderGraph = function() {
     this.viewport = {
@@ -3837,6 +3830,8 @@ define('render/rendergraph',['require','underscore'],function(require) {
     };
     this.items = [];
     this.updating = false;
+    this.viewTransform = mat4.create();
+    this.projTransform = mat4.create();
   };
   
   RenderGraph.prototype = {       
@@ -3870,6 +3865,12 @@ define('render/rendergraph',['require','underscore'],function(require) {
         top: top,
         bottom: bottom
       };
+
+      var middlex = (this.viewport.right + this.viewport.left) / 2.0;
+      var middley = (this.viewport.top + this.viewport.bottom) / 2.0;
+
+      mat4.ortho(0, this.viewport.right - this.viewport.left, this.viewport.top - this.viewport.bottom, 0, -1, 1, this.projTransform);
+      mat4.lookAt([middlex, middley, 0], [middlex, middley, -1], [0, 1, 0], this.viewTransform);
     },
     
     add: function(item) {
@@ -3886,30 +3887,9 @@ define('render/rendergraph',['require','underscore'],function(require) {
       this.items = [];
     },
         
-    uploadTransforms: function(context) {
-      this.applyScale(context);
-      this.applyTranslate(context);
-    },
-    
-    applyTranslate: function(context) {
-      context.translate(-this.viewport.left, - this.viewport.top);
-    },
-    
-    applyScale: function(context) {
-      var canvas = context.canvas;
-      var canvasWidth = canvas.width;
-      var canvasHeight = canvas.height;
-      
-      var scale = this.getScaleForDimensions(canvasWidth, canvasHeight);
-      
-      context.scale(scale.x, scale.y);
-    },
-    
-    getScaleForDimensions: function(width, height) {
-      return {
-        x: width / (this.viewport.right - this.viewport.left),
-        y: height / (this.viewport.bottom - this.viewport.top)
-      };
+    uploadTransforms: function(shader) {
+      shader.uploadProjectionTransform(this.projTransform);
+      shader.uploadViewTransform(this.viewTransform);
     },
     
     pass: function(callback) {
@@ -4594,244 +4574,6 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
   };
   _.extend(Tile.prototype, Eventable.prototype);
   return Tile;  
-});
-
-define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./consts'],function(require) {
-
-  var _ = require('underscore');
-  var Material = require('../render/material');
-  var Quad = require('../render/quad');
-  var Instance = require('../render/instance');
-  var Entity = require('../scene/entity');
-  var RenderGraph = require('../render/rendergraph');
-  var CanvasRender = require('../render/canvasrender');
-  var Tile = require('./tile');
-  var CollisionMap = require('./collisionmap');
-  var Coords = require('../shared/coords');
-  var Grid = require('../editor/grid');
-  var CONST = require('./consts');
-
-  var Map = function(tiles, settings) {
-    Entity.call(this, "map");    
-        
-
-    this.settings = settings;
-    this.scene = null;
-    this.instanceTiles = null;
-    this.canvas = null; 
-    this.context = null; 
-    this.offscreencanvas = null;
-    this.offscreencontext = null;
-    this.graph = null; 
-    this.renderer = null; 
-    this.tiles = tiles;
-    
-    this.tileleft = -1;
-    this.tiletop = -1;
-    this.tilebottom = -1;
-    this.tileright = -1;
-    this.needsRedrawing = false;
-    this.framesElapsedSinceNeededRedrawing = 0;
-    
-    this.on('AddedToScene', this.onAddedToScene);
-    this.tiles.on('TileLoaded', this.onTileLoaded, this);
-    this.tiles.on('InstanceOpacityChanged', this.onTileInstanceOpacityChanged, this);
-  };
-  
-  Map.prototype = {
-  
-    onAddedToScene: function(scene) {
-      this.scene = scene;
-      this.scene.graph.add(this);   
-    },
-
-    onTileLoaded: function(tile) {
-      this.needsRedrawing = true;
-    },
-    
-    depth: function() {
-      return -1000000;
-    },
-      
-    visible: function() { 
-      return true; 
-    },
-    
-    render: function(context) {      
-      this.evaluateStatus(context);
-
-      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
-       
-      var offsetInMapCanvas = {
-        x: topLeft.x - this.graph.viewport.left,
-        y: topLeft.y - this.graph.viewport.top
-      };
-      
-      var offsetInWorldCanvas = {
-        x: topLeft.x - this.scene.graph.viewport.left,
-        y: topLeft.y - this.scene.graph.viewport.top
-      };     
-
-      var offset = {
-        x: offsetInMapCanvas.x - offsetInWorldCanvas.x,
-        y: offsetInMapCanvas.y - offsetInWorldCanvas.y
-      };
-      
-      var destinationScale = this.scene.graph.getScaleForDimensions(context.canvas.width, context.canvas.height);
-      var sourceScale = this.graph.getScaleForDimensions(this.canvas.width, this.canvas.height);
-
-      var sx = -offset.x, sy = -offset.y;
-      sx = sx * sourceScale.x;
-      sy = sy * sourceScale.y;
-    var elementScale = (1.0 / this.settings.backgroundScaleFactor()) * this.settings.outputScaleFactor();
-
-      $(this.canvas).css({
-        '-webkit-transform-origin-x': -sx + 'px',
-        '-webkit-transform-origin-y': -sy + 'px'
-      });
-      $(this.canvas).css('-webkit-transform', 'translate3d(' + sx + 'px,' + sy + 'px, 0px)' +  
-                                            ' scale(' + elementScale + ',' + elementScale + ')');  
-    },
-
-    forEachVisibleTile: function(callback) {
-      if(this.tileleft < 0) return;
-      for(var i = this.tileleft ; i <= this.tileright; i++) {
-        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-           this.tiles.withTile(i, j, callback)
-        }
-      }
-    },
-        
-    forEachVisibleQuad: function(callback) {
-      for(var i = this.tileleft ; i <= this.tileright; i++) {
-        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-          var left = i * CONST.TILEWIDTH;
-          var right = left + CONST.TILEWIDTH;
-          var top = j * CONST.TILEHEIGHT;
-          var bottom = top + CONST.TILEHEIGHT;
-          callback(left, top, right, bottom);          
-        }      
-      }
-    },
-    
-    initializeContext: function() {
-      this.canvas =  document.getElementById('background');
-      this.offscreencanvas = document.createElement('canvas');
-      this.offscreencontext = this.offscreencanvas.getContext('2d');
-      this.context = this.canvas.getContext('2d');
-      this.graph = new RenderGraph();
-      this.renderer = new CanvasRender(this.offscreencontext);  
-    },
-    
-    evaluateStatus: function(mainContext) {
-      if(!this.canvas) this.initializeContext();
-    
-      var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
-      var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
-      var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
-      var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
-      
-      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / CONST.TILEWIDTH);
-      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / CONST.TILEHEIGHT);
-      var tileright = parseInt( Math.max(bottomright.x, topright.x) / CONST.TILEWIDTH) ;
-      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / CONST.TILEHEIGHT) ;
-
-      var tileswidth = tileright - tileleft;
-      var tilesheight = tilebottom - tiletop;
-              
-      // Force a square - this will reduce the number of required re-draws                  
-      if(tileswidth < tilesheight)
-        tileright += (tilesheight - tileswidth);
-      else if(tilesheight < tileswidth)
-        tilebottom += (tileswidth - tilesheight);
-
-      if(tileleft !== this.tileleft || 
-         tiletop  !== this.tiletop || 
-         tileright !== this.tileright ||
-         tilebottom !== this.tilebottom) {        
-                 
-        this.tileleft = tileleft;
-        this.tileright = tileright;
-        this.tiletop = tiletop;
-        this.tilebottom = tilebottom;
-        this.needsRedrawing = true;
-      }
-      
-      if(this.needsRedrawing) {
-        if(this.framesElapsedSinceNeededRedrawing++ < 5)
-          return;
-        this.framesElapsedSinceNeededRedrawing = 0;
-        this.needsRedrawing = false;
-        this.redrawBackground(mainContext);
-      }
-    },
-    
-    redrawBackground: function(mainContext) {
-      
-      // So we know how many units we'll need in order to render all the  current partially visible tiles
-      var worldWidth = ((this.tileright + 1) - this.tileleft) * CONST.RENDERTILEWIDTH;
-      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * CONST.RENDERTILEHEIGHT;
-      
-      // Then of course we need to know where the viewport starts
-      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
-      var bottomLeft = Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, (this.tilebottom + 1) * CONST.TILEHEIGHT);
-      
-      // That gives us the ability to set up the viewport
-      this.graph.updateViewport(
-         bottomLeft.x,
-         bottomLeft.x + worldWidth,
-         topLeft.y,
-         topLeft.y + worldHeight
-      );
-           
-      // This is very well and good, but our personal canvas needs to be sized appropriately for this so sizes match up
-      var mainScaleFactor = this.scene.graph.getScaleForDimensions(mainContext.canvas.width, mainContext.canvas.height);
-      this.offscreencanvas.width = (this.graph.width() * (mainScaleFactor.x * this.settings.backgroundScaleFactor()));
-      this.offscreencanvas.height = (this.graph.height() * (mainScaleFactor.y * this.settings.backgroundScaleFactor()));
-        
-      // And with that all set, we can render all the visible tiles
-      this.populateGraph();      
-      this.renderer.clear();
-      this.renderer.draw(this.graph);
-
-      // Now blit across
-      this.canvas.width = this.offscreencanvas.width;
-      this.canvas.height = this.offscreencanvas.height;
-      this.context.drawImage(this.offscreencanvas, 0, 0, this.canvas.width, this.canvas.height);
-    },
-    
-    populateGraph: function() {             
-      this.graph.clear();
-      this.graph.beginUpdate();
-      var self = this;
-      for(var i = this.tileleft ; i <= this.tileright; i++) {
-        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
-          this.tiles.withTile(i, j, function(tile) {
-            tile.addInstancesToGraph(self.graph);
-          });
-        }
-      }
-      this.graph.endUpdate();      
-    },
- 
-    onTileInstanceOpacityChanged: function(instance) {
-      if(instance.opacity < 1.0) {
-        this.scene.graph.add(instance);
-      } else {
-        this.scene.graph.remove(instance);
-      }    
-      this.needsRedrawing = true;
-    },
-    
-    solidAt: function(x, y) {
-      return this.tiles.solidAt(x, y);
-    }
-  };
-  
-  _.extend(Map.prototype, Entity.prototype);
-  
-  return Map;
-
 });
 
 define('entities/components/physical',['require','glmatrix','../../shared/coords'],function(require) {
@@ -6464,6 +6206,341 @@ define('entities/entityfactory',['require','underscore','./characterfactory','./
   _.extend(EntityFactory.prototype, Eventable.prototype);
   
   return EntityFactory;
+});
+
+define('render/shader',[],function() {
+  
+  var Shader = function(context, shader, fragment) {
+    this.rawshader = shader;
+    this.rawfragment = fragment;
+    this.context = context;
+    this.buildProgram();
+    this.extractInputs();
+  };
+
+  Shader.prototype = {
+    activate: function() {
+      this.context.useProgram(this.program);
+    },
+    buildProgram: function() {
+      var vertexShader = this.context.createShader(this.context.VERTEX_SHADER);
+      this.context.shaderSource(vertexShader, this.rawshader);
+      this.context.compileShader(vertexShader);
+      
+      var fragmentShader = this.context.createShader(this.context.FRAGMENT_SHADER);
+      this.context.shaderSource(fragmentShader, this.rawfragment);
+      this.context.compileShader(fragmentShader);
+      
+      var program = this.context.createProgram(); 
+
+      this.context.attachShader(program, vertexShader);
+      this.context.attachShader(program, fragmentShader);
+      this.context.linkProgram(program);
+      this.program = program;
+    },
+    extractInputs: function() {
+      this.aVertexPosition = this.context.getAttribLocation(this.program, 'aVertexPosition');
+      this.aTextureCoords = this.context.getAttribLocation(this.program, 'aTextureCoords');
+      this.uTextureOne = this.context.getUniformLocation(this.program, 'uTextureOne');
+      this.uProjection = this.context.getUniformLocation(this.program, 'uProjection');
+      this.uView = this.context.getUniformLocation(this.program, 'uView');
+      this.uWorld = this.context.getUniformLocation(this.program,'uWorld');
+    },
+    uploadWorldTransform: function(transform) {
+      this.context.uniformMatrix4fv(this.uWorld, false, transform);
+           
+    },
+    uploadProjectionTransform: function(projection) {
+      this.context.uniformMatrix4fv(this.uProjection, false, projection);
+    },
+    uploadViewTransform: function(view) {
+      this.context.uniformMatrix4fv(this.uView, false, view);
+    },
+    uploadTextureOne: function(texture) {
+      this.context.activeTexture(this.context.TEXTURE0);
+      this.context.bindTexture(this.context.TEXTURE_2D, texture);
+      this.context.uniform1i(this.uTextureOne, 0);
+    },
+    uploadVertices: function(vertices) {
+      this.context.bindBuffer(this.context.ARRAY_BUFFER, vertices);
+      this.context.vertexAttribPointer(this.aVertexPosition, 3, this.context.FLOAT, false, 0, 0);
+      this.context.enableVertexAttribArray(this.aVertexPosition);   
+    },
+    uploadTextureCoords: function(textureCoords) {
+      this.context.bindBuffer(this.context.ARRAY_BUFFER, textureCoords);
+      this.context.vertexAttribPointer(this.aTextureCoords, 2, this.context.FLOAT, false, 0, 0);
+      this.context.enableVertexAttribArray(this.this.aTextureCoords);
+    }
+  };
+
+  return Shader;
+});
+define('render/canvasrender',['require','./shader'],function(require) {
+  var Shader = require('./shader');
+
+  var CanvasRender = function(context, defaultShader) {
+    this.context = context;
+    this.context.clearColor(0.0, 0.0, 0.0, 1.0);
+    this.defaultShader = defaultShader;
+  };
+  CanvasRender.prototype = {
+    clear: function() {
+      this.context.viewport(0, 0, this.context.width, this.context.height);
+      this.context.clear(this.context.COLOR_BUFFER_BIT | this.context.DEPTH_BUFFER_BIT);
+    },
+    draw: function(graph) {
+      var self = this;
+
+      this.defaultShader.activate();
+      graph.uploadTransforms(this.defaultShader);
+      
+/*
+      graph.pass(function(item) {
+        item.render(self.context);
+      });
+  */   
+    }  
+  };
+  
+  return CanvasRender;
+});
+
+define('static/map',['require','underscore','../render/material','../render/quad','../render/instance','../scene/entity','../render/rendergraph','../render/canvasrender','./tile','./collisionmap','../shared/coords','../editor/grid','./consts'],function(require) {
+
+  var _ = require('underscore');
+  var Material = require('../render/material');
+  var Quad = require('../render/quad');
+  var Instance = require('../render/instance');
+  var Entity = require('../scene/entity');
+  var RenderGraph = require('../render/rendergraph');
+  var CanvasRender = require('../render/canvasrender');
+  var Tile = require('./tile');
+  var CollisionMap = require('./collisionmap');
+  var Coords = require('../shared/coords');
+  var Grid = require('../editor/grid');
+  var CONST = require('./consts');
+
+  var Map = function(tiles, settings) {
+    Entity.call(this, "map");    
+        
+
+    this.settings = settings;
+    this.scene = null;
+    this.instanceTiles = null;
+    this.canvas = null; 
+    this.context = null; 
+    this.offscreencanvas = null;
+    this.offscreencontext = null;
+    this.graph = null; 
+    this.renderer = null; 
+    this.tiles = tiles;
+    
+    this.tileleft = -1;
+    this.tiletop = -1;
+    this.tilebottom = -1;
+    this.tileright = -1;
+    this.needsRedrawing = false;
+    this.framesElapsedSinceNeededRedrawing = 0;
+    
+    this.on('AddedToScene', this.onAddedToScene);
+    this.tiles.on('TileLoaded', this.onTileLoaded, this);
+    this.tiles.on('InstanceOpacityChanged', this.onTileInstanceOpacityChanged, this);
+  };
+  
+  Map.prototype = {
+  
+    onAddedToScene: function(scene) {
+      this.scene = scene;
+      this.scene.graph.add(this);   
+    },
+
+    onTileLoaded: function(tile) {
+      this.needsRedrawing = true;
+    },
+    
+    depth: function() {
+      return -1000000;
+    },
+      
+    visible: function() { 
+      return true; 
+    },
+    
+    render: function(context) {      
+      this.evaluateStatus(context);
+
+      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
+       
+      var offsetInMapCanvas = {
+        x: topLeft.x - this.graph.viewport.left,
+        y: topLeft.y - this.graph.viewport.top
+      };
+      
+      var offsetInWorldCanvas = {
+        x: topLeft.x - this.scene.graph.viewport.left,
+        y: topLeft.y - this.scene.graph.viewport.top
+      };     
+
+      var offset = {
+        x: offsetInMapCanvas.x - offsetInWorldCanvas.x,
+        y: offsetInMapCanvas.y - offsetInWorldCanvas.y
+      };
+      
+      var destinationScale = this.scene.graph.getScaleForDimensions(context.canvas.width, context.canvas.height);
+      var sourceScale = this.graph.getScaleForDimensions(this.canvas.width, this.canvas.height);
+
+      var sx = -offset.x, sy = -offset.y;
+      sx = sx * sourceScale.x;
+      sy = sy * sourceScale.y;
+    var elementScale = (1.0 / this.settings.backgroundScaleFactor()) * this.settings.outputScaleFactor();
+
+      $(this.canvas).css({
+        '-webkit-transform-origin-x': -sx + 'px',
+        '-webkit-transform-origin-y': -sy + 'px'
+      });
+      $(this.canvas).css('-webkit-transform', 'translate3d(' + sx + 'px,' + sy + 'px, 0px)' +  
+                                            ' scale(' + elementScale + ',' + elementScale + ')');  
+    },
+
+    forEachVisibleTile: function(callback) {
+      if(this.tileleft < 0) return;
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+           this.tiles.withTile(i, j, callback)
+        }
+      }
+    },
+        
+    forEachVisibleQuad: function(callback) {
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          var left = i * CONST.TILEWIDTH;
+          var right = left + CONST.TILEWIDTH;
+          var top = j * CONST.TILEHEIGHT;
+          var bottom = top + CONST.TILEHEIGHT;
+          callback(left, top, right, bottom);          
+        }      
+      }
+    },
+    
+    initializeContext: function() {
+      this.canvas =  document.getElementById('background');
+      this.offscreencanvas = document.createElement('canvas');
+      this.offscreencontext = this.offscreencanvas.getContext('2d');
+      this.context = this.canvas.getContext('2d');
+      this.graph = new RenderGraph();
+      this.renderer = new CanvasRender(this.offscreencontext);  
+    },
+    
+    evaluateStatus: function(mainContext) {
+      if(!this.canvas) this.initializeContext();
+    
+      var topleft = Coords.isometricToWorld(this.scene.graph.viewport.left , this.scene.graph.viewport.top);
+      var topright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.top);        
+      var bottomright = Coords.isometricToWorld(this.scene.graph.viewport.right, this.scene.graph.viewport.bottom);
+      var bottomleft = Coords.isometricToWorld(this.scene.graph.viewport.left, this.scene.graph.viewport.bottom);
+      
+      var tileleft = parseInt( Math.min(topleft.x, bottomleft.x) / CONST.TILEWIDTH);
+      var tiletop = parseInt(  Math.min(topright.y, topleft.y) / CONST.TILEHEIGHT);
+      var tileright = parseInt( Math.max(bottomright.x, topright.x) / CONST.TILEWIDTH) ;
+      var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / CONST.TILEHEIGHT) ;
+
+      var tileswidth = tileright - tileleft;
+      var tilesheight = tilebottom - tiletop;
+              
+      // Force a square - this will reduce the number of required re-draws                  
+      if(tileswidth < tilesheight)
+        tileright += (tilesheight - tileswidth);
+      else if(tilesheight < tileswidth)
+        tilebottom += (tileswidth - tilesheight);
+
+      if(tileleft !== this.tileleft || 
+         tiletop  !== this.tiletop || 
+         tileright !== this.tileright ||
+         tilebottom !== this.tilebottom) {        
+                 
+        this.tileleft = tileleft;
+        this.tileright = tileright;
+        this.tiletop = tiletop;
+        this.tilebottom = tilebottom;
+        this.needsRedrawing = true;
+      }
+      
+      if(this.needsRedrawing) {
+        if(this.framesElapsedSinceNeededRedrawing++ < 5)
+          return;
+        this.framesElapsedSinceNeededRedrawing = 0;
+        this.needsRedrawing = false;
+        this.redrawBackground(mainContext);
+      }
+    },
+    
+    redrawBackground: function(mainContext) {
+      
+      // So we know how many units we'll need in order to render all the  current partially visible tiles
+      var worldWidth = ((this.tileright + 1) - this.tileleft) * CONST.RENDERTILEWIDTH;
+      var worldHeight = ((this.tilebottom + 1) - this.tiletop) * CONST.RENDERTILEHEIGHT;
+      
+      // Then of course we need to know where the viewport starts
+      var topLeft =  Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, this.tiletop * CONST.TILEHEIGHT);
+      var bottomLeft = Coords.worldToIsometric(this.tileleft * CONST.TILEWIDTH, (this.tilebottom + 1) * CONST.TILEHEIGHT);
+      
+      // That gives us the ability to set up the viewport
+      this.graph.updateViewport(
+         bottomLeft.x,
+         bottomLeft.x + worldWidth,
+         topLeft.y,
+         topLeft.y + worldHeight
+      );
+           
+      // This is very well and good, but our personal canvas needs to be sized appropriately for this so sizes match up
+      var mainScaleFactor = this.scene.graph.getScaleForDimensions(mainContext.canvas.width, mainContext.canvas.height);
+      this.offscreencanvas.width = (this.graph.width() * (mainScaleFactor.x * this.settings.backgroundScaleFactor()));
+      this.offscreencanvas.height = (this.graph.height() * (mainScaleFactor.y * this.settings.backgroundScaleFactor()));
+        
+      // And with that all set, we can render all the visible tiles
+      this.populateGraph();      
+      this.renderer.clear();
+      this.renderer.draw(this.graph);
+
+      // Now blit across
+      this.canvas.width = this.offscreencanvas.width;
+      this.canvas.height = this.offscreencanvas.height;
+      this.context.drawImage(this.offscreencanvas, 0, 0, this.canvas.width, this.canvas.height);
+    },
+    
+    populateGraph: function() {             
+      this.graph.clear();
+      this.graph.beginUpdate();
+      var self = this;
+      for(var i = this.tileleft ; i <= this.tileright; i++) {
+        for(var j = this.tiletop ; j <= this.tilebottom; j++) {
+          this.tiles.withTile(i, j, function(tile) {
+            tile.addInstancesToGraph(self.graph);
+          });
+        }
+      }
+      this.graph.endUpdate();      
+    },
+ 
+    onTileInstanceOpacityChanged: function(instance) {
+      if(instance.opacity < 1.0) {
+        this.scene.graph.add(instance);
+      } else {
+        this.scene.graph.remove(instance);
+      }    
+      this.needsRedrawing = true;
+    },
+    
+    solidAt: function(x, y) {
+      return this.tiles.solidAt(x, y);
+    }
+  };
+  
+  _.extend(Map.prototype, Entity.prototype);
+  
+  return Map;
+
 });
 
 /*!
@@ -15874,10 +15951,11 @@ define('input/inputemitter',['require','../shared/coords','./inputtranslator'],f
 
 });
 
-define('resources/package',['require','jquery','./texture','./jsondata','./animation'],function(require) {
+define('resources/package',['require','jquery','./texture','./jsondata','./textdata','./animation'],function(require) {
   var $ = require('jquery');
   var Texture = require('./texture');
   var JsonData = require('./jsondata');
+  var TextData = require('./textdata');
   var Animation = require('./animation');
 
   var Package = function() {
@@ -15911,6 +15989,10 @@ define('resources/package',['require','jquery','./texture','./jsondata','./anima
         return new JsonData(this, path);
       } else if(path.indexOf('.png') > 0) {
         return new Texture(this, path);
+      } else if(path.indexOf('.shader') > 0) {
+        return new TextData(this, path);
+      } else if(path.indexOf('.fragment') > 0) {
+        return new TextData(this, path);
       }
     }
   };
@@ -16000,7 +16082,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
 
   return RenderingSettings;
 });
-define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../resources/package','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory','../config/rendering'],function(require) {
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../resources/package','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory','../config/rendering','../render/shader'],function(require) {
 
   var CanvasRender = require('../render/canvasrender');
   var PackagedResources = require('../resources/packagedresources');
@@ -16011,6 +16093,7 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   var Coords = require('../shared/coords');
   var EntityFactory = require('../entities/entityfactory');
   var RenderSettings = require('../config/rendering');
+  var Shader = require('../render/shader');
 
   var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
@@ -16086,7 +16169,12 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
     },
     onResourcesLoaded: function() { 
       var self = this;
-      this.renderer = new CanvasRender(this.context);
+
+      var shader = this.resources.getData('main/gl/default.shader');
+      var fragment = this.resources.getData('main/gl/default.fragment');
+      var defaultShader = new Shader(this.context, shader, fragment);
+
+      this.renderer = new CanvasRender(this.context, defaultShader);
       this.camera = new Camera(this.renderSettings, 4.0 / 3.0, Math.PI / 4.0);  
       this.scene = new Scene(this.resources, this.camera, this.renderer);
       

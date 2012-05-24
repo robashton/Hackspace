@@ -9,6 +9,7 @@ define(function(require) {
   var Coords = require('../shared/coords');
   var EntityFactory = require('../entities/entityfactory');
   var RenderSettings = require('../config/rendering');
+  var Shader = require('../render/shader');
 
   var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
@@ -84,7 +85,12 @@ define(function(require) {
     },
     onResourcesLoaded: function() { 
       var self = this;
-      this.renderer = new CanvasRender(this.context);
+
+      var shader = this.resources.getData('main/gl/default.shader');
+      var fragment = this.resources.getData('main/gl/default.fragment');
+      var defaultShader = new Shader(this.context, shader, fragment);
+
+      this.renderer = new CanvasRender(this.context, defaultShader);
       this.camera = new Camera(this.renderSettings, 4.0 / 3.0, Math.PI / 4.0);  
       this.scene = new Scene(this.resources, this.camera, this.renderer);
       

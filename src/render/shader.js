@@ -9,6 +9,9 @@ define(function() {
   };
 
   Shader.prototype = {
+    activate: function() {
+      this.context.useProgram(this.program);
+    },
     buildProgram: function() {
       var vertexShader = this.context.createShader(this.context.VERTEX_SHADER);
       this.context.shaderSource(vertexShader, this.rawshader);
@@ -26,12 +29,12 @@ define(function() {
       this.program = program;
     },
     extractInputs: function() {
-      this.aVertexPosition = this.context.getAttribLocation('aVertexPosition');
-      this.aTextureCoords = this.context.getAttribLocation('aTextureCoords');
-      this.uTextureOne = this.context.getUniformLocation('uTextureOne');
-      this.uProjection = this.context.getUniformLocation('uProjection');
-      this.uView = this.context.getUniformLocation('uView');
-      this.uWorld = this.context.getUniformLocation('uWorld');
+      this.aVertexPosition = this.context.getAttribLocation(this.program, 'aVertexPosition');
+      this.aTextureCoords = this.context.getAttribLocation(this.program, 'aTextureCoords');
+      this.uTextureOne = this.context.getUniformLocation(this.program, 'uTextureOne');
+      this.uProjection = this.context.getUniformLocation(this.program, 'uProjection');
+      this.uView = this.context.getUniformLocation(this.program, 'uView');
+      this.uWorld = this.context.getUniformLocation(this.program,'uWorld');
     },
     uploadWorldTransform: function(transform) {
       this.context.uniformMatrix4fv(this.uWorld, false, transform);

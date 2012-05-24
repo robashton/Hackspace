@@ -10335,35 +10335,6 @@ if ( typeof define === "function" && define.amd && define.amd.jQuery ) {
 
 }).call(this);
 
-define('render/canvasrender',['require'],function(require) {
-
-  var CanvasRender = function(context) {
-    this.context = context;
-    this.context.clearColor(0.0, 0.0, 0.0, 1.0);
-  };
-  CanvasRender.prototype = {
-    clear: function() {
-      this.context.viewport(0, 0, this.context.width, this.context.height);
-      this.context.clear(this.context.COLOR_BUFFER_BIT | this.context.DEPTH_BUFFER_BIT);
-    },
-    draw: function(graph) {
-      var self = this;
-      
-      graph.uploadTransforms(this.context);
-      
-      // Upload the buffers cap'n
-
-/*
-      graph.pass(function(item) {
-        item.render(self.context);
-      });
-  */   
-    }  
-  };
-  
-  return CanvasRender;
-});
-
 define('resources/texture',['require'],function(require) {
   var Texture = function(pkg, path) {
     this.img = null;
@@ -10415,6 +10386,27 @@ define('resources/jsondata',['require'],function(require) {
   return JsonData;
 });
 
+define('resources/textdata',['require'],function(require) {
+  var TextData = function(pkg, path) {
+    this.path = path;
+    this.pkg = pkg;
+    this.data = null;
+  };
+  
+  TextData.prototype = {
+    get: function() {
+      return this.data;
+    },
+    
+    preload: function(callback) {
+     this.data = this.pkg.getData(this.path);
+     callback();
+    },
+  };
+  
+  return TextData;
+});
+
 define('resources/animation',['require'],function(require) {
   var Animation = function(pkg, path) {
     this.path = path;
@@ -10440,10 +10432,11 @@ define('resources/animation',['require'],function(require) {
   return Animation;
 });
 
-define('resources/package',['require','jquery','./texture','./jsondata','./animation'],function(require) {
+define('resources/package',['require','jquery','./texture','./jsondata','./textdata','./animation'],function(require) {
   var $ = require('jquery');
   var Texture = require('./texture');
   var JsonData = require('./jsondata');
+  var TextData = require('./textdata');
   var Animation = require('./animation');
 
   var Package = function() {
@@ -10477,6 +10470,10 @@ define('resources/package',['require','jquery','./texture','./jsondata','./anima
         return new JsonData(this, path);
       } else if(path.indexOf('.png') > 0) {
         return new Texture(this, path);
+      } else if(path.indexOf('.shader') > 0) {
+        return new TextData(this, path);
+      } else if(path.indexOf('.fragment') > 0) {
+        return new TextData(this, path);
       }
     }
   };
@@ -12328,8 +12325,9 @@ return {
 };
 });
 
-define('render/rendergraph',['require','underscore'],function(require) {
+define('render/rendergraph',['require','underscore','glmatrix'],function(require) {
   var _ = require('underscore');
+  var mat4 = require('glmatrix').mat4;
 
   var RenderGraph = function() {
     this.viewport = {
@@ -12340,6 +12338,8 @@ define('render/rendergraph',['require','underscore'],function(require) {
     };
     this.items = [];
     this.updating = false;
+    this.viewTransform = mat4.create();
+    this.projTransform = mat4.create();
   };
   
   RenderGraph.prototype = {       
@@ -12373,6 +12373,12 @@ define('render/rendergraph',['require','underscore'],function(require) {
         top: top,
         bottom: bottom
       };
+
+      var middlex = (this.viewport.right + this.viewport.left) / 2.0;
+      var middley = (this.viewport.top + this.viewport.bottom) / 2.0;
+
+      mat4.ortho(0, this.viewport.right - this.viewport.left, this.viewport.top - this.viewport.bottom, 0, -1, 1, this.projTransform);
+      mat4.lookAt([middlex, middley, 0], [middlex, middley, -1], [0, 1, 0], this.viewTransform);
     },
     
     add: function(item) {
@@ -12389,30 +12395,9 @@ define('render/rendergraph',['require','underscore'],function(require) {
       this.items = [];
     },
         
-    uploadTransforms: function(context) {
-      this.applyScale(context);
-      this.applyTranslate(context);
-    },
-    
-    applyTranslate: function(context) {
-      context.translate(-this.viewport.left, - this.viewport.top);
-    },
-    
-    applyScale: function(context) {
-      var canvas = context.canvas;
-      var canvasWidth = canvas.width;
-      var canvasHeight = canvas.height;
-      
-      var scale = this.getScaleForDimensions(canvasWidth, canvasHeight);
-      
-      context.scale(scale.x, scale.y);
-    },
-    
-    getScaleForDimensions: function(width, height) {
-      return {
-        x: width / (this.viewport.right - this.viewport.left),
-        y: height / (this.viewport.bottom - this.viewport.top)
-      };
+    uploadTransforms: function(shader) {
+      shader.uploadProjectionTransform(this.projTransform);
+      shader.uploadViewTransform(this.viewTransform);
     },
     
     pass: function(callback) {
@@ -13680,6 +13665,103 @@ define('entities/components/seeker',['require','underscore','glmatrix'],function
   };
   
   return Seeker;
+});
+
+define('render/shader',[],function() {
+  
+  var Shader = function(context, shader, fragment) {
+    this.rawshader = shader;
+    this.rawfragment = fragment;
+    this.context = context;
+    this.buildProgram();
+    this.extractInputs();
+  };
+
+  Shader.prototype = {
+    activate: function() {
+      this.context.useProgram(this.program);
+    },
+    buildProgram: function() {
+      var vertexShader = this.context.createShader(this.context.VERTEX_SHADER);
+      this.context.shaderSource(vertexShader, this.rawshader);
+      this.context.compileShader(vertexShader);
+      
+      var fragmentShader = this.context.createShader(this.context.FRAGMENT_SHADER);
+      this.context.shaderSource(fragmentShader, this.rawfragment);
+      this.context.compileShader(fragmentShader);
+      
+      var program = this.context.createProgram(); 
+
+      this.context.attachShader(program, vertexShader);
+      this.context.attachShader(program, fragmentShader);
+      this.context.linkProgram(program);
+      this.program = program;
+    },
+    extractInputs: function() {
+      this.aVertexPosition = this.context.getAttribLocation(this.program, 'aVertexPosition');
+      this.aTextureCoords = this.context.getAttribLocation(this.program, 'aTextureCoords');
+      this.uTextureOne = this.context.getUniformLocation(this.program, 'uTextureOne');
+      this.uProjection = this.context.getUniformLocation(this.program, 'uProjection');
+      this.uView = this.context.getUniformLocation(this.program, 'uView');
+      this.uWorld = this.context.getUniformLocation(this.program,'uWorld');
+    },
+    uploadWorldTransform: function(transform) {
+      this.context.uniformMatrix4fv(this.uWorld, false, transform);
+           
+    },
+    uploadProjectionTransform: function(projection) {
+      this.context.uniformMatrix4fv(this.uProjection, false, projection);
+    },
+    uploadViewTransform: function(view) {
+      this.context.uniformMatrix4fv(this.uView, false, view);
+    },
+    uploadTextureOne: function(texture) {
+      this.context.activeTexture(this.context.TEXTURE0);
+      this.context.bindTexture(this.context.TEXTURE_2D, texture);
+      this.context.uniform1i(this.uTextureOne, 0);
+    },
+    uploadVertices: function(vertices) {
+      this.context.bindBuffer(this.context.ARRAY_BUFFER, vertices);
+      this.context.vertexAttribPointer(this.aVertexPosition, 3, this.context.FLOAT, false, 0, 0);
+      this.context.enableVertexAttribArray(this.aVertexPosition);   
+    },
+    uploadTextureCoords: function(textureCoords) {
+      this.context.bindBuffer(this.context.ARRAY_BUFFER, textureCoords);
+      this.context.vertexAttribPointer(this.aTextureCoords, 2, this.context.FLOAT, false, 0, 0);
+      this.context.enableVertexAttribArray(this.this.aTextureCoords);
+    }
+  };
+
+  return Shader;
+});
+define('render/canvasrender',['require','./shader'],function(require) {
+  var Shader = require('./shader');
+
+  var CanvasRender = function(context, defaultShader) {
+    this.context = context;
+    this.context.clearColor(0.0, 0.0, 0.0, 1.0);
+    this.defaultShader = defaultShader;
+  };
+  CanvasRender.prototype = {
+    clear: function() {
+      this.context.viewport(0, 0, this.context.width, this.context.height);
+      this.context.clear(this.context.COLOR_BUFFER_BIT | this.context.DEPTH_BUFFER_BIT);
+    },
+    draw: function(graph) {
+      var self = this;
+
+      this.defaultShader.activate();
+      graph.uploadTransforms(this.defaultShader);
+      
+/*
+      graph.pass(function(item) {
+        item.render(self.context);
+      });
+  */   
+    }  
+  };
+  
+  return CanvasRender;
 });
 
 define('editor/worlditem',['require','underscore'],function(require) {
@@ -15366,7 +15448,7 @@ define('config/rendering',['require','jquery','../shared/eventable'],function(re
 
   return RenderingSettings;
 });
-define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../resources/package','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory','../config/rendering'],function(require) {
+define('harness/context',['require','../render/canvasrender','../resources/packagedresources','../resources/package','../scene/camera','../scene/scene','../static/map','../shared/coords','../entities/entityfactory','../config/rendering','../render/shader'],function(require) {
 
   var CanvasRender = require('../render/canvasrender');
   var PackagedResources = require('../resources/packagedresources');
@@ -15377,6 +15459,7 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
   var Coords = require('../shared/coords');
   var EntityFactory = require('../entities/entityfactory');
   var RenderSettings = require('../config/rendering');
+  var Shader = require('../render/shader');
 
   var findRequestAnimationFrame = function() {
     return window.requestAnimationFrame        || 
@@ -15452,7 +15535,12 @@ define('harness/context',['require','../render/canvasrender','../resources/packa
     },
     onResourcesLoaded: function() { 
       var self = this;
-      this.renderer = new CanvasRender(this.context);
+
+      var shader = this.resources.getData('main/gl/default.shader');
+      var fragment = this.resources.getData('main/gl/default.fragment');
+      var defaultShader = new Shader(this.context, shader, fragment);
+
+      this.renderer = new CanvasRender(this.context, defaultShader);
       this.camera = new Camera(this.renderSettings, 4.0 / 3.0, Math.PI / 4.0);  
       this.scene = new Scene(this.resources, this.camera, this.renderer);
       

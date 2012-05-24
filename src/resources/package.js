@@ -2,6 +2,7 @@ define(function(require) {
   var $ = require('jquery');
   var Texture = require('./texture');
   var JsonData = require('./jsondata');
+  var TextData = require('./textdata');
   var Animation = require('./animation');
 
   var Package = function() {
@@ -35,6 +36,10 @@ define(function(require) {
         return new JsonData(this, path);
       } else if(path.indexOf('.png') > 0) {
         return new Texture(this, path);
+      } else if(path.indexOf('.shader') > 0) {
+        return new TextData(this, path);
+      } else if(path.indexOf('.fragment') > 0) {
+        return new TextData(this, path);
       }
     }
   };

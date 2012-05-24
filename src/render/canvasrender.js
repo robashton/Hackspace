@@ -1,8 +1,10 @@
 define(function(require) {
+  var Shader = require('./shader');
 
-  var CanvasRender = function(context) {
+  var CanvasRender = function(context, defaultShader) {
     this.context = context;
     this.context.clearColor(0.0, 0.0, 0.0, 1.0);
+    this.defaultShader = defaultShader;
   };
   CanvasRender.prototype = {
     clear: function() {
@@ -11,11 +13,10 @@ define(function(require) {
     },
     draw: function(graph) {
       var self = this;
-      
-      graph.uploadTransforms(this.context);
-      
-      // Upload the buffers cap'n
 
+      this.defaultShader.activate();
+      graph.uploadTransforms(this.defaultShader);
+      
 /*
       graph.pass(function(item) {
         item.render(self.context);
