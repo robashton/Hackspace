@@ -21,6 +21,7 @@ define(function(require) {
   var Controller = require('../../entities/controller');
   var ChaseCamera = require('../../entities/chasecamera');
   var Commander = require('../../network/commander');
+  var ItemGeneration = require('../../generation/itemgeneration');
 
   var Demo = function(socket, element) {
     this.element = element;
@@ -29,7 +30,6 @@ define(function(require) {
 
   Demo.prototype = {
     start: function(context) {        
-      console.log('START');
       var self = this;  
       this.context = context;      
       var collider = new Collider();
@@ -38,7 +38,7 @@ define(function(require) {
       var input = new InputTranslator(context.element);
       var inputEmitter = new InputEmitter(input, context);
       
-      var god = new God(context.entityFactory);
+      var god = new God(context.entityFactory, new ItemGeneration());
       context.scene.add(god);
       
       this.connector = new ClientConnector(this.socket, this.context);

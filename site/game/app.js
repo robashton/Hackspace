@@ -4436,10 +4436,9 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
   
   Tile.prototype = {
     addInstancesToGraph: function(graph) {
-//      graph.add(this.floorInstance);
+      graph.add(this.floorInstance);
       for(var i in this.instances) {
         var instance = this.instances[i];
-        if(instance.opacity < 1.0) continue;
         graph.add(instance);
       }
     },
@@ -4468,10 +4467,6 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
       instance.scale(template.size[0], template.size[1], template.size[2]);
       instance.translate(item.x, item.y);
       this.instances[i] = instance;
-      instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
-    },
-    onInstanceOpacityChanged: function(data, sender) {
-      this.raise('InstanceOpacityChanged', sender);
     },
     forEachInstance: function(callback, context) {
       for(var i = 0; i < this.instances.length; i++) {
@@ -17117,7 +17112,37 @@ define('network/commander',['require','underscore'],function(require) {
   return Commander;
 });
 
-define('apps/demo/app',['require','../../input/inputemitter','../../input/inputtranslator','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory','../../ui/quests','../../entities/sceneryfader','../../ui/character','../../entities/controller','../../entities/chasecamera','../../network/commander'],function(require) {
+define('generation/itemgeneration',['require','underscore','../scripting/equipmenttypes'],function(require) {
+  var _ = require('underscore');
+  var EquipmentTypes = require('../scripting/equipmenttypes');
+
+  var ItemGeneration = function() {
+    this.equipmentCollection = [];
+    for(var i in EquipmentTypes)
+      this.equipmentCollection.push({
+        equipType: EquipmentTypes[i],
+        name: i
+      });
+  };
+
+  ItemGeneration.prototype = {
+    createItem: function() {
+      var chosen = this.equipmentCollection[Math.floor((Math.random() * this.equipmentCollection.length))];
+      var item = {
+        id: 'item-' + Math.floor(Math.random() * 1000000),
+        type: chosen.equipType,      // This would be sword, etc
+        equipType: chosen.equipType, // This is just the equip type
+        pickupWidth: 5,
+        pickupHeight: 8,
+        pickupTexture: chosen.name + '-icon'
+      };
+      return item;
+    }
+  };
+
+  return ItemGeneration;
+});
+define('apps/demo/app',['require','../../input/inputemitter','../../input/inputtranslator','../../harness/context','jquery','../../ui/questasker','../../ui/healthbars','../../entities/collider','../../entities/god','../../network/clientconnector','../../ui/identify','../../ui/inventory','../../ui/quests','../../entities/sceneryfader','../../ui/character','../../entities/controller','../../entities/chasecamera','../../network/commander','../../generation/itemgeneration'],function(require) {
 
 
   var InputEmitter = require('../../input/inputemitter');
@@ -17140,6 +17165,7 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
   var Controller = require('../../entities/controller');
   var ChaseCamera = require('../../entities/chasecamera');
   var Commander = require('../../network/commander');
+  var ItemGeneration = require('../../generation/itemgeneration');
 
   var Demo = function(socket, element) {
     this.element = element;
@@ -17148,7 +17174,6 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
 
   Demo.prototype = {
     start: function(context) {        
-      console.log('START');
       var self = this;  
       this.context = context;      
       var collider = new Collider();
@@ -17157,7 +17182,7 @@ define('apps/demo/app',['require','../../input/inputemitter','../../input/inputt
       var input = new InputTranslator(context.element);
       var inputEmitter = new InputEmitter(input, context);
       
-      var god = new God(context.entityFactory);
+      var god = new God(context.entityFactory, new ItemGeneration());
       context.scene.add(god);
       
       this.connector = new ClientConnector(this.socket, this.context);

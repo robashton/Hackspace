@@ -14556,10 +14556,9 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
   
   Tile.prototype = {
     addInstancesToGraph: function(graph) {
-//      graph.add(this.floorInstance);
+      graph.add(this.floorInstance);
       for(var i in this.instances) {
         var instance = this.instances[i];
-        if(instance.opacity < 1.0) continue;
         graph.add(instance);
       }
     },
@@ -14588,10 +14587,6 @@ define('static/tile',['require','underscore','../render/instance','../shared/eve
       instance.scale(template.size[0], template.size[1], template.size[2]);
       instance.translate(item.x, item.y);
       this.instances[i] = instance;
-      instance.on('OpacityChanged', this.onInstanceOpacityChanged, this);
-    },
-    onInstanceOpacityChanged: function(data, sender) {
-      this.raise('InstanceOpacityChanged', sender);
     },
     forEachInstance: function(callback, context) {
       for(var i = 0; i < this.instances.length; i++) {
