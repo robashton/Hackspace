@@ -4,8 +4,9 @@ precision highp float;
 
 varying vec2 vTextureCoords;
 uniform sampler2D uTextureOne;
+uniform float uGlobalAlpha;
 
 void main(void) {
   vec4 colour = texture2D(uTextureOne, vec2(vTextureCoords.s, vTextureCoords.t));
-  gl_FragColor = colour;
+  gl_FragColor = vec4(colour.r, colour.g, colour.b, uGlobalAlpha * colour.a);
 }

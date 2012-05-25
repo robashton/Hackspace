@@ -4245,6 +4245,7 @@ define('render/instance',['require','underscore','glmatrix','glmatrix','../share
       mat4.scale(this.worldTransform, [quad.width, quad.height, 1.0]);
       shader.uploadWorldTransform(this.worldTransform);
       shader.uploadTextureOne(this.model.image('diffuseTexture'));
+      shader.setGlobalAlpha(this.opacity);
       context.drawArrays(context.TRIANGLE_STRIP, 0, 4);
     },
     depth: function() {
@@ -6387,6 +6388,7 @@ define('render/shader',[],function() {
       this.uProjection = this.context.getUniformLocation(this.program, 'uProjection');
       this.uView = this.context.getUniformLocation(this.program, 'uView');
       this.uWorld = this.context.getUniformLocation(this.program,'uWorld');
+      this.uGlobalAlpha = this.context.getUniformLocation(this.program, 'uGlobalAlpha');
     },
     uploadWorldTransform: function(transform) {
       this.context.uniformMatrix4fv(this.uWorld, false, transform);
@@ -6412,6 +6414,9 @@ define('render/shader',[],function() {
       this.context.bindBuffer(this.context.ARRAY_BUFFER, textureCoords);
       this.context.vertexAttribPointer(this.aTextureCoords, 2, this.context.FLOAT, false, 0, 0);
       this.context.enableVertexAttribArray(this.aTextureCoords);
+    },
+    setGlobalAlpha: function(alpha) {
+      this.context.uniform1f(this.uGlobalAlpha, alpha); 
     }
   };
 

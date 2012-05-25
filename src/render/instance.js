@@ -51,6 +51,7 @@ define(function(require) {
       mat4.scale(this.worldTransform, [quad.width, quad.height, 1.0]);
       shader.uploadWorldTransform(this.worldTransform);
       shader.uploadTextureOne(this.model.image('diffuseTexture'));
+      shader.setGlobalAlpha(this.opacity);
       context.drawArrays(context.TRIANGLE_STRIP, 0, 4);
     },
     depth: function() {
