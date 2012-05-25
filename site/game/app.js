@@ -3904,7 +3904,7 @@ define('render/rendergraph',['require','underscore','glmatrix'],function(require
     pass: function(callback) {
       var self = this;
       _(this.items).chain()
-       .filter(function(item) { return item.visible(self.viewport); })
+       .filter(function(item) { return  true; }) //item.visible(self.viewport); })
        .each(callback);
     },
   };
@@ -4510,9 +4510,14 @@ define('static/map',['require','underscore','../scene/entity','../render/renderg
     this.tileright = -1;
     
     this.on('AddedToScene', this.onAddedToScene);
+    tiles.on('TileLoaded', this.onTileLoaded, this)
   };
   
   Map.prototype = {
+
+    onTileLoaded: function() {
+      this.populateGraph();
+    },
   
     onAddedToScene: function(scene) {
       this.scene = scene;
@@ -4567,15 +4572,6 @@ define('static/map',['require','underscore','../scene/entity','../render/renderg
       var tiletop = parseInt(  Math.min(topright.y, topleft.y) / CONST.TILEHEIGHT);
       var tileright = parseInt( Math.max(bottomright.x, topright.x) / CONST.TILEWIDTH) ;
       var tilebottom = parseInt( Math.max(bottomleft.y, bottomright.y) / CONST.TILEHEIGHT) ;
-
-      var tileswidth = tileright - tileleft;
-      var tilesheight = tilebottom - tiletop;
-              
-      // Force a square - this will reduce the number of required re-draws                  
-      if(tileswidth < tilesheight)
-        tileright += (tilesheight - tileswidth);
-      else if(tilesheight < tileswidth)
-        tilebottom += (tileswidth - tilesheight);
 
       if(tileleft !== this.tileleft || 
          tiletop  !== this.tiletop || 

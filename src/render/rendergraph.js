@@ -73,7 +73,7 @@ define(function(require) {
     pass: function(callback) {
       var self = this;
       _(this.items).chain()
-       .filter(function(item) { return item.visible(self.viewport); })
+       .filter(function(item) { return  true; }) //item.visible(self.viewport); })
        .each(callback);
     },
   };
