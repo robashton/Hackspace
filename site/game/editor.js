@@ -14407,27 +14407,27 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
       return true;
     },
     render: function(context) {
-      context.save(); 
+      // context.save(); 
       
-      context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
-      context.lineWidth = 0.25;
+      // context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
+      // context.lineWidth = 0.25;
           
-      context.beginPath();
-      this.map.forEachVisibleQuad(function(left, top, right, bottom) {
+      // context.beginPath();
+      // this.map.forEachVisibleQuad(function(left, top, right, bottom) {
       
-        var topleft = Coords.worldToIsometric(left, top);
-        var topright = Coords.worldToIsometric(right, top);        
-        var bottomright = Coords.worldToIsometric(right, bottom);
-        var bottomleft = Coords.worldToIsometric(left, bottom);
+      //   var topleft = Coords.worldToIsometric(left, top);
+      //   var topright = Coords.worldToIsometric(right, top);        
+      //   var bottomright = Coords.worldToIsometric(right, bottom);
+      //   var bottomleft = Coords.worldToIsometric(left, bottom);
          
-        context.moveTo(topleft.x, topleft.y);
-        context.lineTo(topright.x, topright.y);
-        context.lineTo(bottomright.x, bottomright.y);
-        context.lineTo(bottomleft.x, bottomleft.y);
-        context.lineTo(topleft.x, topleft.y);
-      });
-      context.stroke();
-      context.restore();
+      //   context.moveTo(topleft.x, topleft.y);
+      //   context.lineTo(topright.x, topright.y);
+      //   context.lineTo(bottomright.x, bottomright.y);
+      //   context.lineTo(bottomleft.x, bottomleft.y);
+      //   context.lineTo(topleft.x, topleft.y);
+      // });
+      // context.stroke();
+      // context.restore();
     }
   };
   
@@ -14721,6 +14721,7 @@ define('static/map',['require','underscore','../scene/entity','../render/renderg
     },
    
     solidAt: function(x, y) {
+      console.log('Checking solidity at', x, y);
       return this.tiles.solidAt(x, y);
     }
   };
@@ -16198,14 +16199,11 @@ define('editor/tilebuilder',['require','underscore','../static/tile','./worldite
         var item = this.items[x];
         var template = this.parent.templates[item.template];
 
-        var realx = (item.x - this.x) + (template.size[0] / 2.0);
-        var realy = (item.y - this.y) + (template.size[1] / 2.0);
+        var realx = (item.x - this.x);
+        var realy = (item.y - this.y);
         var width = template.collision[0];
         var height = template.collision[1];
-        
-        realx += width / 2.0;
-        realy += height / 2.0;
-        
+                
         realx = parseInt(realx);
         realy = parseInt(realy);
         

@@ -4368,27 +4368,27 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
       return true;
     },
     render: function(context) {
-      context.save(); 
+      // context.save(); 
       
-      context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
-      context.lineWidth = 0.25;
+      // context.strokeStyle = 'rgba(100, 100, 100, 1.0)';
+      // context.lineWidth = 0.25;
           
-      context.beginPath();
-      this.map.forEachVisibleQuad(function(left, top, right, bottom) {
+      // context.beginPath();
+      // this.map.forEachVisibleQuad(function(left, top, right, bottom) {
       
-        var topleft = Coords.worldToIsometric(left, top);
-        var topright = Coords.worldToIsometric(right, top);        
-        var bottomright = Coords.worldToIsometric(right, bottom);
-        var bottomleft = Coords.worldToIsometric(left, bottom);
+      //   var topleft = Coords.worldToIsometric(left, top);
+      //   var topright = Coords.worldToIsometric(right, top);        
+      //   var bottomright = Coords.worldToIsometric(right, bottom);
+      //   var bottomleft = Coords.worldToIsometric(left, bottom);
          
-        context.moveTo(topleft.x, topleft.y);
-        context.lineTo(topright.x, topright.y);
-        context.lineTo(bottomright.x, bottomright.y);
-        context.lineTo(bottomleft.x, bottomleft.y);
-        context.lineTo(topleft.x, topleft.y);
-      });
-      context.stroke();
-      context.restore();
+      //   context.moveTo(topleft.x, topleft.y);
+      //   context.lineTo(topright.x, topright.y);
+      //   context.lineTo(bottomright.x, bottomright.y);
+      //   context.lineTo(bottomleft.x, bottomleft.y);
+      //   context.lineTo(topleft.x, topleft.y);
+      // });
+      // context.stroke();
+      // context.restore();
     }
   };
   
@@ -4601,6 +4601,7 @@ define('static/map',['require','underscore','../scene/entity','../render/renderg
     },
    
     solidAt: function(x, y) {
+      console.log('Checking solidity at', x, y);
       return this.tiles.solidAt(x, y);
     }
   };

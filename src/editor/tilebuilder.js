@@ -71,14 +71,11 @@ define(function(require) {
         var item = this.items[x];
         var template = this.parent.templates[item.template];
 
-        var realx = (item.x - this.x) + (template.size[0] / 2.0);
-        var realy = (item.y - this.y) + (template.size[1] / 2.0);
+        var realx = (item.x - this.x);
+        var realy = (item.y - this.y);
         var width = template.collision[0];
         var height = template.collision[1];
-        
-        realx += width / 2.0;
-        realy += height / 2.0;
-        
+                
         realx = parseInt(realx);
         realy = parseInt(realy);
         
