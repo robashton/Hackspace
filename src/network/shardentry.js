@@ -87,15 +87,15 @@ define(function(require) {
     },
 
     populateScene: function() {
-/*      for(var i in this.tileData) {
+      for(var i in this.tileData) {
         var entities = this.tileData[i].entities;
         for(var id in entities) {
           var item = entities[id];
           var entity = this.context.createEntity(item.type, id, item.data);
           this.context.scene.add(entity);
         } 
-        }
-      */
+      }
+      
       this.context.scene.on('CommandDispatched', this.onSceneCommandDispatched, this);
            
       var collider = new Collider();

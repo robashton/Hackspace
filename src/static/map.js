@@ -116,7 +116,6 @@ define(function(require) {
     },
    
     solidAt: function(x, y) {
-      console.log('Checking solidity at', x, y);
       return this.tiles.solidAt(x, y);
     }
   };

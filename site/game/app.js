@@ -3889,7 +3889,7 @@ define('render/rendergraph',['require','underscore','glmatrix'],function(require
     },
     
     remove: function(item) {
-      this.items = _.without(this.items, [item]);
+      this.items = _.without(this.items, item);
     },    
     
     clear: function() {
@@ -3904,7 +3904,7 @@ define('render/rendergraph',['require','underscore','glmatrix'],function(require
     pass: function(callback) {
       var self = this;
       _(this.items).chain()
-       .filter(function(item) { return  true; }) //item.visible(self.viewport); })
+       .filter(function(item) { return item.visible(self.viewport); })
        .each(callback);
     },
   };
@@ -4602,7 +4602,6 @@ define('static/map',['require','underscore','../scene/entity','../render/renderg
     },
    
     solidAt: function(x, y) {
-      console.log('Checking solidity at', x, y);
       return this.tiles.solidAt(x, y);
     }
   };
@@ -4937,6 +4936,7 @@ define('entities/components/renderable',['require','../../render/instance','../.
     },
     
     onRemovedFromScene: function() {
+      console.log('Removed renderable');
       this.scene.graph.remove(this.instance);
     },
     updateModel: function() {
