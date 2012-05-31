@@ -1,0 +1,10 @@
+{
+  "type": "static",
+  "template": {
+    "id": "mushroom",
+    "size": [ 12, 12, 24 ],
+    "collision": [12, 12],    
+    "texture": "main/mushroom.png",
+    "solid": true
+  }
+}

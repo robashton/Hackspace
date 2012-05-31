@@ -4936,7 +4936,6 @@ define('entities/components/renderable',['require','../../render/instance','../.
     },
     
     onRemovedFromScene: function() {
-      console.log('Removed renderable');
       this.scene.graph.remove(this.instance);
     },
     updateModel: function() {

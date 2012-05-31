@@ -1,0 +1,10 @@
+{
+  "type": "static",
+  "template": {
+    "id": "tree2",
+    "size": [ 12, 12, 24 ],
+    "collision": [12, 12],    
+    "texture": "main/tree2.png",
+    "solid": true
+  }
+}

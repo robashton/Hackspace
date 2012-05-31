@@ -1,0 +1,10 @@
+{
+  "type": "static",
+  "template": {
+    "id": "log1",
+    "size": [ 12, 12, 24 ],
+    "collision": [12, 12],    
+    "texture": "main/log1.png",
+    "solid": true
+  }
+}
