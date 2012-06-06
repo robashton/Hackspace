@@ -2,7 +2,7 @@
 	"type": "static",
 	"template": {
 		"id": "rock2",
-		"size": [ 20, 20, 40 ],
+		"size": [ 10, 10, 20 ],
 		"collision": [12, 12],    
 		"texture": "main/rock2.png",
 		"solid": true

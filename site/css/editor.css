@@ -10,12 +10,13 @@
 
 #data-editor {
   float: left;
+  margin-left: 5px;
 }
 
 #editor-container {
   float: left;
+  margin-left: 5px;
 }
-
 
 #target {
   position: relative;
@@ -58,6 +59,10 @@
   color: #4444EE;
 }
 
+#library {
+  height: 500px;
+}
+
 #library img {
   height: 25px;
   width: 25px;
@@ -66,9 +71,19 @@
 
 .library-element {
   cursor: pointer;
+  float: left;
+  border: 1px solid #000;
+  padding: 3px 3px 3px 3px;
+  margin: 1px 1px 1px 1px;
 }
 
 .paint-element {
   position: relative;
   z-index: -1;
+}
+
+#tools > div {
+  background-color: #FFF;
+  padding: 5px 5px 5px 5px;
+  margin-bottom: 10px;
 }

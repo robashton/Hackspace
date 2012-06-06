@@ -22,7 +22,6 @@ body {
   position: absolute;
   top: 0px;
   left: 0px;
-  -webkit-transform: translate3d(0px, 0px, 0px);
 }
 
 #background {
@@ -33,9 +32,6 @@ body {
   top: 0px;
   left: 0px;
   pointer-events: none;
-  -webkit-transform-origin-x': 0px;
-  -webkit-transform-origin-y': 0px;
-  -webkit-transform: translate3d(0px, 0px, 0px);
 }
 
 

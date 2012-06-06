@@ -2,7 +2,7 @@
 	"type": "static",
 	"template": {
 		"id": "plant1",
-		"size": [ 12, 12, 24 ],
+		"size": [ 8, 8, 16 ],
 		"collision": [12, 12],    
 		"texture": "main/plant1.png",
 		"solid": true

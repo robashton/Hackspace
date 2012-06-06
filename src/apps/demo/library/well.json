@@ -3,7 +3,7 @@
   "type": "static",
   "template": {
     "id": "well",
-    "size": [ 12, 12, 24 ],
+    "size": [ 30, 30, 60 ],
     "collision": [12, 12],    
     "texture": "main/well.png",
     "solid": true

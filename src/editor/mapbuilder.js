@@ -29,14 +29,14 @@ define(function(require) {
       this.tiles.withTileAtCoords(x, y, function(tile) {
         tile.addStatic(x, y, template.id);
       });
-      this.needsRedrawing = true;            
+      this.populateGraph();
     },
 
     addEntity: function(id, type, data) {
       this.tiles.withTileAtCoords(data.x, data.y, function(tile) {
         tile.addEntity(id, type, data);
       });
-      this.needsRedrawing = true;
+      this.populateGraph();
     },
 
     globalCoordsToTileCoords: function(x, y) {
