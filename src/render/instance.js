@@ -6,12 +6,12 @@ define(function(require) {
   var Coords = require('../shared/coords');
   var Eventable = require('../shared/eventable');
   var mat4 = require('glmatrix').mat4;
+  var Bounds = require('../shared/bounds');
 
   var Instance = function(model) {
     Eventable.call(this);
     this.model = model;
-    this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([1,1,1]);
+    this.bounds = new Bounds();
     this.rotation = 0;
     this.opacity = 1.0;
     this.forcedDepth = null;
@@ -23,9 +23,7 @@ define(function(require) {
       return true;
     },
     scale: function(x, y, z) {
-      this.size[0] = x || 1.0;
-      this.size[1] = y || 1.0;
-      this.size[2] = z || 1.0;
+      this.bounds.updateSize(x, y, z);
     },
     setOpacity: function(value) {
       if(this.opacity != value) {
@@ -34,9 +32,7 @@ define(function(require) {
       }
     },
     translate: function(x, y, z) {
-      this.position[0] = x || 0;
-      this.position[1] = y || 0;
-      this.position[2] = z || 0;
+      this.bounds.updatePosition(x, y, z);
     },
     rotate: function(x) {
       this.rotation = x;
@@ -44,7 +40,15 @@ define(function(require) {
 
     render: function(shader, context) {
       mat4.identity(this.worldTransform);
-      var quad = this.getQuad();
+      var quad = this.bounds.getRenderQuad();
+
+      // On a list of things Not To Do, this is Pretty High Up There
+      // TODO: This probably fits in the same fix for the below hack
+      this.raise('BeforeRender', {
+        shader: shader,
+        context: context,
+        quad: quad
+      });
 
       // TODO: This will be a bottleneck, sort it out mister.
       mat4.translate(this.worldTransform, [quad.x, quad.y, 0]);
@@ -55,22 +59,13 @@ define(function(require) {
       context.drawArrays(context.TRIANGLE_STRIP, 0, 4);
     },
     depth: function() {
-      return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;
+      return this.forcedDepth || Coords.worldToIsometric(this.bounds.position[0], this.bounds.position[1]).y;
     },
     forceDepth: function(value) {
       this.forcedDepth = value;
     },
     getQuad: function() {
-      var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
-      var bottomRight = Coords.worldToIsometric(this.position[0] + this.size[0], this.position[1] + this.size[1]);    
-      var width = this.size[0] + this.size[1];
-      var height = this.size[2];
-      return {
-        x: bottomLeft.x,
-        y: bottomLeft.y - (height), // - (bottomRight.y - bottomLeft.y)/2.0),
-        width: width,
-        height: height
-      }
+      return this.bounds.getRenderQuad();
     },
     intersectWithWorldCoords: function(x, y) {
       var screen = Coords.worldToIsometric(x, y);  

@@ -18,10 +18,10 @@ define(function(require) {
       this.createInstance();
     },
     select: function() {
-      this.instance.drawFloor = true;
+      this.tool.selections.add(this.instance);
     },
     deselect: function() {
-      this.instance.drawFloor = false;
+      this.tool.selections.remove(this.instance);
     },
     createInstance: function() {
       this.instance = this.tool.entityInstanceFactory.createInstanceForEntityType(this.entity.type);

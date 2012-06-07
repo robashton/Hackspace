@@ -6,10 +6,12 @@ define(function(require) {
   var Material = require('../render/material');
   var Quad = require('../render/quad');
   var DynamicTileSource = require('../static/dynamictilesource');
+  var Selections = require('./selections');
 
   var EditorTileSource = function(resources, scene, entityInstanceFactory) {
     DynamicTileSource.call(this, resources, scene);
     this.entityInstanceFactory = entityInstanceFactory;
+    this.selections = new Selections(resources);
   };
 
   EditorTileSource.prototype = {};

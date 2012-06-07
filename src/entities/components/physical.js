@@ -2,24 +2,19 @@ define(function(require) {
 
   var vec3 = require('glmatrix').vec3;
   var Coords = require('../../shared/coords');
+  var Bounds = require('../../shared/bounds');
 
   var Physical = function() {
-    this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([0,0,0]);
+    this.bounds = new Bounds();
     this.scene = null;
   };
   
   Physical.prototype = {    
     onSizeChanged: function(data) {
-      this.size[0] = data.x;
-      this.size[1] = data.y;
-      this.size[2] = data.z;
+      this.bounds.updateSize(data.x, data.y, data.z);
     },
-    
     onPositionChanged: function(data) {
-      this.position[0] = data.x;
-      this.position[1] = data.y;
-      this.position[2] = data.z;
+      this.bounds.updatePosition(data.x, data.y, data.z);
       this.checkLandscapeBounds();
     },
            
@@ -29,9 +24,9 @@ define(function(require) {
     
     onClippedTerrain: function(data) {
       this.parent.dispatch('moveTo', [
-        this.position[0] + data.x,
-        this.position[1] + data.y,
-        this.position[2]
+        this.bounds.position[0] + data.x,
+        this.bounds.position[1] + data.y,
+        this.bounds.position[2]
       ]); 
     },
     
@@ -58,9 +53,9 @@ define(function(require) {
         };
         
         self.parent.dispatch('moveTo', [
-          self.position[0] + x,
-          self.position[1] + y,
-          self.position[2]
+          self.bounds.position[0] + x,
+          self.bounds.position[1] + y,
+          self.bounds.position[2]
         ]);                             
       });
       this.parent.raise('Collided', data);
@@ -73,19 +68,8 @@ define(function(require) {
         self.collideWithMap(map);
       });      
     },
-   
     getBounds: function() {
-      return {
-        x: this.position[0],
-        y: this.position[1],
-        width: this.size[0],
-        height: this.size[1],
-        circle: {
-          radius: Math.max(this.size[0] / 2.0, this.size[1] / 2.0),
-          x: this.position[0],
-          y: this.position[1]
-        }
-      }
+      return this.bounds.getCollisionQuad();
     },
     collideWithMap: function(map) {     
       var result = {
@@ -103,8 +87,8 @@ define(function(require) {
       }    
     },
     collideWithTop: function(map, result) {
-      var x = result.x + this.position[0] + (this.size[0] / 2.0);
-      var y = result.y + this.position[1];
+      var x = result.x + this.bounds.position[0] + (this.bounds.size[0] / 2.0);
+      var y = result.y + this.bounds.position[1];
       var d = 0;
       while(map.solidAt(x, y + d)) {
         d++;
@@ -114,8 +98,8 @@ define(function(require) {
       return d !== 0;
     },
     collideWithRight: function(map, result) {
-      var x = result.x + this.position[0] + this.size[0];
-      var y = result.y + this.position[1] + (this.size[1] / 2.0);
+      var x = result.x + this.bounds.position[0] + this.bounds.size[0];
+      var y = result.y + this.bounds.position[1] + (this.bounds.size[1] / 2.0);
       var d = 0;
       while(map.solidAt(x + d, y)) {
         d--;
@@ -125,8 +109,8 @@ define(function(require) {
       return d !== 0;
     },
     collideWithBottom: function(map, result) {
-      var x = result.x + this.position[0] + (this.size[0] / 2.0);
-      var y = result.y + this.position[1] + this.size[1];
+      var x = result.x + this.bounds.position[0] + (this.bounds.size[0] / 2.0);
+      var y = result.y + this.bounds.position[1] + this.bounds.size[1];
       var d = 0;
       while(map.solidAt(x, y + d)) {
         d--;
@@ -136,8 +120,8 @@ define(function(require) {
       return d !== 0;
     },
     collideWithLeft: function(map, result) {
-      var x = result.x + this.position[0];
-      var y = result.y + this.position[1] + (this.size[1] / 2.0);
+      var x = result.x + this.bounds.position[0];
+      var y = result.y + this.bounds.position[1] + (this.bounds.size[1] / 2.0);
       var d = 0;
       while(map.solidAt(x + d, y)) {
         d++;

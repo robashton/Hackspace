@@ -12562,6 +12562,85 @@ define('scene/camera',['require','glmatrix','../shared/coords'],function(require
   return Camera; 
 });
 
+define('shared/bounds',['require','underscore','./coords','glmatrix'],function(require) {
+  var _ = require('underscore');
+  var Coords = require('./coords');
+  var vec3 = require('glmatrix').vec3;
+  
+  var Bounds = function(position, size) {
+    this.position = position || vec3.create([0,0,0]);
+    this.size = size || vec3.create([0,0,0]);
+    this.dirty = true;
+    this.renderQuad = {};
+    this.selectionQuad = {};
+  };
+
+  Bounds.prototype = {
+    getRenderQuad: function() {
+      this.checkState();
+      var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
+      var width = this.size[0] + this.size[1];
+      var height = this.size[2];
+      return {
+        x: bottomLeft.x,
+        y: bottomLeft.y - (height),
+        width: width,
+        height: height
+      };
+    },
+    getSelectionQuad: function() {
+      this.checkState();
+      return this.selectionQuad;
+    },
+    getCollisionQuad: function() {
+      return {
+        x: this.position[0],
+        y: this.position[1],
+        width: this.size[0],
+        height: this.size[1],
+        circle: {
+          radius: Math.max(this.size[0] / 2.0, this.size[1] / 2.0),
+          x: this.position[0],
+          y: this.position[1]
+        }
+      }
+    },
+    updatePosition: function(x, y, z) {
+      this.position[0] = x;
+      this.position[1] = y;
+      this.position[2] = z;
+      this.dirty = true;
+    },
+    updateSize: function(x, y, z) {
+      this.size[0] = x;
+      this.size[1] = y;
+      this.size[2] = z;
+      this.dirty = true;
+    },
+    checkState: function() {
+      if(!this.dirty) return;
+      this.dirty = false;
+
+      this.createRenderQuad();
+      this.createSelectionQuad();
+      this.createCollisionQuad();
+    },
+    createRenderQuad: function() {
+
+    },
+    createSelectionQuad: function() {
+
+    },
+    createCollisionQuad: function() {
+
+    }
+  };
+
+
+  return Bounds;
+
+});
+
 define('static/consts',['require','../shared/coords'],function(require) {
   var Coords = require('../shared/coords');
   var CONSTS = {};
@@ -12578,28 +12657,23 @@ define('static/consts',['require','../shared/coords'],function(require) {
 
   return CONSTS;
 });
-define('entities/components/physical',['require','glmatrix','../../shared/coords'],function(require) {
+define('entities/components/physical',['require','glmatrix','../../shared/coords','../../shared/bounds'],function(require) {
 
   var vec3 = require('glmatrix').vec3;
   var Coords = require('../../shared/coords');
+  var Bounds = require('../../shared/bounds');
 
   var Physical = function() {
-    this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([0,0,0]);
+    this.bounds = new Bounds();
     this.scene = null;
   };
   
   Physical.prototype = {    
     onSizeChanged: function(data) {
-      this.size[0] = data.x;
-      this.size[1] = data.y;
-      this.size[2] = data.z;
+      this.bounds.updateSize(data.x, data.y, data.z);
     },
-    
     onPositionChanged: function(data) {
-      this.position[0] = data.x;
-      this.position[1] = data.y;
-      this.position[2] = data.z;
+      this.bounds.updatePosition(data.x, data.y, data.z);
       this.checkLandscapeBounds();
     },
            
@@ -12609,9 +12683,9 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
     
     onClippedTerrain: function(data) {
       this.parent.dispatch('moveTo', [
-        this.position[0] + data.x,
-        this.position[1] + data.y,
-        this.position[2]
+        this.bounds.position[0] + data.x,
+        this.bounds.position[1] + data.y,
+        this.bounds.position[2]
       ]); 
     },
     
@@ -12638,9 +12712,9 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         };
         
         self.parent.dispatch('moveTo', [
-          self.position[0] + x,
-          self.position[1] + y,
-          self.position[2]
+          self.bounds.position[0] + x,
+          self.bounds.position[1] + y,
+          self.bounds.position[2]
         ]);                             
       });
       this.parent.raise('Collided', data);
@@ -12653,19 +12727,8 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
         self.collideWithMap(map);
       });      
     },
-   
     getBounds: function() {
-      return {
-        x: this.position[0],
-        y: this.position[1],
-        width: this.size[0],
-        height: this.size[1],
-        circle: {
-          radius: Math.max(this.size[0] / 2.0, this.size[1] / 2.0),
-          x: this.position[0],
-          y: this.position[1]
-        }
-      }
+      return this.bounds.getCollisionQuad();
     },
     collideWithMap: function(map) {     
       var result = {
@@ -12683,8 +12746,8 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       }    
     },
     collideWithTop: function(map, result) {
-      var x = result.x + this.position[0] + (this.size[0] / 2.0);
-      var y = result.y + this.position[1];
+      var x = result.x + this.bounds.position[0] + (this.bounds.size[0] / 2.0);
+      var y = result.y + this.bounds.position[1];
       var d = 0;
       while(map.solidAt(x, y + d)) {
         d++;
@@ -12694,8 +12757,8 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       return d !== 0;
     },
     collideWithRight: function(map, result) {
-      var x = result.x + this.position[0] + this.size[0];
-      var y = result.y + this.position[1] + (this.size[1] / 2.0);
+      var x = result.x + this.bounds.position[0] + this.bounds.size[0];
+      var y = result.y + this.bounds.position[1] + (this.bounds.size[1] / 2.0);
       var d = 0;
       while(map.solidAt(x + d, y)) {
         d--;
@@ -12705,8 +12768,8 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       return d !== 0;
     },
     collideWithBottom: function(map, result) {
-      var x = result.x + this.position[0] + (this.size[0] / 2.0);
-      var y = result.y + this.position[1] + this.size[1];
+      var x = result.x + this.bounds.position[0] + (this.bounds.size[0] / 2.0);
+      var y = result.y + this.bounds.position[1] + this.bounds.size[1];
       var d = 0;
       while(map.solidAt(x, y + d)) {
         d--;
@@ -12716,8 +12779,8 @@ define('entities/components/physical',['require','glmatrix','../../shared/coords
       return d !== 0;
     },
     collideWithLeft: function(map, result) {
-      var x = result.x + this.position[0];
-      var y = result.y + this.position[1] + (this.size[1] / 2.0);
+      var x = result.x + this.bounds.position[0];
+      var y = result.y + this.bounds.position[1] + (this.bounds.size[1] / 2.0);
       var d = 0;
       while(map.solidAt(x + d, y)) {
         d++;
@@ -13828,10 +13891,10 @@ define('editor/worlditem',['require','underscore'],function(require) {
       this.createInstance();
     },
     select: function() {
-      this.instance.drawFloor = true;
+      this.tool.selections.add(this.instance);
     },
     deselect: function() {
-      this.instance.drawFloor = false;
+      this.tool.selections.remove(this.instance);
     },
     createInstance: function() {
       this.instance = this.tool.entityInstanceFactory.createInstanceForEntityType(this.entity.type);
@@ -14441,7 +14504,7 @@ define('editor/grid',['require','underscore','../scene/entity','../shared/coords
 
 });
 
-define('render/instance',['require','underscore','glmatrix','glmatrix','../shared/coords','../shared/eventable','glmatrix'],function(require) {
+define('render/instance',['require','underscore','glmatrix','glmatrix','../shared/coords','../shared/eventable','glmatrix','../shared/bounds'],function(require) {
 
   var _ = require('underscore');
   var vec3 = require('glmatrix').vec3;
@@ -14449,12 +14512,12 @@ define('render/instance',['require','underscore','glmatrix','glmatrix','../share
   var Coords = require('../shared/coords');
   var Eventable = require('../shared/eventable');
   var mat4 = require('glmatrix').mat4;
+  var Bounds = require('../shared/bounds');
 
   var Instance = function(model) {
     Eventable.call(this);
     this.model = model;
-    this.position = vec3.create([0,0,0]);
-    this.size = vec3.create([1,1,1]);
+    this.bounds = new Bounds();
     this.rotation = 0;
     this.opacity = 1.0;
     this.forcedDepth = null;
@@ -14466,9 +14529,7 @@ define('render/instance',['require','underscore','glmatrix','glmatrix','../share
       return true;
     },
     scale: function(x, y, z) {
-      this.size[0] = x || 1.0;
-      this.size[1] = y || 1.0;
-      this.size[2] = z || 1.0;
+      this.bounds.updateSize(x, y, z);
     },
     setOpacity: function(value) {
       if(this.opacity != value) {
@@ -14477,9 +14538,7 @@ define('render/instance',['require','underscore','glmatrix','glmatrix','../share
       }
     },
     translate: function(x, y, z) {
-      this.position[0] = x || 0;
-      this.position[1] = y || 0;
-      this.position[2] = z || 0;
+      this.bounds.updatePosition(x, y, z);
     },
     rotate: function(x) {
       this.rotation = x;
@@ -14487,7 +14546,15 @@ define('render/instance',['require','underscore','glmatrix','glmatrix','../share
 
     render: function(shader, context) {
       mat4.identity(this.worldTransform);
-      var quad = this.getQuad();
+      var quad = this.bounds.getRenderQuad();
+
+      // On a list of things Not To Do, this is Pretty High Up There
+      // TODO: This probably fits in the same fix for the below hack
+      this.raise('BeforeRender', {
+        shader: shader,
+        context: context,
+        quad: quad
+      });
 
       // TODO: This will be a bottleneck, sort it out mister.
       mat4.translate(this.worldTransform, [quad.x, quad.y, 0]);
@@ -14498,22 +14565,13 @@ define('render/instance',['require','underscore','glmatrix','glmatrix','../share
       context.drawArrays(context.TRIANGLE_STRIP, 0, 4);
     },
     depth: function() {
-      return this.forcedDepth || Coords.worldToIsometric(this.position[0], this.position[1]).y;
+      return this.forcedDepth || Coords.worldToIsometric(this.bounds.position[0], this.bounds.position[1]).y;
     },
     forceDepth: function(value) {
       this.forcedDepth = value;
     },
     getQuad: function() {
-      var bottomLeft = Coords.worldToIsometric(this.position[0], this.position[1] + this.size[1]);      
-      var bottomRight = Coords.worldToIsometric(this.position[0] + this.size[0], this.position[1] + this.size[1]);    
-      var width = this.size[0] + this.size[1];
-      var height = this.size[2];
-      return {
-        x: bottomLeft.x,
-        y: bottomLeft.y - (height), // - (bottomRight.y - bottomLeft.y)/2.0),
-        width: width,
-        height: height
-      }
+      return this.bounds.getRenderQuad();
     },
     intersectWithWorldCoords: function(x, y) {
       var screen = Coords.worldToIsometric(x, y);  
@@ -16333,7 +16391,45 @@ define('static/dynamictilesource',['require','underscore','jquery','./consts','.
 
   return DynamicTileSource;
 });
-define('editor/editortilesource',['require','underscore','jquery','./tilebuilder','../static/consts','../render/material','../render/quad','../static/dynamictilesource'],function(require) {
+define('editor/selections',['require','underscore','glmatrix','../shared/coords'],function(require) {
+
+  var _ = require('underscore');
+  var mat4 = require('glmatrix').mat4;
+  var Coords = require('../shared/coords');
+  var Selections = function(resources) {
+     this.worldTransform = mat4.create();
+     this.selectedTexture = resources.get('main/selection-indicator.png');
+  };
+
+  Selections.prototype = {
+    add: function(instance) {
+      instance.on('BeforeRender', this.onBeforeRenderInstance, this);
+    },
+    remove: function(instance) {
+      instance.off('BeforeRender', this.onBeforeRenderInstance, this);
+    },
+    onBeforeRenderInstance: function(data, instance) {
+      var shader = data.shader,
+          context = data.context;
+
+      var quad = instance.bounds.getCollisionQuad();
+      var topLeft = Coords.worldToIsometric(quad.x, quad.y);
+      var bottomLeft = Coords.worldToIsometric(quad.x, quad.y + quad.height);
+      mat4.identity(this.worldTransform);
+      mat4.translate(this.worldTransform, [bottomLeft.x, topLeft.y, 0]);
+      mat4.scale(this.worldTransform, [quad.width * 2, quad.height, 1.0]);
+      shader.uploadWorldTransform(this.worldTransform);
+      shader.uploadTextureOne(this.selectedTexture.get());
+      shader.setGlobalAlpha(1.0);
+      context.drawArrays(context.TRIANGLE_STRIP, 0, 4); 
+    }
+  };
+
+  return Selections;
+
+});
+
+define('editor/editortilesource',['require','underscore','jquery','./tilebuilder','../static/consts','../render/material','../render/quad','../static/dynamictilesource','./selections'],function(require) {
   var _ = require('underscore');
   var $ = require('jquery');
   var TileBuilder = require('./tilebuilder');
@@ -16341,10 +16437,12 @@ define('editor/editortilesource',['require','underscore','jquery','./tilebuilder
   var Material = require('../render/material');
   var Quad = require('../render/quad');
   var DynamicTileSource = require('../static/dynamictilesource');
+  var Selections = require('./selections');
 
   var EditorTileSource = function(resources, scene, entityInstanceFactory) {
     DynamicTileSource.call(this, resources, scene);
     this.entityInstanceFactory = entityInstanceFactory;
+    this.selections = new Selections(resources);
   };
 
   EditorTileSource.prototype = {};
